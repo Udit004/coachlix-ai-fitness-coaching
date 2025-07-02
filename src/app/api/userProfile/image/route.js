@@ -100,7 +100,7 @@ export async function POST(request) {
 }
 
 // Helper function to extract userId from Firebase token
-import { verifyUserToken } from '@/lib/verifyUser';
+import { verifyUserToken } from '@/app/api/verifyUser';
 
 async function getUserIdFromAuth(request) {
   try {
