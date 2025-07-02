@@ -1,4 +1,4 @@
-import { admin } from '../../lib/firebaseAdmin';
+import { admin } from './firebaseAdmin';
 
 export async function verifyUserToken(token) {
   try {

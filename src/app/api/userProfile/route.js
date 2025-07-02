@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import User from '@/models/userProfileModel';
-import { verifyUserToken } from '@/app/api/verifyUser'; // ✅ Updated path
+import { verifyUserToken } from '@/lib/verifyUser'; // ✅ Updated path
 
 // ✅ Helper: Extract user UID from Authorization header using centralized verifyUserToken
 async function getUserIdFromAuth(request) {
