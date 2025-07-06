@@ -4,7 +4,6 @@ import Navbar from "@/components/Navbar";
 import ConditionalFooter from "../components/ConditionalFooter";
 import { AuthProvider } from "@/auth/AuthContext";
 
-
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -23,19 +22,32 @@ export const metadata = {
   icons: {
     icon: '/CoachlixLogo.ico',
   },
-}
+};
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <head>
+        {/* PWA Essentials */}
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <meta name="theme-color" content="#000000" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+
+        {/* Open Graph for Social Sharing */}
+        <meta property="og:title" content="Coachlix AI Fitness Coaching" />
+        <meta property="og:description" content="Your AI fitness coach with personalized plans." />
+        <meta property="og:image" content="/icon-512.png" />
+        <meta property="og:type" content="website" />
+      </head>
+
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <AuthProvider>
-          <Navbar/>
+          <Navbar />
           {children}
         </AuthProvider>
-        <ConditionalFooter/>
+        <ConditionalFooter />
       </body>
     </html>
   );
