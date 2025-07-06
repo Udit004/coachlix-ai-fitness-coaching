@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import ConditionalFooter from "../components/ConditionalFooter";
 import { AuthProvider } from "@/auth/AuthContext";
 
+// Load Google Fonts with custom CSS variable
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -14,34 +15,54 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Site-wide Metadata for SEO, Social Sharing, and PWA
 export const metadata = {
-  title: 'Coachlix – Your AI Fitness Coach',
-  description: 'Get personalized AI-powered coaching. Track workouts, ask questions, and improve your fitness journey.',
-  keywords: 'fitness, AI coach, workout, trainer, Coachlix, gym',
-  authors: [{ name: 'Udit Kumar Tiwari' }],
+  title: "Coachlix – Your AI Fitness Coach",
+  description: "Get personalized AI-powered coaching. Track workouts, ask questions, and improve your fitness journey.",
+  keywords: ["fitness", "AI coach", "workout", "trainer", "Coachlix", "gym"],
+  authors: [{ name: "Udit Kumar Tiwari" }],
+  metadataBase: new URL("https://coachlix-ai-fitness-coaching.vercel.app"),
   icons: {
-    icon: '/CoachlixLogo.ico',
+    icon: "/CoachlixLogo.ico",
+    apple: "/icon-192.png",
+  },
+  manifest: "/manifest.json",
+  themeColor: "#000000",
+  appleWebApp: {
+    capable: true,
+    title: "Coachlix",
+    statusBarStyle: "black-translucent",
+  },
+  openGraph: {
+    title: "Coachlix AI Fitness Coaching",
+    description: "Your AI fitness coach with personalized plans.",
+    url: "https://coachlix-ai-fitness-coaching.vercel.app/",
+    siteName: "Coachlix AI",
+    images: [
+      {
+        url: "/icon-512.png",
+        width: 512,
+        height: 512,
+        alt: "Coachlix AI Logo",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Coachlix AI Fitness Coaching",
+    description: "Smart AI-powered personal fitness assistant",
+    images: ["/icon-512.png"],
+  },
+  verification: {
+    google: "SGSmDTkUcfGUOsfWJWVBksxsbCZptyQ15tqK1e-SF3M", // ✅ Your code goes here
   },
 };
+
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* PWA Essentials */}
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-        <meta name="theme-color" content="#000000" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-
-        {/* Open Graph for Social Sharing */}
-        <meta property="og:title" content="Coachlix AI Fitness Coaching" />
-        <meta property="og:description" content="Your AI fitness coach with personalized plans." />
-        <meta property="og:image" content="/icon-512.png" />
-        <meta property="og:type" content="website" />
-      </head>
-
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <AuthProvider>
           <Navbar />
