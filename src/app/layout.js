@@ -1,10 +1,11 @@
+// app/layout.js
+
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import ConditionalFooter from "../components/ConditionalFooter";
 import { AuthProvider } from "@/auth/AuthContext";
 
-// Load Google Fonts with custom CSS variable
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -15,7 +16,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Site-wide Metadata for SEO, Social Sharing, and PWA
 export const metadata = {
   title: "Coachlix – Your AI Fitness Coach",
   description: "Get personalized AI-powered coaching. Track workouts, ask questions, and improve your fitness journey.",
@@ -55,10 +55,9 @@ export const metadata = {
     images: ["/icon-512.png"],
   },
   verification: {
-    google: "SGSmDTkUcfGUOsfWJWVBksxsbCZptyQ15tqK1e-SF3M", // ✅ Your code goes here
+    google: "SGSmDTkUcfGUOsfWJWVBksxsbCZptyQ15tqK1e-SF3M",
   },
 };
-
 
 export default function RootLayout({ children }) {
   return (
