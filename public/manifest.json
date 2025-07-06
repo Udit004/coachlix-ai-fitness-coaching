@@ -22,7 +22,9 @@
         {
             "src": "/screenshot/home.png",
             "sizes": "1280x720",
-            "type": "image/png"
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Home screen of Coachlix"
         }
     ]
 }
