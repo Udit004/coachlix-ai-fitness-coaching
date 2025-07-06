@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://coachlix-ai-fitness-coaching.vercel.app
+
+# Sitemaps
+Sitemap: https://coachlix-ai-fitness-coaching.vercel.app/sitemap.xml
