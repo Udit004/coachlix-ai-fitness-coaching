@@ -1,5 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
+import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { app } from "../lib/firebase"; // Make sure this path is correct
+import { useAuthContext } from "../auth/AuthContext";
+
 import {
   Bot,
   Calendar,
@@ -18,13 +22,154 @@ import {
 } from "lucide-react";
 
 export default function HomePage() {
+  const { user: authUser, loading: authLoading } = useAuthContext();
   const [activeFeature, setActiveFeature] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState(null);
+  const [fcmToken, setFcmToken] = useState(null);
 
-  // Only set mounted to true after component mounts on client
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+// Updated setupNotifications function with proper error handling
+const setupNotifications = async () => {
+  try {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      console.log("This browser does not support notifications.");
+      return;
+    }
+
+    // Wait for auth to be ready
+    if (authLoading) {
+      console.log("Auth still loading, waiting...");
+      return;
+    }
+
+    const messaging = getMessaging(app);
+    const permission = await Notification.requestPermission();
+    setNotificationPermission(permission);
+
+    if (permission === "granted") {
+      console.log("Notification permission granted.");
+
+      const fcmToken = await getToken(messaging, {
+        vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+      });
+
+      if (fcmToken) {
+        console.log("FCM Token:", fcmToken);
+        setFcmToken(fcmToken);
+
+        // Only proceed if we have an authenticated user
+        if (authUser) {
+          try {
+            // Get fresh auth token
+            const authToken = await authUser.getIdToken(true); // Force refresh
+            console.log("Auth token obtained:", authToken ? 'Yes' : 'No');
+
+            const response = await fetch("/api/save-token", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${authToken}`,
+              },
+              body: JSON.stringify({ token: fcmToken }),
+            });
+
+            console.log("Response status:", response.status);
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error("Server response:", errorText);
+              throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+              console.log("FCM Token saved to server successfully");
+              console.log("User ID:", result.userID);
+              console.log("Token saved:", result.tokenSaved);
+
+              // Verify the token was saved by fetching it back
+              setTimeout(() => {
+                verifyFCMToken();
+              }, 1000);
+            } else {
+              console.error("Failed to save FCM token:", result.message);
+            }
+          } catch (error) {
+            console.error("Error saving FCM token:", error);
+          }
+        } else {
+          console.log("No authenticated user, skipping token save");
+        }
+      } else {
+        console.log("No registration token available.");
+      }
+
+      // Foreground message handling
+      onMessage(messaging, (payload) => {
+        console.log("Foreground message received:", payload);
+        if (payload.notification) {
+          new Notification(payload.notification.title, {
+            body: payload.notification.body,
+            icon: payload.notification.icon || "/icon-192x192.png",
+          });
+        }
+      });
+    } else {
+      console.log("Notification permission denied.");
+    }
+  } catch (error) {
+    console.error("Error setting up FCM:", error);
+  }
+};
+
+// Updated useEffect to handle auth state properly
+useEffect(() => {
+  setMounted(true);
+
+  // Register service worker
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker
+      .register("/firebase-messaging-sw.js")
+      .then((registration) => {
+        console.log("Firebase SW Registered:", registration);
+      })
+      .catch((err) => console.error("SW registration failed:", err));
+  }
+
+  // Only setup notifications when auth is ready
+  if (!authLoading) {
+    setupNotifications();
+  }
+}, [authLoading, authUser]); // Add authLoading and authUser as dependencies
+
+  const testNotification = async () => {
+    if (!fcmToken) {
+      alert("No FCM token available. Please allow notifications first.");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/send-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: fcmToken,
+          title: "Test Notification",
+          body: "This is a test notification from Coachlix!",
+          data: { test: "true" },
+        }),
+      });
+
+      if (response.ok) {
+        console.log("Test notification sent successfully");
+      } else {
+        console.error("Failed to send test notification");
+      }
+    } catch (error) {
+      console.error("Error sending test notification:", error);
+    }
+  };
 
   const features = [
     {
@@ -110,6 +255,26 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Notification Status Bar */}
+      {mounted && (
+        <div className="bg-blue-100 px-4 py-2 text-center text-sm">
+          <span className="mr-4">
+            Notifications:{" "}
+            {notificationPermission === "granted"
+              ? "✅ Enabled"
+              : "❌ Disabled"}
+          </span>
+          {fcmToken && (
+            <button
+              onClick={testNotification}
+              className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600"
+            >
+              Test Notification
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-blue-50 via-white to-purple-50 pt-20 pb-32 overflow-hidden">
         {/* Background Elements */}
@@ -175,6 +340,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Rest of your existing sections remain the same... */}
       {/* Key Features Section */}
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -243,6 +410,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
       {/* How It Works Section */}
       <section className="py-24 bg-gradient-to-br from-gray-50 to-blue-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -282,6 +450,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
       {/* Testimonials Section */}
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -330,6 +499,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
       {/* Final CTA Section */}
       <section className="py-24 bg-gradient-to-r from-blue-600 to-purple-600 relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10"></div>
@@ -367,6 +537,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
       {/* Meet the Creator Section */}
       <section className="px-4 py-16 text-center">
         <h2 className="text-3xl font-bold text-gray-900 mb-4">

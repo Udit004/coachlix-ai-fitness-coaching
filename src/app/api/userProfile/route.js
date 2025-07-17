@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import User from '@/models/userProfileModel';
-import { verifyUserToken } from '@/lib/verifyUser'; // ✅ Updated path
+import { verifyUserToken } from '@/lib/verifyUser';
+import { NotificationService } from '@/lib/notificationService';
+import { 
+  analyzeProfileUpdate, 
+  generateNotificationContent, 
+  shouldSendNotification,
+  generateActivityLogEntry,
+  checkForMilestones
+} from '@/utils/profileNotificationUtils';
 
-// ✅ Helper: Extract user UID from Authorization header using centralized verifyUserToken
+// Helper: Extract user UID from Authorization header
 async function getUserIdFromAuth(request) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -25,7 +33,6 @@ export async function GET(request) {
     await connectDB();
 
     const userId = await getUserIdFromAuth(request);
-
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -94,13 +101,12 @@ export async function GET(request) {
   }
 }
 
-// PUT - Update user profile
+// PUT - Update user profile with advanced notifications
 export async function PUT(request) {
   try {
     await connectDB();
 
     const userId = await getUserIdFromAuth(request);
-
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -108,8 +114,7 @@ export async function PUT(request) {
     const body = await request.json();
     const { name, phone, location, birthDate, fitnessGoal, experience, height, weight, targetWeight, bio } = body;
 
-
-    // Always get email from Firebase user (not from client)
+    // Get email from Firebase user
     let userEmail = null;
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
@@ -117,11 +122,12 @@ export async function PUT(request) {
       const decodedToken = await verifyUserToken(token);
       userEmail = decodedToken?.email;
     }
+
     if (!name || !userEmail) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
     }
 
-    // Prevent duplicate emails for other users
+    // Check for duplicate emails
     const existingUser = await User.findOne({
       email: userEmail.toLowerCase(),
       firebaseUid: { $ne: userId }
@@ -130,7 +136,11 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Email already exists' }, { status: 400 });
     }
 
-    // Always upsert with both firebaseUid and email
+    // Get existing user data for comparison
+    const existingUserData = await User.findOne({ firebaseUid: userId });
+    const isNewUser = !existingUserData;
+
+    // Prepare update data
     const updateData = {
       name,
       email: userEmail.toLowerCase(),
@@ -147,6 +157,11 @@ export async function PUT(request) {
       updatedAt: new Date()
     };
 
+    // Analyze profile changes
+    const oldData = existingUserData || {};
+    const analysis = analyzeProfileUpdate(oldData, updateData);
+
+    // Update user profile
     const updatedUser = await User.findOneAndUpdate(
       { firebaseUid: userId },
       { $set: updateData },
@@ -157,6 +172,87 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    // Initialize notification tracking variables
+    let notificationsSent = false;
+    let milestonesCount = 0;
+    let milestones = [];
+
+    // Handle notifications and activity logging
+    try {
+      // Check if notification should be sent
+      if (shouldSendNotification(analysis, isNewUser)) {
+        // Generate notification content
+        const notificationContent = generateNotificationContent(analysis, oldData, updateData, isNewUser);
+        
+        // Send notification if user has FCM token
+        if (updatedUser.pushToken) {
+          await NotificationService.sendCustomNotification(
+            updatedUser.pushToken,
+            notificationContent.title,
+            notificationContent.body,
+            notificationContent.data
+          );
+          notificationsSent = true;
+        }
+      }
+
+      // Check for milestones
+      milestones = checkForMilestones(oldData, updateData);
+      milestonesCount = milestones.length;
+
+      if (milestones.length > 0 && updatedUser.pushToken) {
+        // Send milestone notifications
+        for (const milestone of milestones) {
+          await NotificationService.sendMilestoneNotification(
+            updatedUser.pushToken,
+            milestone.title
+          );
+          
+          // Add milestone to user's achievements
+          await User.findOneAndUpdate(
+            { firebaseUid: userId },
+            {
+              $push: {
+                achievements: {
+                  title: milestone.title,
+                  description: milestone.description,
+                  icon: getMilestoneIcon(milestone.type),
+                  earned: true,
+                  earnedDate: new Date()
+                }
+              }
+            }
+          );
+        }
+      }
+
+      // Log activity
+      const activityEntry = generateActivityLogEntry(analysis, isNewUser);
+      await User.findOneAndUpdate(
+        { firebaseUid: userId },
+        {
+          $push: {
+            recentActivities: {
+              $each: [activityEntry],
+              $slice: -10 // Keep only last 10 activities
+            }
+          }
+        }
+      );
+
+      // Send welcome notification for new users
+      if (isNewUser && updatedUser.pushToken) {
+        setTimeout(async () => {
+          await NotificationService.sendWelcomeNotification(updatedUser.pushToken);
+        }, 2000); // Send welcome notification after 2 seconds
+      }
+
+    } catch (notificationError) {
+      console.error('Notification/Activity logging failed:', notificationError);
+      // Don't break the profile update if notification fails
+    }
+
+    // Return success response
     return NextResponse.json({
       success: true,
       message: 'Profile updated successfully',
@@ -172,11 +268,69 @@ export async function PUT(request) {
         weight: updatedUser.weight,
         targetWeight: updatedUser.targetWeight,
         bio: updatedUser.bio
+      },
+      notifications: {
+        sent: notificationsSent,
+        milestones: milestonesCount,
+        changeType: analysis.primaryChangeType
       }
     }, { status: 200 });
 
   } catch (error) {
     console.error('Profile PUT error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// Helper function to get milestone icon
+function getMilestoneIcon(milestoneType) {
+  const iconMap = {
+    'profile_completion': 'User',
+    'goal_set': 'Target',
+    'target_set': 'Scale',
+    'body_stats_complete': 'Activity',
+    'weight_loss': 'TrendingDown'
+  };
+  return iconMap[milestoneType] || 'Award';
+}
+
+// DELETE - Delete user profile (optional)
+export async function DELETE(request) {
+  try {
+    await connectDB();
+
+    const userId = await getUserIdFromAuth(request);
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const deletedUser = await User.findOneAndDelete({ firebaseUid: userId });
+    
+    if (!deletedUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Send goodbye notification if user has FCM token
+    if (deletedUser.pushToken) {
+      try {
+        await NotificationService.sendCustomNotification(
+          deletedUser.pushToken,
+          "Profile Deleted",
+          "Your profile has been successfully deleted. We're sorry to see you go!",
+          { type: 'profile_deleted', link: '/' }
+        );
+      } catch (notificationError) {
+        console.error('Failed to send deletion notification:', notificationError);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Profile deleted successfully'
+    }, { status: 200 });
+
+  } catch (error) {
+    console.error('Profile DELETE error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
