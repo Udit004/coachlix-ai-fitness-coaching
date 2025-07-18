@@ -111,7 +111,7 @@ const setupNotifications = async () => {
         if (payload.notification) {
           new Notification(payload.notification.title, {
             body: payload.notification.body,
-            icon: payload.notification.icon || "/icon-192x192.png",
+            icon: payload.notification.icon || "/icon-192.png",
           });
         }
       });

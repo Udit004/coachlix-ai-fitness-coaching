@@ -1,25 +1,34 @@
-import admin from '../../../lib/firebaseAdmin';
-import { NextResponse } from 'next/server';
+// Add this function to get user's FCM token
+async function getUserFCMToken(userId) {
+  await connectDB();
+  const user = await User.findOne({ firebaseUid: userId });
+  return user?.pushToken;
+}
 
 export async function POST(request) {
   try {
-    const { token, title, body, data, imageUrl } = await request.json();
-
-    if (!token || !title || !body) {
-      return NextResponse.json(
-        { message: 'Token, title, and body are required' },
-        { status: 400 }
-      );
+    const { title, body, data } = await request.json();
+    
+    // Get user from auth header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return NextResponse.json({ message: 'Authorization required' }, { status: 401 });
     }
-
+    
+    const token = authHeader.replace('Bearer ', '');
+    const user = await verifyUserToken(token);
+    
+    // Get user's FCM token
+    const fcmToken = await getUserFCMToken(user.uid);
+    if (!fcmToken) {
+      return NextResponse.json({ message: 'No FCM token found for user' }, { status: 404 });
+    }
+    
+    // Send notification
     const message = {
-      notification: {
-        title,
-        body,
-        ...(imageUrl && { imageUrl })
-      },
+      notification: { title, body },
       data: data || {},
-      token,
+      token: fcmToken,
       webpush: {
         fcmOptions: {
           link: data?.link || '/'
@@ -28,8 +37,7 @@ export async function POST(request) {
     };
 
     const response = await admin.messaging().send(message);
-    console.log('Successfully sent message:', response);
-
+    
     return NextResponse.json({
       success: true,
       message: 'Notification sent successfully',
@@ -38,13 +46,10 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Error sending notification:', error);
-    return NextResponse.json(
-      { 
-        success: false,
-        message: 'Failed to send notification',
-        error: error.message 
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ 
+      success: false,
+      message: 'Failed to send notification',
+      error: error.message 
+    }, { status: 500 });
   }
 }
