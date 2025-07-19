@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { app } from "../lib/firebase"; // Make sure this path is correct
@@ -22,6 +23,7 @@ import {
 } from "lucide-react";
 
 export default function HomePage() {
+  const router = useRouter();
   const { user: authUser, loading: authLoading } = useAuthContext();
   const [activeFeature, setActiveFeature] = useState(0);
   const [mounted, setMounted] = useState(false);
@@ -305,7 +307,7 @@ useEffect(() => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-              <button className="group bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center">
+              <button className="group bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center" onClick={() => router.push("/ai-chat")}>
                 <Bot className="h-5 w-5 mr-2" />
                 Ask AI Coach
                 <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
@@ -514,7 +516,7 @@ useEffect(() => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="group bg-white text-blue-600 px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center">
+            <button className="group bg-white text-blue-600 px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center" onClick={() => router.push("/ai-chat")}>
               <Heart className="h-5 w-5 mr-2" />
               Start Free Today
               <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
