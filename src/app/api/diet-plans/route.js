@@ -1,8 +1,10 @@
-// api/diet-plans/route.js - Main diet plans endpoint
+// api/diet-plans/route.js - Main diet plans endpoint with notifications
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "../../../lib/db";
 import DietPlan from "@/models/DietPlan";
+import User from "@/models/userProfileModel";
 import { verifyUserToken } from "@/lib/verifyUser";
+import { NotificationService } from "@/lib/notificationService";
 
 // GET /api/diet-plans - Get all diet plans for user
 export async function GET(request) {
@@ -76,11 +78,10 @@ export async function GET(request) {
   }
 }
 
-// POST /api/diet-plans - Create new diet plan
-// POST /api/diet-plans - Create new diet plan
+// POST /api/diet-plans - Create new diet plan with notifications
 export async function POST(request) {
   try {
-    // Verify authentication - FIXED: Extract auth header first
+    // Verify authentication
     const authHeader =
       request.headers.get("Authorization") ||
       request.headers.get("authorization");
@@ -140,7 +141,73 @@ export async function POST(request) {
 
     const savedPlan = await dietPlan.save();
 
-    return NextResponse.json(savedPlan, { status: 201 });
+    // Initialize notification tracking
+    let notificationSent = false;
+    let userData = null;
+
+    // Send notification for diet plan creation
+    try {
+      console.log("📋 Diet plan created, checking for push token...");
+      
+      // Get user's push token
+      userData = await User.findOne({ firebaseUid: user.uid });
+      
+      if (userData && userData.pushToken) {
+        console.log("📱 Sending diet plan creation notification...");
+        
+        await NotificationService.sendCustomNotification(
+          userData.pushToken,
+          "New Diet Plan Created! 🥗",
+          `Your "${name}" diet plan is ready to help you reach your ${goal.toLowerCase()} goal!`,
+          {
+            type: "diet_plan_created",
+            planId: savedPlan._id.toString(),
+            planName: name,
+            goal: goal,
+          }
+        );
+        
+        console.log("✅ Diet plan creation notification sent successfully");
+        notificationSent = true;
+        
+        // Add activity to user's recent activities
+        await User.findOneAndUpdate(
+          { firebaseUid: user.uid },
+          {
+            $push: {
+              recentActivities: {
+                $each: [{
+                  type: "diet_plan_created",
+                  description: `Created new diet plan: ${name}`,
+                  timestamp: new Date(),
+                  details: {
+                    planName: name,
+                    goal: goal,
+                    targetCalories: targetCalories,
+                  }
+                }],
+                $slice: -10, // Keep only last 10 activities
+              },
+            },
+          }
+        );
+      } else {
+        console.log("❌ No push token found for user");
+      }
+    } catch (notificationError) {
+      console.error("❌ Failed to send diet plan creation notification:", notificationError);
+      // Don't break the creation if notification fails
+    }
+
+    return NextResponse.json({
+      success: true,
+      plan: savedPlan,
+      message: "Diet plan created successfully",
+      notification: {
+        sent: notificationSent,
+      }
+    }, { status: 201 });
+    
   } catch (error) {
     console.error("Error creating diet plan:", error);
 
@@ -151,6 +218,241 @@ export async function POST(request) {
       );
     }
 
+    return NextResponse.json(
+      { message: "Internal server error", error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT /api/diet-plans - Update diet plan with notifications
+export async function PUT(request) {
+  try {
+    // Verify authentication
+    const authHeader =
+      request.headers.get("Authorization") ||
+      request.headers.get("authorization");
+    if (!authHeader) {
+      return NextResponse.json(
+        { message: "Authorization header missing" },
+        { status: 401 }
+      );
+    }
+
+    const user = await verifyUserToken(authHeader);
+    if (!user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    await connectDB();
+
+    const body = await request.json();
+    const { planId, ...updateData } = body;
+
+    if (!planId) {
+      return NextResponse.json(
+        { message: "Plan ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Find and update the diet plan
+    const updatedPlan = await DietPlan.findOneAndUpdate(
+      { _id: planId, userId: user.uid },
+      { $set: { ...updateData, updatedAt: new Date() } },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedPlan) {
+      return NextResponse.json(
+        { message: "Diet plan not found or unauthorized" },
+        { status: 404 }
+      );
+    }
+
+    // Initialize notification tracking
+    let notificationSent = false;
+    let userData = null;
+
+    // Send notification for diet plan update
+    try {
+      console.log("📋 Diet plan updated, checking for push token...");
+      
+      // Get user's push token
+      userData = await User.findOne({ firebaseUid: user.uid });
+      
+      if (userData && userData.pushToken) {
+        console.log("📱 Sending diet plan update notification...");
+        
+        await NotificationService.sendCustomNotification(
+          userData.pushToken,
+          "Diet Plan Updated! 📝",
+          `Your "${updatedPlan.name}" diet plan has been successfully updated.`,
+          {
+            type: "diet_plan_updated",
+            planId: updatedPlan._id.toString(),
+            planName: updatedPlan.name,
+            goal: updatedPlan.goal,
+          }
+        );
+        
+        console.log("✅ Diet plan update notification sent successfully");
+        notificationSent = true;
+        
+        // Add activity to user's recent activities
+        await User.findOneAndUpdate(
+          { firebaseUid: user.uid },
+          {
+            $push: {
+              recentActivities: {
+                $each: [{
+                  type: "diet_plan_updated",
+                  description: `Updated diet plan: ${updatedPlan.name}`,
+                  timestamp: new Date(),
+                  details: {
+                    planName: updatedPlan.name,
+                    goal: updatedPlan.goal,
+                  }
+                }],
+                $slice: -10,
+              },
+            },
+          }
+        );
+      } else {
+        console.log("❌ No push token found for user");
+      }
+    } catch (notificationError) {
+      console.error("❌ Failed to send diet plan update notification:", notificationError);
+    }
+
+    return NextResponse.json({
+      success: true,
+      plan: updatedPlan,
+      message: "Diet plan updated successfully",
+      notification: {
+        sent: notificationSent,
+      }
+    });
+    
+  } catch (error) {
+    console.error("Error updating diet plan:", error);
+    return NextResponse.json(
+      { message: "Internal server error", error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/diet-plans - Delete diet plan with notifications
+export async function DELETE(request) {
+  try {
+    // Verify authentication
+    const authHeader =
+      request.headers.get("Authorization") ||
+      request.headers.get("authorization");
+    if (!authHeader) {
+      return NextResponse.json(
+        { message: "Authorization header missing" },
+        { status: 401 }
+      );
+    }
+
+    const user = await verifyUserToken(authHeader);
+    if (!user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    await connectDB();
+
+    const { searchParams } = new URL(request.url);
+    const planId = searchParams.get("planId");
+
+    if (!planId) {
+      return NextResponse.json(
+        { message: "Plan ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Find the plan first to get its name for notification
+    const planToDelete = await DietPlan.findOne({ _id: planId, userId: user.uid });
+    
+    if (!planToDelete) {
+      return NextResponse.json(
+        { message: "Diet plan not found or unauthorized" },
+        { status: 404 }
+      );
+    }
+
+    // Delete the diet plan
+    const deletedPlan = await DietPlan.findOneAndDelete({ _id: planId, userId: user.uid });
+
+    // Initialize notification tracking
+    let notificationSent = false;
+    let userData = null;
+
+    // Send notification for diet plan deletion
+    try {
+      console.log("📋 Diet plan deleted, checking for push token...");
+      
+      // Get user's push token
+      userData = await User.findOne({ firebaseUid: user.uid });
+      
+      if (userData && userData.pushToken) {
+        console.log("📱 Sending diet plan deletion notification...");
+        
+        await NotificationService.sendCustomNotification(
+          userData.pushToken,
+          "Diet Plan Deleted 🗑️",
+          `Your "${planToDelete.name}" diet plan has been deleted.`,
+          {
+            type: "diet_plan_deleted",
+            planName: planToDelete.name,
+            goal: planToDelete.goal,
+          }
+        );
+        
+        console.log("✅ Diet plan deletion notification sent successfully");
+        notificationSent = true;
+        
+        // Add activity to user's recent activities
+        await User.findOneAndUpdate(
+          { firebaseUid: user.uid },
+          {
+            $push: {
+              recentActivities: {
+                $each: [{
+                  type: "diet_plan_deleted",
+                  description: `Deleted diet plan: ${planToDelete.name}`,
+                  timestamp: new Date(),
+                  details: {
+                    planName: planToDelete.name,
+                    goal: planToDelete.goal,
+                  }
+                }],
+                $slice: -10,
+              },
+            },
+          }
+        );
+      } else {
+        console.log("❌ No push token found for user");
+      }
+    } catch (notificationError) {
+      console.error("❌ Failed to send diet plan deletion notification:", notificationError);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Diet plan deleted successfully",
+      notification: {
+        sent: notificationSent,
+      }
+    });
+    
+  } catch (error) {
+    console.error("Error deleting diet plan:", error);
     return NextResponse.json(
       { message: "Internal server error", error: error.message },
       { status: 500 }

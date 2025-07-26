@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Calendar, Target, TrendingUp, Plus, Edit, Trash2, Copy } from 'lucide-react';
 import DietDayCard from './DietDayCard';
+import AddFoodModal from './AddFoodModal';
+import MealCard from './MealCard';
 import dietPlanService from '@/service/dietPlanService';
 
 export default function SingleDietPlanPage() {
@@ -118,7 +120,7 @@ export default function SingleDietPlanPage() {
                   Try Again
                 </button>
                 <button
-                  onClick={() => router.push('/diet-plans')}
+                  onClick={() => router.push('/diet-plan')}
                   className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
                 >
                   Back to Plans
@@ -143,7 +145,7 @@ export default function SingleDietPlanPage() {
               The diet plan you're looking for doesn't exist or has been deleted.
             </p>
             <button
-              onClick={() => router.push('/diet-plans')}
+              onClick={() => router.push('/diet-plan')}
               className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors"
             >
               Back to Diet Plans
@@ -165,7 +167,7 @@ export default function SingleDietPlanPage() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => router.push('/diet-plans')}
+              onClick={() => router.push('/diet-plan')}
               className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />

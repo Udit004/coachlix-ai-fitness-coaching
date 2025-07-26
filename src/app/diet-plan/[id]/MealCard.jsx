@@ -1,6 +1,6 @@
 // components/MealCard.jsx
 "use client"
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Plus, Edit, Trash2, Utensils, Calculator } from 'lucide-react';
 import FoodItemCard from './FoodItemCard';
 import AddFoodModal from './AddFoodModal';
@@ -8,6 +8,7 @@ import dietPlanService from '@/service/dietPlanService';
 
 export default function MealCard({ meal, planId, dayNumber, onUpdate }) {
   const [isAddingFood, setIsAddingFood] = useState(false);
+  const isProcessingRef = useRef(false);
 
   // Calculate meal totals
   const mealTotals = meal.items.reduce(
@@ -20,16 +21,20 @@ export default function MealCard({ meal, planId, dayNumber, onUpdate }) {
     { calories: 0, protein: 0, carbs: 0, fats: 0 }
   );
 
-  const handleAddFood = async (foodData) => {
+  const handleAddFood = useCallback(async (foodData) => {
     try {
       await dietPlanService.addFoodItem(planId, dayNumber, meal.type, foodData);
-      setIsAddingFood(false);
+      // Use setTimeout to ensure state is set after modal operations complete
+      setTimeout(() => {
+        setIsAddingFood(false);
+      }, 0);
       onUpdate?.();
     } catch (error) {
       console.error('Error adding food item:', error);
       alert('Failed to add food item. Please try again.');
+      setIsAddingFood(false);
     }
-  };
+  }, [planId, dayNumber, meal.type, onUpdate]);
 
   const handleUpdateFood = async (itemIndex, foodData) => {
     try {
@@ -52,6 +57,42 @@ export default function MealCard({ meal, planId, dayNumber, onUpdate }) {
       alert('Failed to delete food item. Please try again.');
     }
   };
+
+  const handleOpenModal = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isProcessingRef.current) {
+      console.log('Already processing, ignoring click');
+      return;
+    }
+    
+    console.log('Opening modal');
+    isProcessingRef.current = true;
+    
+    setIsAddingFood(prev => {
+      if (prev === true) {
+        console.log('Modal already open, ignoring');
+        return prev;
+      }
+      console.log('Setting isAddingFood from', prev, 'to true');
+      return true;
+    });
+    
+    // Reset the processing flag after a short delay
+    setTimeout(() => {
+      isProcessingRef.current = false;
+    }, 100);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    console.log('Closing modal');
+    isProcessingRef.current = false; // Reset processing flag
+    setIsAddingFood(prev => {
+      console.log('Setting isAddingFood from', prev, 'to false');
+      return false;
+    });
+  }, []);
 
   const getMealIcon = (mealType) => {
     const icons = {
@@ -152,8 +193,9 @@ export default function MealCard({ meal, planId, dayNumber, onUpdate }) {
 
           {/* Add Food Button */}
           <button
-            onClick={() => setIsAddingFood(true)}
-            className="w-full flex items-center justify-center space-x-2 px-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+            onClick={handleOpenModal}
+            disabled={isAddingFood}
+            className="w-full flex items-center justify-center space-x-2 px-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus className="h-4 w-4" />
             <span>Add Food Item</span>
@@ -162,12 +204,15 @@ export default function MealCard({ meal, planId, dayNumber, onUpdate }) {
       </div>
 
       {/* Add Food Modal */}
-      <AddFoodModal
-        isOpen={isAddingFood}
-        onClose={() => setIsAddingFood(false)}
-        onAdd={handleAddFood}
-        mealType={meal.type}
-      />
+      {isAddingFood && (
+        <AddFoodModal
+          key="add-food-modal"
+          isOpen={true}
+          onClose={handleCloseModal}
+          onAdd={handleAddFood}
+          mealType={meal.type}
+        />
+      )}
     </>
   );
 }

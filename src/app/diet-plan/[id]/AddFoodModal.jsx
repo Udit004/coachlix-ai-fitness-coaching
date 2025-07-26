@@ -1,6 +1,6 @@
 // components/AddFoodModal.jsx
 "use client"
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Search, Plus, Clock, Star } from 'lucide-react';
 import dietPlanService from '@/service/dietPlanService';
 
@@ -11,6 +11,7 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
   const [popularFoods, setPopularFoods] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [loadingPopular, setLoadingPopular] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -36,6 +37,7 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
       });
       setSearchQuery('');
       setSearchResults([]);
+      setIsSubmitting(false);
       fetchPopularFoods();
     }
   }, [isOpen]);
@@ -87,8 +89,10 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
     setActiveTab('manual');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
+    
+    if (isSubmitting) return; // Prevent double submission
     
     // Validate required fields
     if (!formData.name.trim()) {
@@ -101,20 +105,51 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
       return;
     }
 
-    const foodData = {
-      name: formData.name.trim(),
-      calories: parseFloat(formData.calories) || 0,
-      protein: parseFloat(formData.protein) || 0,
-      carbs: parseFloat(formData.carbs) || 0,
-      fats: parseFloat(formData.fats) || 0,
-      quantity: formData.quantity.trim() || '1 serving',
-      notes: formData.notes.trim()
-    };
+    setIsSubmitting(true);
 
-    onAdd(foodData);
-  };
+    try {
+      const foodData = {
+        name: formData.name.trim(),
+        calories: parseFloat(formData.calories) || 0,
+        protein: parseFloat(formData.protein) || 0,
+        carbs: parseFloat(formData.carbs) || 0,
+        fats: parseFloat(formData.fats) || 0,
+        quantity: formData.quantity.trim() || '1 serving',
+        notes: formData.notes.trim()
+      };
 
-  if (!isOpen) return null;
+      await onAdd(foodData);
+    } catch (error) {
+      console.error('Error in handleSubmit:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [formData, onAdd, isSubmitting]);
+
+  const handleClose = useCallback((e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!isSubmitting) {
+      onClose();
+    }
+  }, [onClose, isSubmitting]);
+
+  const handleBackdropClick = useCallback((e) => {
+    // Only close if clicking directly on the backdrop, not on any child elements
+    if (e.target === e.currentTarget && !isSubmitting) {
+      console.log('Backdrop clicked, closing modal');
+      handleClose();
+    }
+  }, [handleClose, isSubmitting]);
+
+  if (!isOpen) {
+    console.log('Modal not open, returning null');
+    return null;
+  }
+
+  console.log('Rendering AddFoodModal, isOpen:', isOpen);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -122,7 +157,8 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
         {/* Background overlay */}
         <div 
           className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-          onClick={onClose}
+          onClick={handleBackdropClick}
+          style={{ zIndex: -1 }}
         />
 
         {/* Modal */}
@@ -134,8 +170,9 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                 Add Food to {mealType}
               </h3>
               <button
-                onClick={onClose}
-                className="p-1 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+                onClick={handleClose}
+                disabled={isSubmitting}
+                className="p-1 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 disabled:opacity-50"
               >
                 <X className="h-6 w-6" />
               </button>
@@ -145,7 +182,8 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
             <div className="mt-4 flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
               <button
                 onClick={() => setActiveTab('manual')}
-                className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                disabled={isSubmitting}
+                className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors disabled:opacity-50 ${
                   activeTab === 'manual'
                     ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
@@ -155,7 +193,8 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
               </button>
               <button
                 onClick={() => setActiveTab('search')}
-                className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                disabled={isSubmitting}
+                className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors disabled:opacity-50 ${
                   activeTab === 'search'
                     ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
@@ -179,7 +218,8 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      disabled={isSubmitting}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
                       placeholder="e.g., Grilled Chicken Breast"
                       required
                     />
@@ -193,7 +233,8 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                       type="text"
                       value={formData.quantity}
                       onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      disabled={isSubmitting}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
                       placeholder="e.g., 150g, 1 cup, 2 pieces"
                     />
                   </div>
@@ -206,7 +247,8 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                       type="number"
                       value={formData.calories}
                       onChange={(e) => setFormData({ ...formData, calories: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      disabled={isSubmitting}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
                       min="0"
                       step="0.1"
                       placeholder="e.g., 250"
@@ -222,7 +264,8 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                       type="number"
                       value={formData.protein}
                       onChange={(e) => setFormData({ ...formData, protein: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      disabled={isSubmitting}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
                       min="0"
                       step="0.1"
                       placeholder="e.g., 25"
@@ -237,7 +280,8 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                       type="number"
                       value={formData.carbs}
                       onChange={(e) => setFormData({ ...formData, carbs: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      disabled={isSubmitting}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
                       min="0"
                       step="0.1"
                       placeholder="e.g., 15"
@@ -252,7 +296,8 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                       type="number"
                       value={formData.fats}
                       onChange={(e) => setFormData({ ...formData, fats: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      disabled={isSubmitting}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
                       min="0"
                       step="0.1"
                       placeholder="e.g., 10"
@@ -266,7 +311,8 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                     <textarea
                       value={formData.notes}
                       onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+                      disabled={isSubmitting}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none disabled:opacity-50"
                       rows={3}
                       maxLength={200}
                       placeholder="Any additional notes about preparation, brand, etc."
@@ -280,16 +326,18 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                 <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <button
                     type="button"
-                    onClick={onClose}
-                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                    onClick={handleClose}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                    disabled={isSubmitting}
+                    className="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors"
                   >
-                    Add Food
+                    {isSubmitting ? 'Adding...' : 'Add Food'}
                   </button>
                 </div>
               </form>
@@ -304,14 +352,15 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onKeyPress={handleSearchKeyPress}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      disabled={isSubmitting}
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
                       placeholder="Search for foods (e.g., chicken breast, apple, rice)"
                     />
                     <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                   </div>
                   <button
                     onClick={handleSearch}
-                    disabled={isSearching || !searchQuery.trim()}
+                    disabled={isSearching || !searchQuery.trim() || isSubmitting}
                     className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors"
                   >
                     {isSearching ? 'Searching...' : 'Search'}
@@ -339,8 +388,8 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                         {popularFoods.map((food, index) => (
                           <div
                             key={index}
-                            onClick={() => handleSelectFood(food)}
-                            className="p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                            onClick={() => !isSubmitting && handleSelectFood(food)}
+                            className={`p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex-1">
@@ -386,8 +435,8 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                       {searchResults.map((food, index) => (
                         <div
                           key={index}
-                          onClick={() => handleSelectFood(food)}
-                          className="p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                          onClick={() => !isSubmitting && handleSelectFood(food)}
+                          className={`p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex-1">
