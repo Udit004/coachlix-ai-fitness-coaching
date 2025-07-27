@@ -594,74 +594,103 @@ export default function CreatePlanModal({ onClose, onCreate }) {
             </span>
           </div>
         </div>
-        {/* Content */}
-        {/* Content */}
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          <div className="flex-1 overflow-y-auto p-6">
-            {step === 1 ? renderStep1() : renderStep2()}
-          </div>
-          {/* Footer */}
-          <div className="flex items-center justify-between p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-            <div className="flex space-x-3">
-              {step > 1 && (
-                <button
-                  type="button"
-                  onClick={() => setStep(step - 1)}
-                  className="px-6 py-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-                >
-                  Previous
-                </button>
-              )}
-            </div>
 
-            <div className="flex space-x-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-              >
-                Cancel
-              </button>
 
-              {step < 2 ? (
-                <button
-                  type="button"
-                  onClick={() => setStep(step + 1)}
-                  disabled={!formData.name.trim()}
-                  className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-xl transition-colors disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={
-                    loading ||
-                    !formData.name.trim() ||
-                    formData.targetCalories < 1000
-                  }
-                  className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-xl transition-colors disabled:cursor-not-allowed inline-flex items-center space-x-2"
-                >
-                  {loading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Creating...</span>
-                    </>
-                  ) : (
-                    <>
-                      {formData.createMethod === "ai" ? (
-                        <Sparkles className="h-4 w-4" />
-                      ) : (
-                        <Plus className="h-4 w-4" />
-                      )}
-                      <span>Create Plan</span>
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-        </form>
+        
+        {/* Content */}
+        <div className="flex flex-col flex-1 min-h-0">
+          {step === 1 ? (
+            <>
+              <div className="flex-1 overflow-y-auto p-6">{renderStep1()}</div>
+              {/* Footer for Step 1 */}
+              <div className="flex items-center justify-between p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                <div className="flex space-x-3">
+                  {/* Previous button not needed on step 1 */}
+                </div>
+
+                <div className="flex space-x-3">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-6 py-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setStep(2);
+                    }}
+                    disabled={!formData.name.trim()}
+                    className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-xl transition-colors disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-col flex-1 min-h-0"
+            >
+              <div className="flex-1 overflow-y-auto p-6">{renderStep2()}</div>
+              {/* Footer for Step 2 */}
+              <div className="flex items-center justify-between p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                <div className="flex space-x-3">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setStep(1);
+                    }}
+                    className="px-6 py-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Previous
+                  </button>
+                </div>
+
+                <div className="flex space-x-3">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-6 py-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={
+                      loading ||
+                      !formData.name.trim() ||
+                      formData.targetCalories < 1000
+                    }
+                    className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-xl transition-colors disabled:cursor-not-allowed inline-flex items-center space-x-2"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Creating...</span>
+                      </>
+                    ) : (
+                      <>
+                        {formData.createMethod === "ai" ? (
+                          <Sparkles className="h-4 w-4" />
+                        ) : (
+                          <Plus className="h-4 w-4" />
+                        )}
+                        <span>Create Plan</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );

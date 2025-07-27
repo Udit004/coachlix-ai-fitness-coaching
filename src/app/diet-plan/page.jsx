@@ -1,10 +1,18 @@
-"use client"
-import React, { useState, useEffect } from 'react';
-import { Plus, Filter, Search, Calendar, Target, TrendingUp } from 'lucide-react';
-import DietPlanCard from './DietPlanCard';
-import CreatePlanModal from './CreatePlanModal';
-import dietPlanService from '../../service/dietPlanService';
-import { useAuth } from '../../hooks/useAuth'; // Assuming this path
+"use client";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Plus,
+  Filter,
+  Search,
+  Calendar,
+  Target,
+  TrendingUp,
+  AlertCircle,
+} from "lucide-react";
+import DietPlanCard from "./DietPlanCard";
+import CreatePlanModal from "./CreatePlanModal";
+import dietPlanService from "../../service/dietPlanService";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function DietPlansPage() {
   const { user, loading: authLoading } = useAuth();
@@ -12,79 +20,194 @@ export default function DietPlansPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedGoal, setSelectedGoal] = useState('');
-  const [sortBy, setSortBy] = useState('newest');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedGoal, setSelectedGoal] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
 
-  // Fetch diet plans when user is authenticated and not loading
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchDietPlans();
-    }
-  }, [user, authLoading, selectedGoal, sortBy]);
+  const goals = [
+    "Weight Loss",
+    "Muscle Gain", 
+    "Maintenance",
+    "Cutting",
+    "Bulking",
+    "General Health",
+  ];
 
-  const fetchDietPlans = async () => {
+  // Memoized fetch function to prevent unnecessary re-renders
+  const fetchDietPlans = useCallback(async () => {
+    if (!user) return;
+    
     try {
       setLoading(true);
       setError(null);
-      
+
       const options = {
         activeOnly: true,
         ...(selectedGoal && { goal: selectedGoal }),
-        sort: sortBy === 'newest' ? '-createdAt' : sortBy === 'oldest' ? 'createdAt' : '-updatedAt'
+        sort:
+          sortBy === "newest"
+            ? "-createdAt"
+            : sortBy === "oldest"
+            ? "createdAt"
+            : "-updatedAt",
       };
-      
+
       const data = await dietPlanService.getDietPlans(options);
-      setDietPlans(data.plans || []);
+      
+      // Ensure data structure is valid
+      if (data && Array.isArray(data.plans)) {
+        setDietPlans(data.plans);
+      } else if (Array.isArray(data)) {
+        setDietPlans(data);
+      } else {
+        console.warn("Unexpected data structure:", data);
+        setDietPlans([]);
+      }
     } catch (err) {
-      setError(err.message);
-      console.error('Error fetching diet plans:', err);
+      console.error("Error fetching diet plans:", err);
+      setError(err?.message || "Failed to fetch diet plans");
+      setDietPlans([]); // Ensure state is always an array
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, selectedGoal, sortBy]);
 
-  // Filter plans based on search term
-  const filteredPlans = dietPlans.filter(plan =>
-    plan.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    plan.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    plan.goal.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Fetch diet plans when dependencies change
+  useEffect(() => {
+    if (!authLoading && user) {
+      fetchDietPlans();
+    } else if (!authLoading && !user) {
+      // Clear plans when user logs out
+      setDietPlans([]);
+      setLoading(false);
+    }
+  }, [authLoading, user, fetchDietPlans]);
+
+  // Safe filter with null checks
+  const filteredPlans = React.useMemo(() => {
+    if (!Array.isArray(dietPlans)) return [];
+    
+    return dietPlans.filter((plan) => {
+      if (!plan) return false;
+      
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = 
+        !searchTerm ||
+        (plan.name && plan.name.toLowerCase().includes(searchLower)) ||
+        (plan.description && plan.description.toLowerCase().includes(searchLower)) ||
+        (plan.goal && plan.goal.toLowerCase().includes(searchLower));
+
+      return matchesSearch;
+    });
+  }, [dietPlans, searchTerm]);
 
   const handleCreatePlan = async (planData) => {
     try {
+      setError(null); // Clear any previous errors
+      
+      if (!planData || !planData.name?.trim()) {
+        throw new Error("Plan name is required");
+      }
+
       const newPlan = await dietPlanService.createDietPlan(planData);
-      setDietPlans(prev => [newPlan, ...prev]);
+
+      if (!newPlan) {
+        throw new Error("Failed to create plan - no data returned");
+      }
+
+      // Ensure the new plan has all required properties
+      const planWithDefaults = {
+        _id: newPlan._id || newPlan.id || `temp-${Date.now()}`,
+        name: newPlan.name || "",
+        description: newPlan.description || "",
+        goal: newPlan.goal || "",
+        tags: Array.isArray(newPlan.tags) ? newPlan.tags : [],
+        isActive: newPlan.isActive !== undefined ? newPlan.isActive : true,
+        targetCalories: newPlan.targetCalories || 2000,
+        targetProtein: newPlan.targetProtein || 0,
+        targetCarbs: newPlan.targetCarbs || 0,
+        targetFats: newPlan.targetFats || 0,
+        duration: newPlan.duration || 7,
+        difficulty: newPlan.difficulty || "Beginner",
+        createdAt: newPlan.createdAt || new Date().toISOString(),
+        ...newPlan, // Override with actual data
+      };
+
+      // Add to the beginning of the list
+      setDietPlans((prev) => {
+        const updated = [planWithDefaults, ...prev];
+        return updated;
+      });
+
       setShowCreateModal(false);
+
+      // Clear filters if they would hide the new plan
+      if (searchTerm) {
+        const newPlanMatchesSearch =
+          planWithDefaults.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          planWithDefaults.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          planWithDefaults.goal.toLowerCase().includes(searchTerm.toLowerCase());
+
+        if (!newPlanMatchesSearch) {
+          setSearchTerm("");
+        }
+      }
+
+      if (selectedGoal && selectedGoal !== planWithDefaults.goal) {
+        setSelectedGoal("");
+      }
     } catch (err) {
-      console.error('Error creating plan:', err);
-      setError(err.message);
+      console.error("Error creating plan:", err);
+      setError(err?.message || "Failed to create plan");
     }
   };
 
   const handleDeletePlan = async (planId) => {
-    if (!confirm('Are you sure you want to delete this diet plan?')) return;
-    
+    if (!planId) {
+      console.error("No plan ID provided for deletion");
+      return;
+    }
+
+    if (!confirm("Are you sure you want to delete this diet plan?")) return;
+
     try {
+      setError(null);
       await dietPlanService.deleteDietPlan(planId);
-      setDietPlans(prev => prev.filter(plan => plan._id !== planId));
+      setDietPlans((prev) => prev.filter((plan) => plan && plan._id !== planId));
     } catch (err) {
-      console.error('Error deleting plan:', err);
-      setError(err.message);
+      console.error("Error deleting plan:", err);
+      setError(err?.message || "Failed to delete plan");
     }
   };
 
   const handleClonePlan = async (planId, newName) => {
+    if (!planId || !newName?.trim()) {
+      console.error("Plan ID and name are required for cloning");
+      return;
+    }
+
     try {
+      setError(null);
       const clonedPlan = await dietPlanService.cloneDietPlan(planId, newName);
-      setDietPlans(prev => [clonedPlan, ...prev]);
+      
+      if (clonedPlan) {
+        setDietPlans((prev) => [clonedPlan, ...prev]);
+      }
     } catch (err) {
-      console.error('Error cloning plan:', err);
-      setError(err.message);
+      console.error("Error cloning plan:", err);
+      setError(err?.message || "Failed to clone plan");
     }
   };
 
-  const goals = ['Weight Loss', 'Muscle Gain', 'Maintenance', 'Cutting', 'Bulking', 'General Health'];
+  const calculateAverageCalories = () => {
+    if (!Array.isArray(dietPlans) || dietPlans.length === 0) return 0;
+    
+    const total = dietPlans.reduce((sum, plan) => {
+      return sum + (plan?.targetCalories || 0);
+    }, 0);
+    
+    return Math.round(total / dietPlans.length);
+  };
 
   // Show loading while auth is loading
   if (authLoading) {
@@ -94,8 +217,11 @@ export default function DietPlansPage() {
           <div className="animate-pulse">
             <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded-lg w-48 mb-6"></div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+              {Array.from({ length: 6 }, (_, i) => (
+                <div
+                  key={i}
+                  className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm"
+                >
                   <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded mb-4"></div>
                   <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded mb-2"></div>
                   <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
@@ -139,8 +265,11 @@ export default function DietPlansPage() {
           <div className="animate-pulse">
             <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded-lg w-48 mb-6"></div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+              {Array.from({ length: 6 }, (_, i) => (
+                <div
+                  key={i}
+                  className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm"
+                >
                   <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded mb-4"></div>
                   <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded mb-2"></div>
                   <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
@@ -184,13 +313,15 @@ export default function DietPlansPage() {
               </div>
               <div className="ml-4">
                 <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  {dietPlans.length}
+                  {Array.isArray(dietPlans) ? dietPlans.length : 0}
                 </p>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">Total Plans</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  Total Plans
+                </p>
               </div>
             </div>
           </div>
-          
+
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
             <div className="flex items-center">
               <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
@@ -198,13 +329,17 @@ export default function DietPlansPage() {
               </div>
               <div className="ml-4">
                 <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  {dietPlans.filter(p => p.isActive).length}
+                  {Array.isArray(dietPlans) 
+                    ? dietPlans.filter((p) => p?.isActive).length 
+                    : 0}
                 </p>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">Active Plans</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  Active Plans
+                </p>
               </div>
             </div>
           </div>
-          
+
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
             <div className="flex items-center">
               <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
@@ -212,9 +347,11 @@ export default function DietPlansPage() {
               </div>
               <div className="ml-4">
                 <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  {Math.round(dietPlans.reduce((sum, p) => sum + (p.targetCalories || 0), 0) / Math.max(dietPlans.length, 1))}
+                  {calculateAverageCalories().toLocaleString()}
                 </p>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">Avg Calories</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  Avg Calories
+                </p>
               </div>
             </div>
           </div>
@@ -242,8 +379,10 @@ export default function DietPlansPage() {
               className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="">All Goals</option>
-              {goals.map(goal => (
-                <option key={goal} value={goal}>{goal}</option>
+              {goals.map((goal) => (
+                <option key={goal} value={goal}>
+                  {goal}
+                </option>
               ))}
             </select>
 
@@ -263,9 +402,10 @@ export default function DietPlansPage() {
         {/* Error State */}
         {error && (
           <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-8">
-            <p className="text-red-800 dark:text-red-200">
-              Error: {error}
-            </p>
+            <div className="flex items-center">
+              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mr-2" />
+              <p className="text-red-800 dark:text-red-200">Error: {error}</p>
+            </div>
             <button
               onClick={fetchDietPlans}
               className="mt-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 underline"
@@ -286,10 +426,9 @@ export default function DietPlansPage() {
                 No diet plans found
               </h3>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                {searchTerm || selectedGoal 
-                  ? "Try adjusting your search or filters" 
-                  : "Create your first diet plan to get started"
-                }
+                {searchTerm || selectedGoal
+                  ? "Try adjusting your search or filters"
+                  : "Create your first diet plan to get started"}
               </p>
               {!searchTerm && !selectedGoal && (
                 <button
@@ -304,14 +443,21 @@ export default function DietPlansPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredPlans.map(plan => (
-              <DietPlanCard
-                key={plan._id}
-                plan={plan}
-                onDelete={handleDeletePlan}
-                onClone={handleClonePlan}
-              />
-            ))}
+            {filteredPlans.map((plan) => {
+              if (!plan || !plan._id) {
+                console.warn("Invalid plan data:", plan);
+                return null;
+              }
+              
+              return (
+                <DietPlanCard
+                  key={plan._id}
+                  plan={plan}
+                  onDelete={handleDeletePlan}
+                  onClone={handleClonePlan}
+                />
+              );
+            })}
           </div>
         )}
 
