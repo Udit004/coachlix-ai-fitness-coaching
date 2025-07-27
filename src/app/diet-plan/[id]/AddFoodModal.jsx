@@ -545,6 +545,173 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                   </button>
                 </div>
 
+                <div>
+                  {/* Search Results */}
+                  {searchResults.length > 0 && (
+                    <div>
+                      <div className="flex items-center space-x-2 mb-3 sm:mb-4">
+                        <Search className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
+                        <h4 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">
+                          Search Results ({searchResults.length})
+                        </h4>
+                      </div>
+
+                      <div className="space-y-2 sm:space-y-3">
+                        {searchResults.map((food, index) => (
+                          <div
+                            key={index}
+                            onClick={() =>
+                              !isSubmitting && handleSelectFood(food)
+                            }
+                            className={`p-3 sm:p-4 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors ${
+                              isSubmitting
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1 min-w-0 pr-2">
+                                <h5 className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                                  {food.name || food.description}
+                                </h5>
+                                <div className="flex items-center space-x-2 mt-0.5">
+                                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                                    {food.serving_size || "100g"} •{" "}
+                                    {food.calories || food.energy} cal
+                                  </p>
+                                  {food.category && (
+                                    <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded text-xs">
+                                      {food.category}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-1 text-xs">
+                                {food.protein > 0 && (
+                                  <span className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded text-xs">
+                                    P: {Math.round(food.protein)}g
+                                  </span>
+                                )}
+                                {(food.carbohydrates || food.carbs) > 0 && (
+                                  <span className="px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded text-xs">
+                                    C:{" "}
+                                    {Math.round(
+                                      food.carbohydrates || food.carbs
+                                    )}
+                                    g
+                                  </span>
+                                )}
+                                {(food.fat || food.fats) > 0 && (
+                                  <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded text-xs">
+                                    F: {Math.round(food.fat || food.fats)}g
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Popular Foods Section - Only show when no search results */}
+                  {searchResults.length === 0 && !searchQuery && (
+                    <div>
+                      <div className="flex items-center space-x-2 mb-3 sm:mb-4">
+                        <Star className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
+                        <h4 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">
+                          Popular Foods
+                        </h4>
+                      </div>
+
+                      {loadingPopular ? (
+                        <div className="space-y-2 sm:space-y-3">
+                          {[...Array(5)].map((_, i) => (
+                            <div
+                              key={i}
+                              className="animate-pulse bg-gray-200 dark:bg-gray-700 h-14 sm:h-16 rounded-lg"
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="space-y-2 sm:space-y-3">
+                          {popularFoods.map((food, index) => (
+                            <div
+                              key={index}
+                              onClick={() =>
+                                !isSubmitting && handleSelectFood(food)
+                              }
+                              className={`p-3 sm:p-4 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors ${
+                                isSubmitting
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : ""
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1 min-w-0 pr-2">
+                                  <h5 className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                                    {food.name || food.description}
+                                  </h5>
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                                    {food.serving_size || "100g"} •{" "}
+                                    {food.calories || food.energy} cal
+                                  </p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1 text-xs">
+                                  {food.protein > 0 && (
+                                    <span className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded text-xs">
+                                      P: {Math.round(food.protein)}g
+                                    </span>
+                                  )}
+                                  {(food.carbohydrates || food.carbs) > 0 && (
+                                    <span className="px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded text-xs">
+                                      C:{" "}
+                                      {Math.round(
+                                        food.carbohydrates || food.carbs
+                                      )}
+                                      g
+                                    </span>
+                                  )}
+                                  {(food.fat || food.fats) > 0 && (
+                                    <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded text-xs">
+                                      F: {Math.round(food.fat || food.fats)}g
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* No Results Message */}
+                  {searchQuery &&
+                    searchResults.length === 0 &&
+                    !isSearching && (
+                      <div className="text-center py-6 sm:py-8">
+                        <div className="bg-gray-100 dark:bg-gray-700 rounded-full h-10 w-10 sm:h-12 sm:w-12 flex items-center justify-center mx-auto mb-2 sm:mb-3">
+                          <Search className="h-5 w-5 sm:h-6 sm:w-6 text-gray-400" />
+                        </div>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
+                          No foods found for "{searchQuery}". Try a different
+                          search term.
+                        </p>
+                      </div>
+                    )}
+
+                  {/* Loading State */}
+                  {isSearching && (
+                    <div className="text-center py-6 sm:py-8">
+                      <div className="animate-spin h-6 w-6 sm:h-8 sm:w-8 border-2 border-green-500 border-t-transparent rounded-full mx-auto mb-2 sm:mb-3"></div>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
+                        Searching for foods...
+                      </p>
+                    </div>
+                  )}
+                </div>
+
                 {/* Popular Foods Section */}
                 {searchResults.length === 0 && (
                   <div>
