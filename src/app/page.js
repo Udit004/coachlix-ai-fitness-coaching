@@ -256,7 +256,7 @@ useEffect(() => {
   ];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
       {/* Notification Status Bar */}
       {mounted && (
         <div className="bg-blue-100 px-4 py-2 text-center text-sm">

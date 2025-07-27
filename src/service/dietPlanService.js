@@ -283,6 +283,40 @@ export const getPopularFoods = async (category = null) => {
   }
 };
 
+
+// Add this method to your dietPlanService.js file
+
+export const getFoodDetailsWithAI = async (foodName) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    const response = await fetch('/api/foods/popular', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        action: 'get_details',
+        foodName: foodName
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Service: Error getting AI food details:', error);
+    throw error;
+  }
+}
+
 // Default export with all functions for convenience
 const dietPlanService = {
   getDietPlans,
@@ -300,7 +334,8 @@ const dietPlanService = {
   cloneDietPlan,
   getNutritionSummary,
   searchFoods,
-  getPopularFoods
+  getPopularFoods,
+  getFoodDetailsWithAI
 };
 
 export default dietPlanService;

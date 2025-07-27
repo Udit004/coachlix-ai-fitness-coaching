@@ -5,6 +5,8 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import ConditionalFooter from "../components/ConditionalFooter";
 import { AuthProvider } from "@/auth/AuthContext";
+import { CustomThemeProvider } from "@/context/CustomThemeProvider";
+import TailwindTest from "@/components/TailwindTest";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,7 +20,8 @@ const geistMono = Geist_Mono({
 
 export const metadata = {
   title: "Coachlix – Your AI Fitness Coach",
-  description: "Get personalized AI-powered coaching. Track workouts, ask questions, and improve your fitness journey.",
+  description:
+    "Get personalized AI-powered coaching. Track workouts, ask questions, and improve your fitness journey.",
   keywords: ["fitness", "AI coach", "workout", "trainer", "Coachlix", "gym"],
   authors: [{ name: "Udit Kumar Tiwari" }],
   metadataBase: new URL("https://coachlix-ai-fitness-coaching.vercel.app"),
@@ -62,12 +65,16 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <AuthProvider>
-          <Navbar />
-          {children}
-        </AuthProvider>
-        <ConditionalFooter />
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <CustomThemeProvider>
+          <AuthProvider>
+            <Navbar />
+            {children}
+          </AuthProvider>
+          <ConditionalFooter />
+        </CustomThemeProvider>
       </body>
     </html>
   );

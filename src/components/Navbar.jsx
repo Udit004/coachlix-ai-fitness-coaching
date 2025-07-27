@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Menu, X, Dumbbell, ChevronDown, LogOut, User, Settings } from "lucide-react";
+import { Menu, X, Dumbbell, ChevronDown, LogOut, User, Settings, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
-import { set } from "mongoose";
+import { useCustomTheme } from "@/context/CustomThemeProvider";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -16,6 +16,7 @@ export default function Navbar() {
 
   const { user, loading } = useAuth();
   const router = useRouter();
+  const { theme, toggleTheme, mounted } = useCustomTheme();
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const toggleDropdown = () => setShowDropdown(!showDropdown);
@@ -80,8 +81,30 @@ export default function Navbar() {
     return user?.email?.split("@")[0] || "User";
   };
 
+  // Show loading state with proper theme classes
+  if (!mounted) {
+    return (
+      <nav className="bg-white/95 backdrop-blur-md border-b border-gray-100 sticky top-0 z-[9999] shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-2">
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
+                <Dumbbell className="h-6 w-6 text-white" />
+              </div>
+              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Coachlix
+              </span>
+            </div>
+            {/* Loading skeleton for theme toggle */}
+            <div className="w-10 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
   return (
-    <nav className="bg-white/95 backdrop-blur-md border-b border-gray-100 sticky top-0 z-[9999] shadow-sm">
+    <nav className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 sticky top-0 z-[9999] shadow-sm transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -100,20 +123,34 @@ export default function Navbar() {
               <a
                 key={link.name}
                 href={link.href}
-                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:bg-blue-50"
+                className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:bg-blue-50 dark:hover:bg-gray-800"
               >
                 {link.name}
               </a>
             ))}
           </div>
 
-          {/* Desktop Auth - Hidden on tablet and below */}
+          {/* Desktop Auth & Theme Toggle - Hidden on tablet and below */}
           <div className="hidden lg:flex items-center space-x-4 relative">
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 transition-all duration-200 border border-gray-200 dark:border-gray-700"
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? (
+                <Sun className="h-5 w-5" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+            </button>
+
             {!loading && !user && (
               <>
                 <a
                   href="/loginPage"
-                  className="text-gray-700 hover:text-blue-600 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+                  className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
                 >
                   Login
                 </a>
@@ -130,7 +167,7 @@ export default function Navbar() {
               <div className="relative">
                 <button
                   onClick={toggleDropdown}
-                  className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-blue-600 focus:outline-none"
+                  className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none"
                 >
                   <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold uppercase">
                     {profileImage ? (
@@ -146,11 +183,11 @@ export default function Navbar() {
                 </button>
 
                 {showDropdown && (
-                  <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-100 rounded-md shadow-lg py-1 z-[10000]">
+                  <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-md shadow-lg py-1 z-[10000]">
                     <a
                       href="/profile"
                       onClick={closeDropdown}
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
                       <User className="mr-2 w-4 h-4" />
                       Profile
@@ -158,14 +195,14 @@ export default function Navbar() {
                     <a
                       href="/settings"
                       onClick={closeDropdown}
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
                       <Settings className="mr-2 w-4 h-4" />
                       Settings
                     </a>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                      className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
                       <LogOut className="mr-2 w-4 h-4" />
                       Logout
@@ -176,11 +213,25 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile Menu Button - Shows on tablet and below */}
-          <div className="lg:hidden">
+          {/* Mobile Menu Button & Theme Toggle - Shows on tablet and below */}
+          <div className="lg:hidden flex items-center space-x-2">
+            {/* Mobile Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 transition-all duration-200 border border-gray-200 dark:border-gray-700"
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? (
+                <Sun className="h-5 w-5" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+            </button>
+
             <button
               onClick={toggleMenu}
-              className="text-gray-700 hover:text-blue-600 p-2 rounded-md transition-colors duration-200"
+              className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 p-2 rounded-md transition-colors duration-200"
               aria-label="Toggle mobile menu"
             >
               {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -194,24 +245,24 @@ export default function Navbar() {
             isOpen ? "max-h-96 opacity-100 pb-4" : "max-h-0 opacity-0 overflow-hidden"
           }`}
         >
-          <div className="space-y-2 pt-4 border-t border-gray-100">
+          <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-800">
             {navLinks.map((link) => (
               <a
                 key={link.name}
                 href={link.href}
-                className="block text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-md text-base font-medium transition-all duration-200"
+                className="block text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 px-3 py-2 rounded-md text-base font-medium transition-all duration-200"
                 onClick={() => setIsOpen(false)}
               >
                 {link.name}
               </a>
             ))}
 
-            <div className="flex flex-col space-y-2 pt-4 border-t border-gray-100">
+            <div className="flex flex-col space-y-2 pt-4 border-t border-gray-100 dark:border-gray-800">
               {!loading && !user && (
                 <>
                   <a
                     href="/loginPage"
-                    className="text-center text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
+                    className="text-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
                     onClick={() => setIsOpen(false)}
                   >
                     Login
@@ -227,7 +278,7 @@ export default function Navbar() {
               )}
 
               {!loading && user && (
-                <div className="text-center text-gray-700 font-medium">
+                <div className="text-center text-gray-700 dark:text-gray-300 font-medium">
                   <div className="flex items-center justify-center gap-2 mb-2">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold uppercase">
                       {profileImage ? (
@@ -244,7 +295,7 @@ export default function Navbar() {
                     <a
                       href="/profile"
                       onClick={() => setIsOpen(false)}
-                      className="flex items-center justify-center gap-2 text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md transition-colors duration-200"
+                      className="flex items-center justify-center gap-2 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md transition-colors duration-200"
                     >
                       <User className="w-4 h-4" />
                       Profile
@@ -252,14 +303,14 @@ export default function Navbar() {
                     <a
                       href="/settings"
                       onClick={() => setIsOpen(false)}
-                      className="flex items-center justify-center gap-2 text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md transition-colors duration-200"
+                      className="flex items-center justify-center gap-2 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md transition-colors duration-200"
                     >
                       <Settings className="w-4 h-4" />
                       Settings
                     </a>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center justify-center gap-2 text-red-600 hover:underline px-3 py-2"
+                      className="flex items-center justify-center gap-2 text-red-600 dark:text-red-400 hover:underline px-3 py-2"
                     >
                       <LogOut className="w-4 h-4" />
                       Logout

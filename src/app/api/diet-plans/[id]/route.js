@@ -24,8 +24,10 @@ export async function GET(request, { params }) {
 
     await connectDB();
 
+    const resolvedParams = await params;
+
     const dietPlan = await DietPlan.findOne({
-      _id: params.id,
+      _id: resolvedParams.id,  // ✅ Use resolved params
       userId: user.uid,
     });
 

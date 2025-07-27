@@ -1,12 +1,21 @@
 // pages/diet-plans/[id]/page.jsx
-"use client"
-import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, Target, TrendingUp, Plus, Edit, Trash2, Copy } from 'lucide-react';
-import DietDayCard from './DietDayCard';
-import AddFoodModal from './AddFoodModal';
-import MealCard from './MealCard';
-import dietPlanService from '@/service/dietPlanService';
+"use client";
+import React, { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  Calendar,
+  Target,
+  TrendingUp,
+  Plus,
+  Edit,
+  Trash2,
+  Copy,
+} from "lucide-react";
+import DietDayCard from "./DietDayCard";
+import AddFoodModal from "./AddFoodModal";
+import MealCard from "./MealCard";
+import dietPlanService from "@/service/dietPlanService";
 
 export default function SingleDietPlanPage() {
   const { id } = useParams();
@@ -30,34 +39,38 @@ export default function SingleDietPlanPage() {
       setError(null);
     } catch (err) {
       setError(err.message);
-      console.error('Error fetching diet plan:', err);
+      console.error("Error fetching diet plan:", err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeletePlan = async () => {
-    if (!confirm('Are you sure you want to delete this entire diet plan?')) return;
-    
+    if (!confirm("Are you sure you want to delete this entire diet plan?"))
+      return;
+
     try {
       await dietPlanService.deleteDietPlan(id);
-      router.push('/diet-plans');
+      router.push("/diet-plans");
     } catch (err) {
-      console.error('Error deleting plan:', err);
-      alert('Failed to delete plan. Please try again.');
+      console.error("Error deleting plan:", err);
+      alert("Failed to delete plan. Please try again.");
     }
   };
 
   const handleClonePlan = async () => {
-    const newName = prompt('Enter a name for the cloned plan:', `${dietPlan.name} (Copy)`);
+    const newName = prompt(
+      "Enter a name for the cloned plan:",
+      `${dietPlan.name} (Copy)`
+    );
     if (!newName) return;
-    
+
     try {
       const clonedPlan = await dietPlanService.cloneDietPlan(id, newName);
       router.push(`/diet-plans/${clonedPlan._id}`);
     } catch (err) {
-      console.error('Error cloning plan:', err);
-      alert('Failed to clone plan. Please try again.');
+      console.error("Error cloning plan:", err);
+      alert("Failed to clone plan. Please try again.");
     }
   };
 
@@ -67,18 +80,18 @@ export default function SingleDietPlanPage() {
       const dayData = {
         dayNumber: newDayNumber,
         meals: [
-          { type: 'Breakfast', items: [] },
-          { type: 'Lunch', items: [] },
-          { type: 'Dinner', items: [] },
-          { type: 'Snacks', items: [] }
-        ]
+          { type: "Breakfast", items: [] },
+          { type: "Lunch", items: [] },
+          { type: "Dinner", items: [] },
+          { type: "Snacks", items: [] },
+        ],
       };
-      
+
       const updatedPlan = await dietPlanService.addDay(id, dayData);
       setDietPlan(updatedPlan);
     } catch (err) {
-      console.error('Error adding day:', err);
-      alert('Failed to add day. Please try again.');
+      console.error("Error adding day:", err);
+      alert("Failed to add day. Please try again.");
     }
   };
 
@@ -92,7 +105,10 @@ export default function SingleDietPlanPage() {
               <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded mb-4"></div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="h-20 bg-gray-300 dark:bg-gray-700 rounded"></div>
+                  <div
+                    key={i}
+                    className="h-20 bg-gray-300 dark:bg-gray-700 rounded"
+                  ></div>
                 ))}
               </div>
             </div>
@@ -120,7 +136,7 @@ export default function SingleDietPlanPage() {
                   Try Again
                 </button>
                 <button
-                  onClick={() => router.push('/diet-plan')}
+                  onClick={() => router.push("/diet-plan")}
                   className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
                 >
                   Back to Plans
@@ -142,10 +158,11 @@ export default function SingleDietPlanPage() {
               Diet Plan Not Found
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              The diet plan you're looking for doesn't exist or has been deleted.
+              The diet plan you're looking for doesn't exist or has been
+              deleted.
             </p>
             <button
-              onClick={() => router.push('/diet-plan')}
+              onClick={() => router.push("/diet-plan")}
               className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors"
             >
               Back to Diet Plans
@@ -156,50 +173,56 @@ export default function SingleDietPlanPage() {
     );
   }
 
-  const averageCalories = dietPlan.days.length > 0 
-    ? Math.round(dietPlan.days.reduce((sum, day) => sum + day.totalCalories, 0) / dietPlan.days.length)
-    : dietPlan.targetCalories;
+  const averageCalories =
+    dietPlan.days.length > 0
+      ? Math.round(
+          dietPlan.days.reduce((sum, day) => sum + day.totalCalories, 0) /
+            dietPlan.days.length
+        )
+      : dietPlan.targetCalories;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col space-y-4 mb-8">
+          {/* Top row with back button and title */}
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => router.push('/diet-plan')}
-              className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              onClick={() => router.push("/diet-plan")}
+              className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
             >
               <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             </button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white truncate">
                 {dietPlan.name}
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm sm:text-base truncate">
                 {dietPlan.description || `${dietPlan.goal} diet plan`}
               </p>
             </div>
           </div>
-          
-          <div className="flex items-center space-x-3">
+
+          {/* Action buttons row */}
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
               onClick={handleClonePlan}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              className="flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
             >
               <Copy className="h-4 w-4" />
               <span>Clone</span>
             </button>
             <button
               onClick={() => router.push(`/diet-plans/${id}/edit`)}
-              className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+              className="flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
             >
               <Edit className="h-4 w-4" />
               <span>Edit</span>
             </button>
             <button
               onClick={handleDeletePlan}
-              className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+              className="flex items-center justify-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm"
             >
               <Trash2 className="h-4 w-4" />
               <span>Delete</span>
@@ -208,72 +231,104 @@ export default function SingleDietPlanPage() {
         </div>
 
         {/* Plan Overview */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-6 shadow-sm mb-8">
+          {/* Main Stats Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
             <div className="text-center">
-              <div className="flex items-center justify-center w-12 h-12 bg-green-100 dark:bg-green-900 rounded-xl mb-3 mx-auto">
-                <Target className="h-6 w-6 text-green-600 dark:text-green-400" />
+              <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-green-100 dark:bg-green-900 rounded-xl mb-2 sm:mb-3 mx-auto">
+                <Target className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
               </div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
                 {dietPlan.goal}
               </p>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">Goal</p>
+              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
+                Goal
+              </p>
             </div>
-            
+
             <div className="text-center">
-              <div className="flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-xl mb-3 mx-auto">
-                <TrendingUp className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 dark:bg-blue-900 rounded-xl mb-2 sm:mb-3 mx-auto">
+                <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
               </div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
                 {averageCalories}
               </p>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">Avg Calories/Day</p>
+              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
+                Avg Calories/Day
+              </p>
             </div>
-            
+
             <div className="text-center">
-              <div className="flex items-center justify-center w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-xl mb-3 mx-auto">
-                <Calendar className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+              <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 dark:bg-purple-900 rounded-xl mb-2 sm:mb-3 mx-auto">
+                <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 dark:text-purple-400" />
               </div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
                 {dietPlan.days.length}
               </p>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">Days Planned</p>
+              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
+                Days Planned
+              </p>
             </div>
-            
+
             <div className="text-center">
-              <div className="flex items-center justify-center w-12 h-12 bg-orange-100 dark:bg-orange-900 rounded-xl mb-3 mx-auto">
-                <Target className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+              <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 dark:bg-orange-900 rounded-xl mb-2 sm:mb-3 mx-auto">
+                <Target className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600 dark:text-orange-400" />
               </div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
                 {dietPlan.duration}
               </p>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">Duration (Days)</p>
+              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
+                Duration (Days)
+              </p>
             </div>
           </div>
 
           {/* Macro Targets */}
-          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
               Daily Macro Targets
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 text-center">
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30 rounded-lg p-3 sm:p-4 text-center">
+                <div className="flex items-center justify-center w-8 h-8 bg-red-100 dark:bg-red-900 rounded-lg mb-2 mx-auto">
+                  <span className="text-red-600 dark:text-red-400 font-bold text-sm">
+                    P
+                  </span>
+                </div>
+                <p className="text-base sm:text-lg font-semibold text-red-700 dark:text-red-300">
                   {dietPlan.targetProtein}g
                 </p>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">Protein</p>
+                <p className="text-red-600 dark:text-red-400 text-xs sm:text-sm">
+                  Protein
+                </p>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 text-center">
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
+
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800/30 rounded-lg p-3 sm:p-4 text-center">
+                <div className="flex items-center justify-center w-8 h-8 bg-yellow-100 dark:bg-yellow-900 rounded-lg mb-2 mx-auto">
+                  <span className="text-yellow-600 dark:text-yellow-400 font-bold text-sm">
+                    C
+                  </span>
+                </div>
+                <p className="text-base sm:text-lg font-semibold text-yellow-700 dark:text-yellow-300">
                   {dietPlan.targetCarbs}g
                 </p>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">Carbs</p>
+                <p className="text-yellow-600 dark:text-yellow-400 text-xs sm:text-sm">
+                  Carbs
+                </p>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 text-center">
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
+
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 rounded-lg p-3 sm:p-4 text-center">
+                <div className="flex items-center justify-center w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg mb-2 mx-auto">
+                  <span className="text-blue-600 dark:text-blue-400 font-bold text-sm">
+                    F
+                  </span>
+                </div>
+                <p className="text-base sm:text-lg font-semibold text-blue-700 dark:text-blue-300">
                   {dietPlan.targetFats}g
                 </p>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">Fats</p>
+                <p className="text-blue-600 dark:text-blue-400 text-xs sm:text-sm">
+                  Fats
+                </p>
               </div>
             </div>
           </div>
@@ -294,7 +349,7 @@ export default function SingleDietPlanPage() {
                 <span>Add Day</span>
               </button>
             </div>
-            
+
             <div className="flex flex-wrap gap-2">
               {dietPlan.days.map((day) => (
                 <button
@@ -302,8 +357,8 @@ export default function SingleDietPlanPage() {
                   onClick={() => setActiveDay(day.dayNumber)}
                   className={`px-4 py-2 rounded-lg transition-colors ${
                     activeDay === day.dayNumber
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      ? "bg-green-600 text-white"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                   }`}
                 >
                   Day {day.dayNumber}
@@ -317,8 +372,8 @@ export default function SingleDietPlanPage() {
         {dietPlan.days.length > 0 ? (
           <div>
             {dietPlan.days
-              .filter(day => day.dayNumber === activeDay)
-              .map(day => (
+              .filter((day) => day.dayNumber === activeDay)
+              .map((day) => (
                 <DietDayCard
                   key={day.dayNumber}
                   day={day}

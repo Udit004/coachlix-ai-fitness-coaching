@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+
+.dark {
+  background-color: #111827 !important;
+  color: white !important;
+}
+
+.dark nav {
+  background-color: rgba(17, 24, 39, 0.95) !important;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -24,3 +34,5 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+

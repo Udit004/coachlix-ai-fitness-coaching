@@ -1,4 +1,4 @@
-// app/api/foods/popular/route.js
+// COMPLETE FIXED VERSION of app/api/foods/popular/route.js
 import { verifyUserToken } from "@/lib/verifyUser";
 import { NextResponse } from "next/server";
 
@@ -186,6 +186,74 @@ const POPULAR_FOODS = [
   }
 ];
 
+async function getFoodDetailsWithAI(foodName) {
+  try {
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      throw new Error("Gemini API key not found");
+    }
+
+    const prompt = `You are a nutrition expert. Provide detailed nutritional information for "${foodName}".
+
+Please respond with ONLY a JSON object in this exact format (no additional text):
+{
+  "name": "exact food name",
+  "calories": number (per 100g),
+  "protein": number (grams per 100g),
+  "carbohydrates": number (grams per 100g),
+  "fat": number (grams per 100g),
+  "serving_size": "100g",
+  "category": "protein/carbohydrate/fat/vegetable/fruit",
+  "description": "brief description of the food and its nutritional benefits",
+  "preparation_tips": "helpful preparation or cooking tips",
+  "health_benefits": "key health benefits"
+}
+
+If the food doesn't exist or you're unsure, return null.`;
+
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`;
+    
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        contents: [{
+          role: "user",
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          topP: 0.8,
+          maxOutputTokens: 1000,
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Gemini API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!aiResponse) {
+      return null;
+    }
+
+    // Clean and parse JSON response
+    const cleanedResponse = aiResponse.replace(/```json\n?|\n?```/g, '').trim();
+    const foodData = JSON.parse(cleanedResponse);
+    
+    return foodData;
+  } catch (error) {
+    console.error("Error getting AI food details:", error);
+    return null;
+  }
+}
+
+// GET method for fetching popular foods
 export async function GET(request) {
   try {
     // Get authorization header
@@ -223,5 +291,73 @@ export async function GET(request) {
   } catch (error) {
     console.error("Error fetching popular foods:", error);
     return NextResponse.json({ error: "Failed to fetch popular foods" }, { status: 500 });
+  }
+}
+
+// POST method for AI food details
+export async function POST(request) {
+  try {
+    // Get authorization header
+    const authHeader = request.headers.get("Authorization") || request.headers.get("authorization");
+    if (!authHeader) {
+      return NextResponse.json(
+        { message: "Authorization header missing" },
+        { status: 401 }
+      );
+    }
+
+    const user = await verifyUserToken(authHeader);
+    if (!user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const { foodName, action } = await request.json();
+
+    if (action === 'get_details' && foodName) {
+      // First check if it's in our popular foods
+      const popularFood = POPULAR_FOODS.find(food => 
+        food.name.toLowerCase().includes(foodName.toLowerCase()) ||
+        foodName.toLowerCase().includes(food.name.toLowerCase())
+      );
+
+      if (popularFood) {
+        return NextResponse.json({
+          success: true,
+          food: {
+            ...popularFood,
+            description: `Popular healthy food choice with excellent nutritional profile.`,
+            preparation_tips: `Versatile ingredient that can be prepared in many ways.`,
+            health_benefits: `Great source of essential nutrients for your fitness goals.`
+          }
+        });
+      }
+
+      // If not found in popular foods, use AI
+      const aiFood = await getFoodDetailsWithAI(foodName);
+      
+      if (aiFood) {
+        return NextResponse.json({
+          success: true,
+          food: aiFood
+        });
+      } else {
+        return NextResponse.json({
+          success: false,
+          message: "Food not found or unable to get nutritional information"
+        });
+      }
+    }
+
+    return NextResponse.json(
+      { message: "Invalid request" },
+      { status: 400 }
+    );
+
+  } catch (error) {
+    console.error("Error in food details API:", error);
+    return NextResponse.json(
+      { error: "Failed to get food details" },
+      { status: 500 }
+    );
   }
 }
