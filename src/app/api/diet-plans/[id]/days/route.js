@@ -25,6 +25,7 @@ export async function POST(request, { params }) {
     await connectDB();
 
     const dayData = await request.json();
+    const resolvedParams = await params; // ✅ Await params
 
     if (!dayData.dayNumber) {
       return NextResponse.json(
@@ -34,7 +35,7 @@ export async function POST(request, { params }) {
     }
 
     const dietPlan = await DietPlan.findOne({
-      _id: params.id,
+      _id: resolvedParams.id,
       userId: user.uid,
     });
 

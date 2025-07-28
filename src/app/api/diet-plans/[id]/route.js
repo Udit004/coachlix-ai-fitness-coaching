@@ -1,10 +1,10 @@
-// api/diet-plans/[id]/route.js - Single diet plan operations
+// api/diet-plans/[id]/route.js - Single diet plan operations (PUT and DELETE methods)
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import DietPlan from "@/models/DietPlan";
 import { verifyUserToken } from "@/lib/verifyUser";
 
-// GET /api/diet-plans/[id] - Get single diet plan
+// GET /api/diet-plans/[id] - Get specific diet plan
 export async function GET(request, { params }) {
   try {
     const authHeader =
@@ -23,13 +23,11 @@ export async function GET(request, { params }) {
     }
 
     await connectDB();
+    const resolvedParams = await params; // ✅ Await params
 
-    const resolvedParams = await params;
+    const { id } = resolvedParams;
 
-    const dietPlan = await DietPlan.findOne({
-      _id: resolvedParams.id,  // ✅ Use resolved params
-      userId: user.uid,
-    });
+    const dietPlan = await DietPlan.findOne({ _id: id, userId: user.uid });
 
     if (!dietPlan) {
       return NextResponse.json(
@@ -69,10 +67,11 @@ export async function PUT(request, { params }) {
     await connectDB();
 
     const body = await request.json();
+    const resolvedParams = await params; // ✅ Await params
 
     // Find and update the diet plan
     const dietPlan = await DietPlan.findOneAndUpdate(
-      { _id: params.id, userId: user.uid },
+      { _id: resolvedParams.id, userId: user.uid },
       { ...body, updatedAt: new Date() },
       { new: true, runValidators: true }
     );
@@ -122,8 +121,10 @@ export async function DELETE(request, { params }) {
 
     await connectDB();
 
+    const resolvedParams = await params; // ✅ Await params
+
     const dietPlan = await DietPlan.findOneAndDelete({
-      _id: params.id,
+      _id: resolvedParams.id,
       userId: user.uid,
     });
 

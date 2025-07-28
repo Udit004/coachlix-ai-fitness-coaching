@@ -1,27 +1,31 @@
 // services/dietPlanService.js
-import { auth } from '@/lib/firebase';
+import { auth } from "@/lib/firebase";
 
-const BASE_URL = '/api/diet-plans';
+const BASE_URL = "/api/diet-plans";
 
 // Get authorization header with Firebase token
 const getAuthHeaders = async () => {
   const user = auth.currentUser;
-  if (!user) throw new Error('User not authenticated');
-  
+  if (!user) throw new Error("User not authenticated");
+
   const token = await user.getIdToken();
   return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
   };
 };
 
 // Handle API responses
 const handleResponse = async (response) => {
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Network error' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData.message || `HTTP error! status: ${response.status}`
+    );
   }
-  return response.json();
+
+  const data = await response.json();
+  return data; // Return the full response data
 };
 
 // Get all diet plans for current user
@@ -29,18 +33,20 @@ export const getDietPlans = async (options = {}) => {
   try {
     const headers = await getAuthHeaders();
     const params = new URLSearchParams();
-    
-    if (options.activeOnly) params.append('active', 'true');
-    if (options.goal) params.append('goal', options.goal);
-    if (options.limit) params.append('limit', options.limit.toString());
-    if (options.sort) params.append('sort', options.sort);
 
-    const url = `${BASE_URL}${params.toString() ? `?${params.toString()}` : ''}`;
+    if (options.activeOnly) params.append("active", "true");
+    if (options.goal) params.append("goal", options.goal);
+    if (options.limit) params.append("limit", options.limit.toString());
+    if (options.sort) params.append("sort", options.sort);
+
+    const url = `${BASE_URL}${
+      params.toString() ? `?${params.toString()}` : ""
+    }`;
     const response = await fetch(url, { headers });
-    
+
     return handleResponse(response);
   } catch (error) {
-    console.error('Error fetching diet plans:', error);
+    console.error("Error fetching diet plans:", error);
     throw error;
   }
 };
@@ -50,10 +56,10 @@ export const getDietPlan = async (planId) => {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${BASE_URL}/${planId}`, { headers });
-    
+
     return handleResponse(response);
   } catch (error) {
-    console.error('Error fetching diet plan:', error);
+    console.error("Error fetching diet plan:", error);
     throw error;
   }
 };
@@ -63,14 +69,17 @@ export const createDietPlan = async (planData) => {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(BASE_URL, {
-      method: 'POST',
+      method: "POST",
       headers,
-      body: JSON.stringify(planData)
+      body: JSON.stringify(planData),
     });
-    
-    return handleResponse(response);
+
+    const data = await handleResponse(response);
+
+    // Based on your API, return the plan object
+    return data.plan || data; // Handle both response formats
   } catch (error) {
-    console.error('Error creating diet plan:', error);
+    console.error("Error creating diet plan:", error);
     throw error;
   }
 };
@@ -80,14 +89,14 @@ export const updateDietPlan = async (planId, updateData) => {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${BASE_URL}/${planId}`, {
-      method: 'PUT',
+      method: "PUT",
       headers,
-      body: JSON.stringify(updateData)
+      body: JSON.stringify(updateData),
     });
-    
+
     return handleResponse(response);
   } catch (error) {
-    console.error('Error updating diet plan:', error);
+    console.error("Error updating diet plan:", error);
     throw error;
   }
 };
@@ -97,13 +106,13 @@ export const deleteDietPlan = async (planId) => {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${BASE_URL}/${planId}`, {
-      method: 'DELETE',
-      headers
+      method: "DELETE",
+      headers,
     });
-    
+
     return handleResponse(response);
   } catch (error) {
-    console.error('Error deleting diet plan:', error);
+    console.error("Error deleting diet plan:", error);
     throw error;
   }
 };
@@ -113,14 +122,14 @@ export const addDay = async (planId, dayData) => {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${BASE_URL}/${planId}/days`, {
-      method: 'POST',
+      method: "POST",
       headers,
-      body: JSON.stringify(dayData)
+      body: JSON.stringify(dayData),
     });
-    
+
     return handleResponse(response);
   } catch (error) {
-    console.error('Error adding day to diet plan:', error);
+    console.error("Error adding day to diet plan:", error);
     throw error;
   }
 };
@@ -130,14 +139,14 @@ export const updateDay = async (planId, dayNumber, dayData) => {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${BASE_URL}/${planId}/days/${dayNumber}`, {
-      method: 'PUT',
+      method: "PUT",
       headers,
-      body: JSON.stringify(dayData)
+      body: JSON.stringify(dayData),
     });
-    
+
     return handleResponse(response);
   } catch (error) {
-    console.error('Error updating day:', error);
+    console.error("Error updating day:", error);
     throw error;
   }
 };
@@ -146,15 +155,18 @@ export const updateDay = async (planId, dayNumber, dayData) => {
 export const addMeal = async (planId, dayNumber, mealData) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/${planId}/days/${dayNumber}/meals`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(mealData)
-    });
-    
+    const response = await fetch(
+      `${BASE_URL}/${planId}/days/${dayNumber}/meals`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify(mealData),
+      }
+    );
+
     return handleResponse(response);
   } catch (error) {
-    console.error('Error adding meal:', error);
+    console.error("Error adding meal:", error);
     throw error;
   }
 };
@@ -163,48 +175,68 @@ export const addMeal = async (planId, dayNumber, mealData) => {
 export const addFoodItem = async (planId, dayNumber, mealType, foodItem) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/${planId}/days/${dayNumber}/meals/${mealType}/items`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(foodItem)
-    });
-    
+    const response = await fetch(
+      `${BASE_URL}/${planId}/days/${dayNumber}/meals/${mealType}/items`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify(foodItem),
+      }
+    );
+
     return handleResponse(response);
   } catch (error) {
-    console.error('Error adding food item:', error);
+    console.error("Error adding food item:", error);
     throw error;
   }
 };
 
 // Update food item
-export const updateFoodItem = async (planId, dayNumber, mealType, itemIndex, foodItem) => {
+export const updateFoodItem = async (
+  planId,
+  dayNumber,
+  mealType,
+  itemIndex,
+  foodItem
+) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/${planId}/days/${dayNumber}/meals/${mealType}/items/${itemIndex}`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(foodItem)
-    });
-    
+    const response = await fetch(
+      `${BASE_URL}/${planId}/days/${dayNumber}/meals/${mealType}/items/${itemIndex}`,
+      {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(foodItem),
+      }
+    );
+
     return handleResponse(response);
   } catch (error) {
-    console.error('Error updating food item:', error);
+    console.error("Error updating food item:", error);
     throw error;
   }
 };
 
 // Delete food item
-export const deleteFoodItem = async (planId, dayNumber, mealType, itemIndex) => {
+export const deleteFoodItem = async (
+  planId,
+  dayNumber,
+  mealType,
+  itemIndex
+) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/${planId}/days/${dayNumber}/meals/${mealType}/items/${itemIndex}`, {
-      method: 'DELETE',
-      headers
-    });
-    
+    const response = await fetch(
+      `${BASE_URL}/${planId}/days/${dayNumber}/meals/${mealType}/items/${itemIndex}`,
+      {
+        method: "DELETE",
+        headers,
+      }
+    );
+
     return handleResponse(response);
   } catch (error) {
-    console.error('Error deleting food item:', error);
+    console.error("Error deleting food item:", error);
     throw error;
   }
 };
@@ -214,14 +246,14 @@ export const generateAIPlan = async (preferences) => {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${BASE_URL}/generate-ai`, {
-      method: 'POST',
+      method: "POST",
       headers,
-      body: JSON.stringify(preferences)
+      body: JSON.stringify(preferences),
     });
-    
+
     return handleResponse(response);
   } catch (error) {
-    console.error('Error generating AI diet plan:', error);
+    console.error("Error generating AI diet plan:", error);
     throw error;
   }
 };
@@ -231,14 +263,14 @@ export const cloneDietPlan = async (planId, newName) => {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${BASE_URL}/${planId}/clone`, {
-      method: 'POST',
+      method: "POST",
       headers,
-      body: JSON.stringify({ name: newName })
+      body: JSON.stringify({ name: newName }),
     });
-    
+
     return handleResponse(response);
   } catch (error) {
-    console.error('Error cloning diet plan:', error);
+    console.error("Error cloning diet plan:", error);
     throw error;
   }
 };
@@ -247,11 +279,13 @@ export const cloneDietPlan = async (planId, newName) => {
 export const getNutritionSummary = async (planId) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/${planId}/nutrition-summary`, { headers });
-    
+    const response = await fetch(`${BASE_URL}/${planId}/nutrition-summary`, {
+      headers,
+    });
+
     return handleResponse(response);
   } catch (error) {
-    console.error('Error getting nutrition summary:', error);
+    console.error("Error getting nutrition summary:", error);
     throw error;
   }
 };
@@ -260,11 +294,14 @@ export const getNutritionSummary = async (planId) => {
 export const searchFoods = async (query) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`/api/foods/search?q=${encodeURIComponent(query)}`, { headers });
-    
+    const response = await fetch(
+      `/api/foods/search?q=${encodeURIComponent(query)}`,
+      { headers }
+    );
+
     return handleResponse(response);
   } catch (error) {
-    console.error('Error searching foods:', error);
+    console.error("Error searching foods:", error);
     throw error;
   }
 };
@@ -273,36 +310,37 @@ export const searchFoods = async (query) => {
 export const getPopularFoods = async (category = null) => {
   try {
     const headers = await getAuthHeaders();
-    const url = category ? `/api/foods/popular?category=${category}` : '/api/foods/popular';
+    const url = category
+      ? `/api/foods/popular?category=${category}`
+      : "/api/foods/popular";
     const response = await fetch(url, { headers });
-    
+
     return handleResponse(response);
   } catch (error) {
-    console.error('Error fetching popular foods:', error);
+    console.error("Error fetching popular foods:", error);
     throw error;
   }
 };
-
 
 // Add this method to your dietPlanService.js file
 
 export const getFoodDetailsWithAI = async (foodName) => {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (!token) {
-      throw new Error('No authentication token found');
+      throw new Error("No authentication token found");
     }
 
-    const response = await fetch('/api/foods/popular', {
-      method: 'POST',
+    const response = await fetch("/api/foods/popular", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        action: 'get_details',
-        foodName: foodName
-      })
+        action: "get_details",
+        foodName: foodName,
+      }),
     });
 
     if (!response.ok) {
@@ -312,10 +350,10 @@ export const getFoodDetailsWithAI = async (foodName) => {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Service: Error getting AI food details:', error);
+    console.error("Service: Error getting AI food details:", error);
     throw error;
   }
-}
+};
 
 // Default export with all functions for convenience
 const dietPlanService = {
@@ -335,7 +373,7 @@ const dietPlanService = {
   getNutritionSummary,
   searchFoods,
   getPopularFoods,
-  getFoodDetailsWithAI
+  getFoodDetailsWithAI,
 };
 
 export default dietPlanService;

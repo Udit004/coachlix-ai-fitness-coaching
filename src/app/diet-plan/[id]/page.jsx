@@ -12,31 +12,29 @@ import {
   Trash2,
   Copy,
 } from "lucide-react";
+
 import DietDayCard from "./DietDayCard";
 import AddFoodModal from "./AddFoodModal";
 import MealCard from "./MealCard";
 import dietPlanService from "@/service/dietPlanService";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function SingleDietPlanPage() {
   const { id } = useParams();
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+
   const [dietPlan, setDietPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeDay, setActiveDay] = useState(1);
 
-  useEffect(() => {
-    if (id) {
-      fetchDietPlan();
-    }
-  }, [id]);
-
   const fetchDietPlan = async () => {
     try {
       setLoading(true);
+      setError(null); // Clear any previous errors
       const data = await dietPlanService.getDietPlan(id);
       setDietPlan(data);
-      setError(null);
     } catch (err) {
       setError(err.message);
       console.error("Error fetching diet plan:", err);
@@ -44,6 +42,17 @@ export default function SingleDietPlanPage() {
       setLoading(false);
     }
   };
+
+  // Fixed useEffect - only run when user is available and not in auth loading state
+  useEffect(() => {
+    if (!authLoading && user && id) {
+      fetchDietPlan();
+    } else if (!authLoading && !user) {
+      // Handle case where user is not authenticated
+      setLoading(false);
+      setError("User not authenticated");
+    }
+  }, [authLoading, user, id]); // Remove 'loading' from dependencies
 
   const handleDeletePlan = async () => {
     if (!confirm("Are you sure you want to delete this entire diet plan?"))
@@ -95,7 +104,8 @@ export default function SingleDietPlanPage() {
     }
   };
 
-  if (loading) {
+  // Show loading while auth is loading OR while fetching diet plan
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
         <div className="max-w-6xl mx-auto">
@@ -214,7 +224,7 @@ export default function SingleDietPlanPage() {
               <span>Clone</span>
             </button>
             <button
-              onClick={() => router.push(`/diet-plans/${id}/edit`)}
+              onClick={() => router.push(`/diet-plan/${id}/edit`)}
               className="flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
             >
               <Edit className="h-4 w-4" />

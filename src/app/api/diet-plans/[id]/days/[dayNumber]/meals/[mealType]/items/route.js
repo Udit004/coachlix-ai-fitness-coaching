@@ -25,8 +25,9 @@ export async function POST(request, { params }) {
     await connectDB();
 
     const foodItem = await request.json();
-    const dayNumber = parseInt(params.dayNumber);
-    const mealType = params.mealType;
+    const resolvedParams = await params; // ✅ Await params
+    const dayNumber = parseInt(resolvedParams.dayNumber);
+    const mealType = resolvedParams.mealType;
 
     // Validate food item
     if (!foodItem.name || typeof foodItem.calories !== "number") {
@@ -37,7 +38,7 @@ export async function POST(request, { params }) {
     }
 
     const dietPlan = await DietPlan.findOne({
-      _id: params.id,
+      _id: resolvedParams.id,
       userId: user.uid,
     });
 

@@ -25,10 +25,11 @@ export async function PUT(request, { params }) {
     await connectDB();
 
     const dayData = await request.json();
-    const dayNumber = parseInt(params.dayNumber);
+    const resolvedParams = await params; // ✅ Await params
+    const dayNumber = parseInt(resolvedParams.dayNumber);
 
     const dietPlan = await DietPlan.findOne({
-      _id: params.id,
+      _id: resolvedParams.id,
       userId: user.uid,
     });
 

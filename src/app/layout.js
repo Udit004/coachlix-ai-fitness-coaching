@@ -1,22 +1,17 @@
 // app/layout.js
 
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Inter } from "next/font/google";
 import Navbar from "@/components/Navbar";
-import ConditionalFooter from "../components/ConditionalFooter";
+import ConditionalFooter from "@/components/ConditionalFooter";
 import { AuthProvider } from "@/auth/AuthContext";
 import { CustomThemeProvider } from "@/context/CustomThemeProvider";
-import TailwindTest from "@/components/TailwindTest";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ["latin"] });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+export const viewport = {
+  themeColor: 'black',
+}
 
 export const metadata = {
   title: "Coachlix – Your AI Fitness Coach",
@@ -30,7 +25,7 @@ export const metadata = {
     apple: "/icon-192.png",
   },
   manifest: "/manifest.json",
-  themeColor: "#000000",
+  // Removed themeColor from here - it should only be in viewport export
   appleWebApp: {
     capable: true,
     title: "Coachlix",
@@ -65,15 +60,13 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${inter.className} antialiased`}>
         <CustomThemeProvider>
           <AuthProvider>
             <Navbar />
             {children}
+            <ConditionalFooter />
           </AuthProvider>
-          <ConditionalFooter />
         </CustomThemeProvider>
       </body>
     </html>
