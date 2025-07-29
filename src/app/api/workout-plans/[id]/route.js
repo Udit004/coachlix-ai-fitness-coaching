@@ -9,7 +9,8 @@ import { NotificationService } from "@/lib/notificationService";
 // GET /api/workout-plans/[id] - Get specific workout plan
 export async function GET(request, { params }) {
   try {
-    const { id: planId } = params;
+    // Await params before destructuring
+    const { id: planId } = await params;
     
     // Verify authentication
     const authHeader =
@@ -61,7 +62,8 @@ export async function GET(request, { params }) {
 // PUT /api/workout-plans/[id] - Update specific workout plan
 export async function PUT(request, { params }) {
   try {
-    const { id: planId } = params;
+    // Await params before destructuring
+    const { id: planId } = await params;
     
     // Verify authentication
     const authHeader =
@@ -157,7 +159,8 @@ export async function PUT(request, { params }) {
 // DELETE /api/workout-plans/[id] - Delete specific workout plan
 export async function DELETE(request, { params }) {
   try {
-    const { id: planId } = params;
+    // Await params before destructuring
+    const { id: planId } = await params;
     
     // Verify authentication
     const authHeader =
