@@ -357,4 +357,20 @@ export default function AddExerciseModal({ onClose, onAdd }) {
           <div className="flex items-center space-x-3">
             <button
               onClick={onClose}
-              className="px-6 py-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark
+              className="px-6 py-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleAddExercises}
+              disabled={selectedExercises.length === 0}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              Add {selectedExercises.length > 0 ? selectedExercises.length : ''} Exercise{selectedExercises.length !== 1 ? 's' : ''}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -69,11 +69,11 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone }) {
   };
 
   const handleStartWorkout = () => {
-    router.push(`/workout-plans/${plan._id}`);
+    router.push(`/workout-plan/${plan._id}`);
   };
 
   const handleEdit = () => {
-    router.push(`/workout-plans/${plan._id}/edit`);
+    router.push(`/workout-plan/${plan._id}/edit`);
   };
 
   const handleClone = async () => {

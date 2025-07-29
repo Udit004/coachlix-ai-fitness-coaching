@@ -1,13 +1,10 @@
-// service/workoutPlanService.js
+// services/workoutPlanService.js
 import { auth } from "@/lib/firebase";
 
-class WorkoutPlanService {
-  constructor() {
-    this.baseURL = '/api/workout-plans';
-  }
+const BASE_URL = "/api/workout-plans";
 
-  // Helper method to get auth headers
-async getAuthHeaders() {
+// Get authorization header with Firebase token
+const getAuthHeaders = async () => {
   const user = auth.currentUser;
   if (!user) throw new Error("User not authenticated");
 
@@ -16,362 +13,466 @@ async getAuthHeaders() {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
-}
-  
+};
 
-  // Handle API responses
-  async handleResponse(response) {
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Unknown error occurred' }));
-      throw new Error(error.message || `HTTP ${response.status}`);
-    }
-    return response.json();
+// Handle API responses
+const handleResponse = async (response) => {
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData.message || `HTTP error! status: ${response.status}`
+    );
   }
 
-  // GET /api/workout-plans - Get all workout plans
-  async getWorkoutPlans(options = {}) {
-    try {
-      const params = new URLSearchParams();
-      
-      if (options.activeOnly) params.append('active', 'true');
-      if (options.goal) params.append('goal', options.goal);
-      if (options.difficulty) params.append('difficulty', options.difficulty);
-      if (options.templatesOnly) params.append('templates', 'true');
-      if (options.limit) params.append('limit', options.limit.toString());
-      if (options.sort) params.append('sort', options.sort);
+  const data = await response.json();
+  return data; // Return the full response data
+};
 
-      const url = `${this.baseURL}${params.toString() ? `?${params.toString()}` : ''}`;
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
+// Get all workout plans for current user
+export const getWorkoutPlans = async (options = {}) => {
+  try {
+    const headers = await getAuthHeaders();
+    const params = new URLSearchParams();
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error fetching workout plans:', error);
-      throw error;
-    }
+    if (options.activeOnly) params.append("active", "true");
+    if (options.goal) params.append("goal", options.goal);
+    if (options.difficulty) params.append("difficulty", options.difficulty);
+    if (options.templatesOnly) params.append("templates", "true");
+    if (options.limit) params.append("limit", options.limit.toString());
+    if (options.sort) params.append("sort", options.sort);
+
+    const url = `${BASE_URL}${
+      params.toString() ? `?${params.toString()}` : ""
+    }`;
+    const response = await fetch(url, { headers });
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error fetching workout plans:", error);
+    throw error;
   }
+};
 
-  // POST /api/workout-plans - Create new workout plan
-  async createWorkoutPlan(planData) {
-    try {
-      const response = await fetch(this.baseURL, {
-        method: 'POST',
-        headers: await this.getAuthHeaders(),
-        body: JSON.stringify(planData),
-      });
+// Get single workout plan by ID
+export const getWorkoutPlan = async (planId) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${BASE_URL}/${planId}`, { headers });
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error creating workout plan:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error fetching workout plan:", error);
+    throw error;
   }
+};
 
-  // PUT /api/workout-plans - Update workout plan
-  async updateWorkoutPlan(planId, updateData) {
-    try {
-      const response = await fetch(this.baseURL, {
-        method: 'PUT',
-        headers: await this.getAuthHeaders(),
-        body: JSON.stringify({ planId, ...updateData }),
-      });
+// Create new workout plan
+export const createWorkoutPlan = async (planData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(BASE_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(planData),
+    });
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error updating workout plan:', error);
-      throw error;
-    }
+    const data = await handleResponse(response);
+
+    // Based on your API, return the plan object
+    return data.plan || data; // Handle both response formats
+  } catch (error) {
+    console.error("Error creating workout plan:", error);
+    throw error;
   }
+};
 
-  // DELETE /api/workout-plans - Delete workout plan
-  async deleteWorkoutPlan(planId) {
-    try {
-      const response = await fetch(`${this.baseURL}?planId=${planId}`, {
-        method: 'DELETE',
-        headers: await this.getAuthHeaders(),
-      });
+// Update workout plan
+export const updateWorkoutPlan = async (planId, updateData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(BASE_URL, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ planId, ...updateData }),
+    });
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error deleting workout plan:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error updating workout plan:", error);
+    throw error;
   }
+};
 
-  // GET /api/workout-plans/[id] - Get specific workout plan
-  async getWorkoutPlan(planId) {
-    try {
-      const response = await fetch(`${this.baseURL}/${planId}`, {
-        method: 'GET',
-        headers: await this.getAuthHeaders(),
-      });
+// Delete workout plan
+export const deleteWorkoutPlan = async (planId) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${BASE_URL}?planId=${planId}`, {
+      method: "DELETE",
+      headers,
+    });
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error fetching workout plan:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error deleting workout plan:", error);
+    throw error;
   }
+};
 
-  // PUT /api/workout-plans/[id] - Update specific workout plan
-  async updateSpecificWorkoutPlan(planId, updateData) {
-    try {
-      const response = await fetch(`${this.baseURL}/${planId}`, {
-        method: 'PUT',
-        headers: await this.getAuthHeaders(),
-        body: JSON.stringify(updateData),
-      });
+// Update specific workout plan (using individual ID endpoint)
+export const updateSpecificWorkoutPlan = async (planId, updateData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${BASE_URL}/${planId}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(updateData),
+    });
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error updating workout plan:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error updating workout plan:", error);
+    throw error;
   }
+};
 
-  // DELETE /api/workout-plans/[id] - Delete specific workout plan
-  async deleteSpecificWorkoutPlan(planId) {
-    try {
-      const response = await fetch(`${this.baseURL}/${planId}`, {
-        method: 'DELETE',
-        headers: await this.getAuthHeaders(),
-      });
+// Delete specific workout plan (using individual ID endpoint)
+export const deleteSpecificWorkoutPlan = async (planId) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${BASE_URL}/${planId}`, {
+      method: "DELETE",
+      headers,
+    });
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error deleting workout plan:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error deleting workout plan:", error);
+    throw error;
   }
+};
 
-  // POST /api/workout-plans/[id]/weeks - Add week to plan
-  async addWeekToPlan(planId, weekData) {
-    try {
-      const response = await fetch(`${this.baseURL}/${planId}/weeks`, {
-        method: 'POST',
-        headers: await this.getAuthHeaders(),
-        body: JSON.stringify(weekData),
-      });
+// Add week to workout plan
+export const addWeekToPlan = async (planId, weekData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${BASE_URL}/${planId}/weeks`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(weekData),
+    });
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error adding week to plan:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error adding week to workout plan:", error);
+    throw error;
   }
+};
 
-  // PUT /api/workout-plans/[id]/weeks/[weekNumber] - Update specific week
-  async updateWeek(planId, weekNumber, weekData) {
-    try {
-      const response = await fetch(`${this.baseURL}/${planId}/weeks/${weekNumber}`, {
-        method: 'PUT',
-        headers: await this.getAuthHeaders(),
-        body: JSON.stringify(weekData),
-      });
+// Update specific week
+export const updateWeek = async (planId, weekNumber, weekData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${BASE_URL}/${planId}/weeks/${weekNumber}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(weekData),
+    });
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error updating week:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error updating week:", error);
+    throw error;
   }
+};
 
-  // POST /api/workout-plans/[id]/weeks/[weekNumber]/days/[dayNumber]/workouts - Add workout to day
-  async addWorkoutToDay(planId, weekNumber, dayNumber, workoutData) {
-    try {
-      const response = await fetch(`${this.baseURL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts`, {
-        method: 'POST',
-        headers: await this.getAuthHeaders(),
+// Add workout to specific day
+export const addWorkoutToDay = async (planId, weekNumber, dayNumber, workoutData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(
+      `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts`,
+      {
+        method: "POST",
+        headers,
         body: JSON.stringify(workoutData),
-      });
+      }
+    );
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error adding workout to day:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error adding workout to day:", error);
+    throw error;
   }
+};
 
-  // POST /api/workout-plans/[id]/weeks/[weekNumber]/days/[dayNumber]/workouts/[workoutId]/exercises - Add exercise to workout
-  async addExerciseToWorkout(planId, weekNumber, dayNumber, workoutId, exerciseData) {
-    try {
-      const response = await fetch(`${this.baseURL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`, {
-        method: 'POST',
-        headers: await this.getAuthHeaders(),
+// Add exercise to workout
+export const addExerciseToWorkout = async (planId, weekNumber, dayNumber, workoutId, exerciseData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(
+      `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`,
+      {
+        method: "POST",
+        headers,
         body: JSON.stringify(exerciseData),
-      });
+      }
+    );
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error adding exercise to workout:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error adding exercise to workout:", error);
+    throw error;
   }
+};
 
-  // PUT /api/workout-plans/[id]/weeks/[weekNumber]/days/[dayNumber]/workouts/[workoutId]/exercises/[exerciseId] - Update exercise
-  async updateExercise(planId, weekNumber, dayNumber, workoutId, exerciseId, exerciseData) {
-    try {
-      const response = await fetch(`${this.baseURL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises/${exerciseId}`, {
-        method: 'PUT',
-        headers: await this.getAuthHeaders(),
+// Update exercise
+export const updateExercise = async (planId, weekNumber, dayNumber, workoutId, exerciseId, exerciseData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(
+      `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises/${exerciseId}`,
+      {
+        method: "PUT",
+        headers,
         body: JSON.stringify(exerciseData),
-      });
+      }
+    );
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error updating exercise:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error updating exercise:", error);
+    throw error;
   }
+};
 
-  // DELETE /api/workout-plans/[id]/weeks/[weekNumber]/days/[dayNumber]/workouts/[workoutId]/exercises/[exerciseId] - Delete exercise
-  async deleteExercise(planId, weekNumber, dayNumber, workoutId, exerciseId) {
-    try {
-      const response = await fetch(`${this.baseURL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises/${exerciseId}`, {
-        method: 'DELETE',
-        headers: await this.getAuthHeaders(),
-      });
+// Delete exercise
+export const deleteExercise = async (planId, weekNumber, dayNumber, workoutId, exerciseId) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(
+      `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises/${exerciseId}`,
+      {
+        method: "DELETE",
+        headers,
+      }
+    );
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error deleting exercise:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error deleting exercise:", error);
+    throw error;
   }
+};
 
-  // POST /api/workout-plans/[id]/progress - Add progress entry
-  async addProgressEntry(planId, progressData) {
-    try {
-      const response = await fetch(`${this.baseURL}/${planId}/progress`, {
-        method: 'POST',
-        headers: await this.getAuthHeaders(),
-        body: JSON.stringify(progressData),
-      });
+// Add progress entry
+export const addProgressEntry = async (planId, progressData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${BASE_URL}/${planId}/progress`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(progressData),
+    });
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error adding progress entry:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error adding progress entry:", error);
+    throw error;
   }
+};
 
-  // GET /api/workout-plans/[id]/progress - Get progress history
-  async getProgressHistory(planId) {
-    try {
-      const response = await fetch(`${this.baseURL}/${planId}/progress`, {
-        method: 'GET',
-        headers: await this.getAuthHeaders(),
-      });
+// Get progress history
+export const getProgressHistory = async (planId) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${BASE_URL}/${planId}/progress`, {
+      headers,
+    });
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error fetching progress history:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error fetching progress history:", error);
+    throw error;
   }
+};
 
-  // Clone workout plan
-  async cloneWorkoutPlan(planId, newName) {
-    try {
-      const originalPlan = await this.getWorkoutPlan(planId);
-      
-      const clonedPlanData = {
-        name: newName,
-        description: `Copy of ${originalPlan.name}`,
-        goal: originalPlan.goal,
-        difficulty: originalPlan.difficulty,
-        duration: originalPlan.duration,
-        workoutFrequency: originalPlan.workoutFrequency,
-        weeks: originalPlan.weeks,
-        targetMuscleGroups: originalPlan.targetMuscleGroups,
-        equipment: originalPlan.equipment,
-        tags: [...(originalPlan.tags || []), 'cloned'],
-        createdBy: 'user',
-        templateId: originalPlan._id
-      };
+// Clone workout plan
+export const cloneWorkoutPlan = async (planId, newName) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${BASE_URL}/${planId}/clone`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ name: newName }),
+    });
 
-      return this.createWorkoutPlan(clonedPlanData);
-    } catch (error) {
-      console.error('Error cloning workout plan:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error cloning workout plan:", error);
+    throw error;
   }
+};
 
-  // Get workout templates
-  async getWorkoutTemplates() {
-    try {
-      return this.getWorkoutPlans({ templatesOnly: true });
-    } catch (error) {
-      console.error('Error fetching workout templates:', error);
-      throw error;
-    }
+// Get workout statistics
+export const getWorkoutStats = async (planId) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${BASE_URL}/${planId}/stats`, {
+      headers,
+    });
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error fetching workout stats:", error);
+    throw error;
   }
+};
 
-  // Start workout session
-  async startWorkoutSession(planId, weekNumber, dayNumber, workoutId) {
-    try {
-      const response = await fetch(`${this.baseURL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/start`, {
-        method: 'POST',
-        headers: await this.getAuthHeaders(),
-      });
+// Start workout session
+export const startWorkoutSession = async (planId, weekNumber, dayNumber, workoutId) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(
+      `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/start`,
+      {
+        method: "POST",
+        headers,
+      }
+    );
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error starting workout session:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error starting workout session:", error);
+    throw error;
   }
+};
 
-  // Complete workout session
-  async completeWorkoutSession(planId, weekNumber, dayNumber, workoutId, sessionData) {
-    try {
-      const response = await fetch(`${this.baseURL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/complete`, {
-        method: 'POST',
-        headers: await this.getAuthHeaders(),
+// Complete workout session
+export const completeWorkoutSession = async (planId, weekNumber, dayNumber, workoutId, sessionData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(
+      `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/complete`,
+      {
+        method: "POST",
+        headers,
         body: JSON.stringify(sessionData),
-      });
+      }
+    );
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error completing workout session:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error completing workout session:", error);
+    throw error;
   }
+};
 
-  // Log exercise set
-  async logExerciseSet(planId, weekNumber, dayNumber, workoutId, exerciseId, setData) {
-    try {
-      const response = await fetch(`${this.baseURL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises/${exerciseId}/sets`, {
-        method: 'POST',
-        headers: await this.getAuthHeaders(),
+// Log exercise set
+export const logExerciseSet = async (planId, weekNumber, dayNumber, workoutId, exerciseId, setData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(
+      `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises/${exerciseId}/sets`,
+      {
+        method: "POST",
+        headers,
         body: JSON.stringify(setData),
-      });
+      }
+    );
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error logging exercise set:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error logging exercise set:", error);
+    throw error;
   }
+};
 
-  // Get workout statistics
-  async getWorkoutStats(planId) {
-    try {
-      const response = await fetch(`${this.baseURL}/${planId}/stats`, {
-        method: 'GET',
-        headers: await this.getAuthHeaders(),
-      });
+// Generate AI workout plan
+export const generateAIWorkoutPlan = async (preferences) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${BASE_URL}/generate-ai`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(preferences),
+    });
 
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error('Error fetching workout stats:', error);
-      throw error;
-    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error generating AI workout plan:", error);
+    throw error;
   }
-}
+};
 
-const workoutPlanService = new WorkoutPlanService();
+// Search exercises database
+export const searchExercises = async (query) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(
+      `/api/exercises/search?q=${encodeURIComponent(query)}`,
+      { headers }
+    );
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error searching exercises:", error);
+    throw error;
+  }
+};
+
+// Get popular exercises
+export const getPopularExercises = async (category = null) => {
+  try {
+    const headers = await getAuthHeaders();
+    const url = category
+      ? `/api/exercises/popular?category=${category}`
+      : "/api/exercises/popular";
+    const response = await fetch(url, { headers });
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error fetching popular exercises:", error);
+    throw error;
+  }
+};
+
+// Get workout templates
+export const getWorkoutTemplates = async () => {
+  try {
+    return getWorkoutPlans({ templatesOnly: true });
+  } catch (error) {
+    console.error("Error fetching workout templates:", error);
+    throw error;
+  }
+};
+
+// Default export with all functions for convenience
+const workoutPlanService = {
+  getWorkoutPlans,
+  getWorkoutPlan,
+  createWorkoutPlan,
+  updateWorkoutPlan,
+  updateSpecificWorkoutPlan,
+  deleteWorkoutPlan,
+  deleteSpecificWorkoutPlan,
+  addWeekToPlan,
+  updateWeek,
+  addWorkoutToDay,
+  addExerciseToWorkout,
+  updateExercise,
+  deleteExercise,
+  addProgressEntry,
+  getProgressHistory,
+  cloneWorkoutPlan,
+  getWorkoutStats,
+  startWorkoutSession,
+  completeWorkoutSession,
+  logExerciseSet,
+  generateAIWorkoutPlan,
+  searchExercises,
+  getPopularExercises,
+  getWorkoutTemplates,
+};
+
 export default workoutPlanService;
