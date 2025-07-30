@@ -5,11 +5,11 @@ import { useAuthContext } from "../../auth/AuthContext";
 import { User, Bell, Settings } from "lucide-react";
 
 // Import components
-import ProfileSidebar from "./components/ProfileSidebar";
-import ProfileTabs from "./components/ProfileTabs";
-import ProfileTabContent from "./components/ProfileTabContent";
-import LoadingSpinner from "./components/LoadingSpinner";
-import ErrorMessage from "./components/ErrorMessage";
+import ProfileSidebar from "./ProfileSidebar";
+import ProfileTabs from "./ProfileTabs";
+import ProfileTabContent from "./ProfileTabContent";
+import LoadingSpinner from "./LoadingSpinner";
+import ErrorMessage from "./ErrorMessage";
 
 export default function ProfilePage() {
   const { user: authUser, loading: authLoading } = useAuthContext();
