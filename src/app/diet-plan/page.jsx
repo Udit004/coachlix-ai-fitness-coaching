@@ -12,13 +12,22 @@ import {
 import DietPlanCard from "./DietPlanCard";
 import CreatePlanModal from "./CreatePlanModal";
 import dietPlanService from "../../service/dietPlanService";
+import useDietPlanStore from "../../stores/useDietPlanStore";
 import { useAuth } from "../../hooks/useAuth";
 
 export default function DietPlansPage() {
   const { user, loading: authLoading } = useAuth();
-  const [dietPlans, setDietPlans] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const {
+    dietPlans,
+    loading,
+    error,
+    fetchDietPlans,
+    createDietPlan,
+    deleteDietPlan,
+    cloneDietPlan,
+    clearError,
+    reset,
+  } = useDietPlanStore();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedGoal, setSelectedGoal] = useState("");
@@ -34,43 +43,27 @@ export default function DietPlansPage() {
   ];
 
   // Memoized fetch function to prevent unnecessary re-renders
-  const fetchDietPlans = useCallback(async () => {
+  const loadDietPlans = useCallback(async () => {
     if (!user) return;
 
+    const options = {
+      activeOnly: true,
+      ...(selectedGoal && { goal: selectedGoal }),
+      sort:
+        sortBy === "newest"
+          ? "-createdAt"
+          : sortBy === "oldest"
+          ? "createdAt"
+          : "-updatedAt",
+    };
+
     try {
-      setLoading(true);
-      setError(null);
-
-      const options = {
-        activeOnly: true,
-        ...(selectedGoal && { goal: selectedGoal }),
-        sort:
-          sortBy === "newest"
-            ? "-createdAt"
-            : sortBy === "oldest"
-            ? "createdAt"
-            : "-updatedAt",
-      };
-
-      const data = await dietPlanService.getDietPlans(options);
-
-      // Ensure data structure is valid
-      if (data && Array.isArray(data.plans)) {
-        setDietPlans(data.plans);
-      } else if (Array.isArray(data)) {
-        setDietPlans(data);
-      } else {
-        console.warn("Unexpected data structure:", data);
-        setDietPlans([]);
-      }
+      await fetchDietPlans(options);
     } catch (err) {
-      console.error("Error fetching diet plans:", err);
-      setError(err?.message || "Failed to fetch diet plans");
-      setDietPlans([]); // Ensure state is always an array
-    } finally {
-      setLoading(false);
+      // Error is handled by the store
+      console.error("Error loading diet plans:", err);
     }
-  }, [user, selectedGoal, sortBy]);
+  }, [user, selectedGoal, sortBy, fetchDietPlans]);
 
   // Fetch diet plans when dependencies change
   useEffect(() => {
@@ -104,47 +97,22 @@ export default function DietPlansPage() {
 
   const handleCreatePlan = async (planData) => {
     try {
-      setError(null);
+      clearError();
 
       if (!planData || !planData.name?.trim()) {
         throw new Error("Plan name is required");
       }
 
-      // Don't add to state yet - wait for the actual response
-      const response = await dietPlanService.createDietPlan(planData);
-
-      // Check if response has the plan data
-      const newPlan = response.plan || response; // Handle both response formats
-
-      if (!newPlan) {
-        throw new Error("Failed to create plan - no data returned");
-      }
-
-      // Now add to state with the actual response data
-      const planWithDefaults = {
-        _id: newPlan._id || newPlan.id,
-        name: newPlan.name,
-        description: newPlan.description || "",
-        goal: newPlan.goal,
-        tags: Array.isArray(newPlan.tags) ? newPlan.tags : [],
-        isActive: newPlan.isActive !== undefined ? newPlan.isActive : true,
-        targetCalories: newPlan.targetCalories,
-        targetProtein: newPlan.targetProtein || 0,
-        targetCarbs: newPlan.targetCarbs || 0,
-        targetFats: newPlan.targetFats || 0,
-        duration: newPlan.duration,
-        difficulty: newPlan.difficulty || "Beginner",
-        createdAt: newPlan.createdAt || new Date().toISOString(),
-      };
-
-      // Add to the beginning of the list
-      setDietPlans((prev) => [planWithDefaults, ...prev]);
+      await createDietPlan(planData);
       setShowCreateModal(false);
 
-      // Clear filters logic remains the same...
+      // Clear filters if they might hide the new plan
+      if (selectedGoal && selectedGoal !== planData.goal) {
+        setSelectedGoal("");
+      }
     } catch (err) {
       console.error("Error creating plan:", err);
-      setError(err?.message || "Failed to create plan");
+      // Error is handled by the store
     }
   };
 
@@ -157,14 +125,11 @@ export default function DietPlansPage() {
     if (!confirm("Are you sure you want to delete this diet plan?")) return;
 
     try {
-      setError(null);
-      await dietPlanService.deleteDietPlan(planId);
-      setDietPlans((prev) =>
-        prev.filter((plan) => plan && plan._id !== planId)
-      );
+      clearError();
+      await deleteDietPlan(planId);
     } catch (err) {
       console.error("Error deleting plan:", err);
-      setError(err?.message || "Failed to delete plan");
+      // Error is handled by the store
     }
   };
 
@@ -175,18 +140,13 @@ export default function DietPlansPage() {
     }
 
     try {
-      setError(null);
-      const clonedPlan = await dietPlanService.cloneDietPlan(planId, newName);
-
-      if (clonedPlan) {
-        setDietPlans((prev) => [clonedPlan, ...prev]);
-      }
+      clearError();
+      await cloneDietPlan(planId, newName);
     } catch (err) {
       console.error("Error cloning plan:", err);
-      setError(err?.message || "Failed to clone plan");
+      // Error is handled by the store
     }
   };
-
   const calculateAverageCalories = () => {
     if (!Array.isArray(dietPlans) || dietPlans.length === 0) return 0;
 

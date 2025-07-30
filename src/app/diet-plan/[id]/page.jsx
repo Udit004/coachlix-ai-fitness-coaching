@@ -1,6 +1,6 @@
 // pages/diet-plans/[id]/page.jsx
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -17,6 +17,7 @@ import DietDayCard from "./DietDayCard";
 import AddFoodModal from "./AddFoodModal";
 import MealCard from "./MealCard";
 import dietPlanService from "@/service/dietPlanService";
+import useDietPlanStore from "@/stores/useDietPlanStore";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function SingleDietPlanPage() {
@@ -24,42 +25,52 @@ export default function SingleDietPlanPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
-  const [dietPlan, setDietPlan] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const {
+    currentPlan: dietPlan,
+    loading,
+    error,
+    fetchDietPlan,
+    deleteDietPlan,
+    cloneDietPlan,
+    addDay,
+    clearError,
+    clearCurrentPlan,
+  } = useDietPlanStore();
   const [activeDay, setActiveDay] = useState(1);
 
-  const fetchDietPlan = async () => {
+  const loadDietPlan = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null); // Clear any previous errors
-      const data = await dietPlanService.getDietPlan(id);
-      setDietPlan(data);
+      clearError();
+      await fetchDietPlan(id);
     } catch (err) {
-      setError(err.message);
       console.error("Error fetching diet plan:", err);
-    } finally {
-      setLoading(false);
+      // Error is handled by the store
     }
-  };
+  }, [id, fetchDietPlan, clearError]);
 
   // Fixed useEffect - only run when user is available and not in auth loading state
   useEffect(() => {
     if (!authLoading && user && id) {
-      fetchDietPlan();
+      loadDietPlan();
     } else if (!authLoading && !user) {
-      // Handle case where user is not authenticated
-      setLoading(false);
-      setError("User not authenticated");
+      clearCurrentPlan();
     }
-  }, [authLoading, user, id]); // Remove 'loading' from dependencies
+
+    // Cleanup when component unmounts or ID changes
+    return () => {
+      if (!id) {
+        clearCurrentPlan();
+      }
+    };
+  }, [authLoading, user, id, loadDietPlan, clearCurrentPlan]);
 
   const handleDeletePlan = async () => {
     if (!confirm("Are you sure you want to delete this entire diet plan?"))
       return;
 
     try {
-      await dietPlanService.deleteDietPlan(id);
+      clearError();
+      await deleteDietPlan(id);
       router.push("/diet-plans");
     } catch (err) {
       console.error("Error deleting plan:", err);
@@ -75,7 +86,8 @@ export default function SingleDietPlanPage() {
     if (!newName) return;
 
     try {
-      const clonedPlan = await dietPlanService.cloneDietPlan(id, newName);
+      clearError();
+      const clonedPlan = await cloneDietPlan(id, newName);
       router.push(`/diet-plans/${clonedPlan._id}`);
     } catch (err) {
       console.error("Error cloning plan:", err);
@@ -83,8 +95,10 @@ export default function SingleDietPlanPage() {
     }
   };
 
+  // 7. Replace the handleAddDay function - REPLACE with:
   const handleAddDay = async () => {
     try {
+      clearError();
       const newDayNumber = dietPlan.days.length + 1;
       const dayData = {
         dayNumber: newDayNumber,
@@ -96,8 +110,7 @@ export default function SingleDietPlanPage() {
         ],
       };
 
-      const updatedPlan = await dietPlanService.addDay(id, dayData);
-      setDietPlan(updatedPlan);
+      await addDay(id, dayData);
     } catch (err) {
       console.error("Error adding day:", err);
       alert("Failed to add day. Please try again.");
@@ -140,7 +153,7 @@ export default function SingleDietPlanPage() {
               <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
               <div className="space-x-4">
                 <button
-                  onClick={fetchDietPlan}
+                  onClick={loadDietPlan}
                   className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
                 >
                   Try Again
@@ -388,7 +401,7 @@ export default function SingleDietPlanPage() {
                   key={day.dayNumber}
                   day={day}
                   planId={dietPlan._id}
-                  onUpdate={fetchDietPlan}
+                  onUpdate={loadDietPlan} // Changed from fetchDietPlan to loadDietPlan
                 />
               ))}
           </div>
