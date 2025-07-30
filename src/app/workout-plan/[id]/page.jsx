@@ -32,7 +32,7 @@ export default function WorkoutPlanDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const { user } = useAuth();
-  
+
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -64,29 +64,69 @@ export default function WorkoutPlanDetailPage() {
     }
   };
 
+  // In page.jsx - Replace the handleStartWorkout function
   const handleStartWorkout = async (weekNumber, dayNumber, workoutId) => {
     try {
+      console.log("Starting workout with:", {
+        weekNumber,
+        dayNumber,
+        workoutId,
+      });
+
+      // Find the workout data before starting the session
+      const week = plan.weeks?.find((w) => w.weekNumber === weekNumber);
+      const day = week?.days?.find((d) => d.dayNumber === dayNumber);
+      const workout =
+        day?.workouts?.find(
+          (w, index) =>
+            w._id === workoutId ||
+            w.id === workoutId ||
+            index.toString() === workoutId
+        ) || day?.workouts?.[parseInt(workoutId)];
+
+      if (!workout) {
+        console.error("Workout not found:", {
+          weekNumber,
+          dayNumber,
+          workoutId,
+          availableWorkouts: day?.workouts,
+        });
+        alert("Workout not found. Please refresh the page and try again.");
+        return;
+      }
+
+      console.log("Found workout:", workout);
+
+      // Set the states first
       setActiveDay(dayNumber);
       setActiveWorkout(workoutId);
       setShowWorkoutSession(true);
-      
-      // Log workout start
-      await workoutPlanService.startWorkoutSession(id, weekNumber, dayNumber, workoutId);
+
+      // Then start the workout session
+      const response = await workoutPlanService.startWorkoutSession(
+        id,
+        weekNumber,
+        dayNumber,
+        workoutId
+      );
+      console.log("Workout session started:", response);
     } catch (err) {
       console.error("Error starting workout:", err);
+      alert("Failed to start workout. Please try again.");
+      setShowWorkoutSession(false); // Hide the modal if there's an error
     }
   };
 
   const handleCompleteWorkout = async (sessionData) => {
     try {
       await workoutPlanService.completeWorkoutSession(
-        id, 
-        activeWeek, 
-        activeDay, 
-        activeWorkout, 
+        id,
+        activeWeek,
+        activeDay,
+        activeWorkout,
         sessionData
       );
-      
+
       // Refresh plan data
       await fetchWorkoutPlan();
       setShowWorkoutSession(false);
@@ -104,7 +144,7 @@ export default function WorkoutPlanDetailPage() {
         activeWorkout,
         exerciseData
       );
-      
+
       await fetchWorkoutPlan();
       setShowAddExercise(false);
     } catch (err) {
@@ -114,41 +154,46 @@ export default function WorkoutPlanDetailPage() {
 
   const calculateWeekProgress = (week) => {
     if (!week?.days) return 0;
-    
-    const totalWorkouts = week.days.reduce((total, day) => 
-      total + (day.workouts?.length || 0), 0
+
+    const totalWorkouts = week.days.reduce(
+      (total, day) => total + (day.workouts?.length || 0),
+      0
     );
-    
-    const completedWorkouts = week.days.reduce((total, day) => 
-      total + (day.workouts?.filter(w => w.isCompleted).length || 0), 0
+
+    const completedWorkouts = week.days.reduce(
+      (total, day) =>
+        total + (day.workouts?.filter((w) => w.isCompleted).length || 0),
+      0
     );
-    
-    return totalWorkouts > 0 ? Math.round((completedWorkouts / totalWorkouts) * 100) : 0;
+
+    return totalWorkouts > 0
+      ? Math.round((completedWorkouts / totalWorkouts) * 100)
+      : 0;
   };
 
   const getDayStatus = (day) => {
-    if (day.isRestDay) return 'rest';
-    if (!day.workouts || day.workouts.length === 0) return 'empty';
-    const allCompleted = day.workouts.every(w => w.isCompleted);
-    const someCompleted = day.workouts.some(w => w.isCompleted);
-    
-    if (allCompleted) return 'completed';
-    if (someCompleted) return 'partial';
-    return 'pending';
+    if (day.isRestDay) return "rest";
+    if (!day.workouts || day.workouts.length === 0) return "empty";
+    const allCompleted = day.workouts.every((w) => w.isCompleted);
+    const someCompleted = day.workouts.some((w) => w.isCompleted);
+
+    if (allCompleted) return "completed";
+    if (someCompleted) return "partial";
+    return "pending";
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-300 dark:border-green-800';
-      case 'partial':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-300 dark:border-yellow-800';
-      case 'rest':
-        return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:border-blue-800';
-      case 'empty':
-        return 'bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700';
+      case "completed":
+        return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-300 dark:border-green-800";
+      case "partial":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-300 dark:border-yellow-800";
+      case "rest":
+        return "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:border-blue-800";
+      case "empty":
+        return "bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700";
       default:
-        return 'bg-white text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
+        return "bg-white text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
     }
   };
 
@@ -191,14 +236,16 @@ export default function WorkoutPlanDetailPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center py-12">
-            <p className="text-gray-600 dark:text-gray-400">Workout plan not found</p>
+            <p className="text-gray-600 dark:text-gray-400">
+              Workout plan not found
+            </p>
           </div>
         </div>
       </div>
     );
   }
 
-  const currentWeek = plan.weeks?.find(w => w.weekNumber === activeWeek);
+  const currentWeek = plan.weeks?.find((w) => w.weekNumber === activeWeek);
   const weekProgress = calculateWeekProgress(currentWeek);
 
   return (
@@ -232,7 +279,7 @@ export default function WorkoutPlanDetailPage() {
                 <span>Progress</span>
               </button>
               <button
-                onClick={() => router.push(`/workout-plans/${id}/edit`)}
+                onClick={() => router.push(`/workout-plan/${id}/edit`)}
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
               >
                 <Edit className="h-4 w-4" />
@@ -266,7 +313,9 @@ export default function WorkoutPlanDetailPage() {
                 <Calendar className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Duration</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Duration
+                </p>
                 <p className="font-semibold text-gray-900 dark:text-white">
                   {plan.duration} weeks
                 </p>
@@ -280,7 +329,9 @@ export default function WorkoutPlanDetailPage() {
                 <Users className="h-6 w-6 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Frequency</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Frequency
+                </p>
                 <p className="font-semibold text-gray-900 dark:text-white">
                   {plan.workoutFrequency}x/week
                 </p>
@@ -294,7 +345,9 @@ export default function WorkoutPlanDetailPage() {
                 <Trophy className="h-6 w-6 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Progress</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Progress
+                </p>
                 <p className="font-semibold text-gray-900 dark:text-white">
                   {plan.stats?.completionRate || 0}%
                 </p>
@@ -330,8 +383,8 @@ export default function WorkoutPlanDetailPage() {
                 onClick={() => setActiveWeek(week.weekNumber)}
                 className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium transition-colors ${
                   activeWeek === week.weekNumber
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                 }`}
               >
                 Week {week.weekNumber}
@@ -347,15 +400,13 @@ export default function WorkoutPlanDetailPage() {
                 return (
                   <div
                     key={day.dayNumber}
-                    className={`border-2 rounded-xl p-4 transition-all duration-200 ${getStatusColor(status)}`}
+                    className={`border-2 rounded-xl p-4 transition-all duration-200 ${getStatusColor(
+                      status
+                    )}`}
                   >
                     <div className="text-center mb-3">
-                      <h3 className="font-semibold text-sm">
-                        {day.dayName}
-                      </h3>
-                      <p className="text-xs opacity-75">
-                        Day {day.dayNumber}
-                      </p>
+                      <h3 className="font-semibold text-sm">{day.dayName}</h3>
+                      <p className="text-xs opacity-75">Day {day.dayNumber}</p>
                     </div>
 
                     {day.isRestDay ? (
@@ -378,14 +429,22 @@ export default function WorkoutPlanDetailPage() {
                               )}
                             </div>
                             <div className="flex items-center justify-between text-xs opacity-75">
-                              <span>{workout.exercises?.length || 0} exercises</span>
+                              <span>
+                                {workout.exercises?.length || 0} exercises
+                              </span>
                               <span>{workout.estimatedDuration}min</span>
                             </div>
                             <button
-                              onClick={() => handleStartWorkout(activeWeek, day.dayNumber, workout._id || idx)}
+                              onClick={() =>
+                                handleStartWorkout(
+                                  activeWeek,
+                                  day.dayNumber,
+                                  workout._id || idx
+                                )
+                              }
                               className="w-full py-2 px-3 bg-white/50 hover:bg-white/75 dark:bg-gray-800/50 dark:hover:bg-gray-800/75 rounded-lg text-xs font-medium transition-colors"
                             >
-                              {workout.isCompleted ? 'Review' : 'Start'}
+                              {workout.isCompleted ? "Review" : "Start"}
                             </button>
                           </div>
                         ))}
@@ -418,7 +477,7 @@ export default function WorkoutPlanDetailPage() {
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Week {activeWeek} Overview
             </h3>
-            
+
             {currentWeek.weeklyGoal && (
               <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <p className="text-sm text-blue-800 dark:text-blue-300">
@@ -436,7 +495,7 @@ export default function WorkoutPlanDetailPage() {
                   Workouts Planned
                 </p>
               </div>
-              
+
               <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {Math.round((currentWeek.totalDuration || 0) / 60)}h
@@ -445,7 +504,7 @@ export default function WorkoutPlanDetailPage() {
                   Total Duration
                 </p>
               </div>
-              
+
               <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {weekProgress}%
@@ -460,15 +519,32 @@ export default function WorkoutPlanDetailPage() {
       </div>
 
       {/* Modals */}
-      {showWorkoutSession && (
+      {/* Modals - Replace the WorkoutSession modal part */}
+      {showWorkoutSession && activeDay && activeWorkout !== null && (
         <WorkoutSession
           planId={id}
           weekNumber={activeWeek}
           dayNumber={activeDay}
           workoutId={activeWorkout}
-          workout={currentWeek?.days?.find(d => d.dayNumber === activeDay)?.workouts?.find(w => w._id === activeWorkout)}
+          workout={(() => {
+            // Find the workout data more reliably
+            const week = plan.weeks?.find(w => w.weekNumber === activeWeek);
+            const day = week?.days?.find(d => d.dayNumber === activeDay);
+            const workout = day?.workouts?.find((w, index) => 
+              w._id === activeWorkout || 
+              w.id === activeWorkout || 
+              index.toString() === activeWorkout ||
+              index === parseInt(activeWorkout)
+            );
+            console.log('Passing workout to WorkoutSession:', workout);
+            return workout;
+          })()}
           onComplete={handleCompleteWorkout}
-          onClose={() => setShowWorkoutSession(false)}
+          onClose={() => {
+            setShowWorkoutSession(false);
+            setActiveDay(null);
+            setActiveWorkout(null);
+          }}
         />
       )}
 
@@ -480,10 +556,7 @@ export default function WorkoutPlanDetailPage() {
       )}
 
       {showProgress && (
-        <ProgressTracker
-          plan={plan}
-          onClose={() => setShowProgress(false)}
-        />
+        <ProgressTracker plan={plan} onClose={() => setShowProgress(false)} />
       )}
     </div>
   );
