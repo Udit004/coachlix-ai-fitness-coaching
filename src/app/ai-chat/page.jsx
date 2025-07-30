@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
+import useUserProfileStore from "@/stores/useUserProfileStore";
 import { toast, Toaster } from "react-hot-toast";
 import axios from "axios";
 import {
@@ -31,10 +32,19 @@ const AIChatPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("general");
   const [error, setError] = useState(null);
+
   const [loading, setLoading] = useState(false);
 
   // User profile state - fetch from backend
-  const [userProfile, setUserProfile] = useState(null);
+  const {
+    profile: userProfile,
+    loading: profileLoading,
+    error: profileError,
+    fetchUserProfile,
+    hasValidProfile,
+    clearError,
+  } = useUserProfileStore();
+
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -115,37 +125,44 @@ const AIChatPage = () => {
 
   // Fetch user profile data on mount
   useEffect(() => {
-    const fetchProfile = async () => {
-      setLoading(true);
-      setError(null);
+    const loadProfile = async () => {
+      if (authLoading) return;
+
+      if (!authUser) {
+        console.log("No authenticated user found");
+        return;
+      }
+
+      if (profileError) {
+        clearError();
+      }
+
       try {
-        // Get auth token if available
-        let token = null;
-        if (authUser) {
-          token = await authUser.getIdToken();
+        const userId = authUser.uid;
+
+        if (hasValidProfile()) {
+          console.log("📦 Using existing profile data from store");
+          return;
         }
 
-        const res = await fetch("/api/userProfile", {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-
-        const data = await res.json();
-        if (data.success) {
-          setUserProfile(data.data);
-        } else {
-          setError(data.error || "Failed to load profile");
-        }
-      } catch (err) {
-        setError("Failed to load profile");
-      } finally {
-        setLoading(false);
+        await fetchUserProfile(userId, { maxAge: 5 * 60 * 1000 });
+      } catch (error) {
+        console.error("Failed to load user profile:", error);
+        setError(
+          "Failed to load your profile. Some features may not work properly."
+        );
       }
     };
 
-    if (!authLoading) {
-      fetchProfile();
-    }
-  }, [authUser, authLoading]);
+    loadProfile();
+  }, [
+    authUser,
+    authLoading,
+    fetchUserProfile,
+    hasValidProfile,
+    profileError,
+    clearError,
+  ]);
 
   // Handle sending messages - Use your backend API
   const handleSendMessage = async () => {
@@ -264,7 +281,7 @@ const AIChatPage = () => {
 
   // Initialize with welcome message
   useEffect(() => {
-    if (messages.length === 0 && userProfile) {
+    if (messages.length === 0 && userProfile && !profileLoading) {
       const welcomeMessage = {
         id: Date.now(),
         type: "ai",
@@ -286,11 +303,13 @@ const AIChatPage = () => {
     }
   }, [userProfile]);
 
+  const combinedError = error || profileError;
   // Show loading state
 
   // Replace this section in your AIChatPage component:
   // Show loading state
-  if (loading) {
+  const isLoading = authLoading || profileLoading;
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center px-4">
         <div className="text-center max-w-md mx-auto">
@@ -359,10 +378,15 @@ const AIChatPage = () => {
           },
         }}
       />
-
       {/* Error Banner */}
-      <ErrorBanner error={error} onClose={() => setError(null)} />
-
+      // And in JSX:
+      <ErrorBanner
+        error={combinedError}
+        onClose={() => {
+          setError(null);
+          clearError();
+        }}
+      />
       {/* Chat Header */}
       <ChatHeader
         plans={plans}
@@ -373,7 +397,6 @@ const AIChatPage = () => {
         clearChat={clearChat}
         userProfile={userProfile}
       />
-
       {/* Main Chat Layout - Mobile Optimized */}
       <div className="flex-1 overflow-hidden">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2 sm:py-6 h-full">
@@ -420,7 +443,6 @@ const AIChatPage = () => {
           </div>
         </div>
       </div>
-
       {/* Mobile Sidebar Backdrop */}
       {sidebarOpen && (
         <div
