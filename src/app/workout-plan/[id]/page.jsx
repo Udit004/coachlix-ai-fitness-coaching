@@ -4,7 +4,6 @@ import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Play,
-  Pause,
   Edit,
   Calendar,
   Clock,
@@ -15,16 +14,13 @@ import {
   CheckCircle2,
   Circle,
   Plus,
-  MoreVertical,
-  Dumbbell,
-  Timer,
-  Weight,
   RotateCcw,
+  Dumbbell,
+  Settings,
+  Eye,
 } from "lucide-react";
 import workoutPlanService from "../../../service/workoutPlanService";
-import exerciseService from "../../../service/exerciseService";
 import { useAuth } from "../../../hooks/useAuth";
-import WorkoutSession from "./WorkoutSession";
 import AddExerciseModal from "./AddExerciseModal";
 import ProgressTracker from "./ProgressTracker";
 
@@ -37,11 +33,10 @@ export default function WorkoutPlanDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeWeek, setActiveWeek] = useState(1);
-  const [activeDay, setActiveDay] = useState(null);
-  const [activeWorkout, setActiveWorkout] = useState(null);
-  const [showWorkoutSession, setShowWorkoutSession] = useState(false);
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [selectedWorkout, setSelectedWorkout] = useState(null);
 
   useEffect(() => {
     if (id && user) {
@@ -64,92 +59,40 @@ export default function WorkoutPlanDetailPage() {
     }
   };
 
-  // In page.jsx - Replace the handleStartWorkout function
-  const handleStartWorkout = async (weekNumber, dayNumber, workoutId) => {
-    try {
-      console.log("Starting workout with:", {
-        weekNumber,
-        dayNumber,
-        workoutId,
-      });
-
-      // Find the workout data before starting the session
-      const week = plan.weeks?.find((w) => w.weekNumber === weekNumber);
-      const day = week?.days?.find((d) => d.dayNumber === dayNumber);
-      const workout =
-        day?.workouts?.find(
-          (w, index) =>
-            w._id === workoutId ||
-            w.id === workoutId ||
-            index.toString() === workoutId
-        ) || day?.workouts?.[parseInt(workoutId)];
-
-      if (!workout) {
-        console.error("Workout not found:", {
-          weekNumber,
-          dayNumber,
-          workoutId,
-          availableWorkouts: day?.workouts,
-        });
-        alert("Workout not found. Please refresh the page and try again.");
-        return;
-      }
-
-      console.log("Found workout:", workout);
-
-      // Set the states first
-      setActiveDay(dayNumber);
-      setActiveWorkout(workoutId);
-      setShowWorkoutSession(true);
-
-      // Then start the workout session
-      const response = await workoutPlanService.startWorkoutSession(
-        id,
-        weekNumber,
-        dayNumber,
-        workoutId
-      );
-      console.log("Workout session started:", response);
-    } catch (err) {
-      console.error("Error starting workout:", err);
-      alert("Failed to start workout. Please try again.");
-      setShowWorkoutSession(false); // Hide the modal if there's an error
-    }
-  };
-
-  const handleCompleteWorkout = async (sessionData) => {
-    try {
-      await workoutPlanService.completeWorkoutSession(
-        id,
-        activeWeek,
-        activeDay,
-        activeWorkout,
-        sessionData
-      );
-
-      // Refresh plan data
-      await fetchWorkoutPlan();
-      setShowWorkoutSession(false);
-    } catch (err) {
-      console.error("Error completing workout:", err);
-    }
+  const handleStartWorkout = (weekNumber, dayNumber, workoutId) => {
+    // Navigate to the workout session page
+    router.push(`/workout-plan/${id}/session?week=${weekNumber}&day=${dayNumber}&workout=${workoutId}`);
   };
 
   const handleAddExercise = async (exerciseData) => {
     try {
-      await workoutPlanService.addExerciseToWorkout(
-        id,
-        activeWeek,
-        activeDay,
-        activeWorkout,
-        exerciseData
-      );
-
+      // Add exercises to the selected workout
+      for (const exercise of exerciseData) {
+        await workoutPlanService.addExerciseToWorkout(
+          id,
+          activeWeek,
+          selectedDay,
+          selectedWorkout,
+          exercise
+        );
+      }
+      
       await fetchWorkoutPlan();
       setShowAddExercise(false);
+      setSelectedDay(null);
+      setSelectedWorkout(null);
     } catch (err) {
       console.error("Error adding exercise:", err);
+      alert("Failed to add exercises. Please try again.");
     }
+  };
+
+  const handleEditWorkout = (weekNumber, dayNumber, workoutId) => {
+    router.push(`/workout-plan/${id}/edit-workout?week=${weekNumber}&day=${dayNumber}&workout=${workoutId}`);
+  };
+
+  const handleAddWorkoutToDay = (weekNumber, dayNumber) => {
+    router.push(`/workout-plan/${id}/add-workout?week=${weekNumber}&day=${dayNumber}`);
   };
 
   const calculateWeekProgress = (week) => {
@@ -283,7 +226,7 @@ export default function WorkoutPlanDetailPage() {
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
               >
                 <Edit className="h-4 w-4" />
-                <span>Edit</span>
+                <span>Edit Plan</span>
               </button>
             </div>
           </div>
@@ -428,37 +371,61 @@ export default function WorkoutPlanDetailPage() {
                                 <Circle className="h-4 w-4 opacity-50" />
                               )}
                             </div>
+                            
                             <div className="flex items-center justify-between text-xs opacity-75">
                               <span>
                                 {workout.exercises?.length || 0} exercises
                               </span>
-                              <span>{workout.estimatedDuration}min</span>
+                              <span>{workout.estimatedDuration || 30}min</span>
                             </div>
-                            <button
-                              onClick={() =>
-                                handleStartWorkout(
-                                  activeWeek,
-                                  day.dayNumber,
-                                  workout._id || idx
-                                )
-                              }
-                              className="w-full py-2 px-3 bg-white/50 hover:bg-white/75 dark:bg-gray-800/50 dark:hover:bg-gray-800/75 rounded-lg text-xs font-medium transition-colors"
-                            >
-                              {workout.isCompleted ? "Review" : "Start"}
-                            </button>
+                            
+                            <div className="flex space-x-1">
+                              <button
+                                onClick={() =>
+                                  handleStartWorkout(
+                                    activeWeek,
+                                    day.dayNumber,
+                                    workout._id || idx
+                                  )
+                                }
+                                className="flex-1 py-2 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center justify-center space-x-1"
+                              >
+                                <Play className="h-3 w-3" />
+                                <span>{workout.isCompleted ? "Review" : "Start"}</span>
+                              </button>
+                              
+                              <button
+                                onClick={() => handleEditWorkout(activeWeek, day.dayNumber, workout._id || idx)}
+                                className="p-2 bg-white/50 hover:bg-white/75 dark:bg-gray-800/50 dark:hover:bg-gray-800/75 rounded-lg text-xs transition-colors"
+                                title="Edit workout"
+                              >
+                                <Settings className="h-3 w-3" />
+                              </button>
+                            </div>
+                            
+                            {(workout.exercises?.length || 0) === 0 && (
+                              <button
+                                onClick={() => {
+                                  setSelectedDay(day.dayNumber);
+                                  setSelectedWorkout(workout._id || idx);
+                                  setShowAddExercise(true);
+                                }}
+                                className="w-full py-2 px-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-400 rounded-lg text-xs font-medium transition-colors flex items-center justify-center space-x-1"
+                              >
+                                <Plus className="h-3 w-3" />
+                                <span>Add Exercises</span>
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
                     ) : (
                       <div className="text-center py-4">
                         <Plus className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                        <p className="text-xs opacity-75">No workouts</p>
+                        <p className="text-xs opacity-75 mb-2">No workouts</p>
                         <button
-                          onClick={() => {
-                            setActiveDay(day.dayNumber);
-                            setShowAddExercise(true);
-                          }}
-                          className="mt-2 text-xs underline hover:no-underline"
+                          onClick={() => handleAddWorkoutToDay(activeWeek, day.dayNumber)}
+                          className="text-xs underline hover:no-underline transition-colors"
                         >
                           Add workout
                         </button>
@@ -519,38 +486,13 @@ export default function WorkoutPlanDetailPage() {
       </div>
 
       {/* Modals */}
-      {/* Modals - Replace the WorkoutSession modal part */}
-      {showWorkoutSession && activeDay && activeWorkout !== null && (
-        <WorkoutSession
-          planId={id}
-          weekNumber={activeWeek}
-          dayNumber={activeDay}
-          workoutId={activeWorkout}
-          workout={(() => {
-            // Find the workout data more reliably
-            const week = plan.weeks?.find(w => w.weekNumber === activeWeek);
-            const day = week?.days?.find(d => d.dayNumber === activeDay);
-            const workout = day?.workouts?.find((w, index) => 
-              w._id === activeWorkout || 
-              w.id === activeWorkout || 
-              index.toString() === activeWorkout ||
-              index === parseInt(activeWorkout)
-            );
-            console.log('Passing workout to WorkoutSession:', workout);
-            return workout;
-          })()}
-          onComplete={handleCompleteWorkout}
-          onClose={() => {
-            setShowWorkoutSession(false);
-            setActiveDay(null);
-            setActiveWorkout(null);
-          }}
-        />
-      )}
-
-      {showAddExercise && (
+      {showAddExercise && selectedDay && selectedWorkout !== null && (
         <AddExerciseModal
-          onClose={() => setShowAddExercise(false)}
+          onClose={() => {
+            setShowAddExercise(false);
+            setSelectedDay(null);
+            setSelectedWorkout(null);
+          }}
           onAdd={handleAddExercise}
         />
       )}
