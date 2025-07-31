@@ -1,5 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   Filter,
@@ -11,14 +13,15 @@ import {
   Calendar,
   Clock,
   Trophy,
+  Router,
 } from "lucide-react";
 import WorkoutPlanCard from "./WorkoutPlanCard";
-import CreatePlanModal from "./CreatePlanModal";
 import workoutPlanService from "../../service/workoutPlanService";
 import { useAuth } from "../../hooks/useAuth";
 
 export default function WorkoutPlansPage() {
   const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [workoutPlans, setWorkoutPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,6 +30,22 @@ export default function WorkoutPlansPage() {
   const [selectedGoal, setSelectedGoal] = useState("");
   const [selectedDifficulty, setSelectedDifficulty] = useState("");
   const [sortBy, setSortBy] = useState("newest");
+
+  const CreatePlanModal = dynamic(() => import("./CreatePlanModal"), {
+      loading: () => (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="w-[90%] max-w-xl bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
+            <div className="space-y-4 animate-pulse">
+              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+              <div className="h-10 bg-gray-300 dark:bg-gray-600 rounded w-1/2 mt-6"></div>
+            </div>
+          </div>
+        </div>
+      ),
+      ssr: false, // Optional: disable server-side rendering
+    });
 
   const goals = [
     "Strength Building",
@@ -86,6 +105,9 @@ export default function WorkoutPlansPage() {
 
   // Fetch workout plans when dependencies change
   useEffect(() => {
+
+    router.prefetch("/workout-plans/${id}");
+
     if (!authLoading && user) {
       fetchWorkoutPlans();
     } else if (!authLoading && !user) {

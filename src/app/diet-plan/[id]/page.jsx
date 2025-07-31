@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 
 import DietDayCard from "./DietDayCard";
-import AddFoodModal from "./AddFoodModal";
 import MealCard from "./MealCard";
 import dietPlanService from "@/service/dietPlanService";
 import useDietPlanStore from "@/stores/useDietPlanStore";

@@ -1,12 +1,27 @@
 // components/MealCard.jsx
-"use client"
-import React, { useState, useCallback, useRef } from 'react';
-import { Plus, Edit, Trash2, Utensils, Calculator } from 'lucide-react';
-import FoodItemCard from './FoodItemCard';
-import AddFoodModal from './AddFoodModal';
-import dietPlanService from '@/service/dietPlanService';
+"use client";
+import React, { useState, useCallback, useRef } from "react";
+import dynamic from "next/dynamic";
+import { Plus, Edit, Trash2, Utensils, Calculator } from "lucide-react";
+import FoodItemCard from "./FoodItemCard";
+import dietPlanService from "@/service/dietPlanService";
 
 export default function MealCard({ meal, planId, dayNumber, onUpdate }) {
+  const AddFoodModal = dynamic(() => import("./AddFoodModal"), {
+    loading: () => (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+        <div className="w-[90%] max-w-xl bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
+          <div className="space-y-4 animate-pulse">
+            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+            <div className="h-10 bg-gray-300 dark:bg-gray-600 rounded w-1/2 mt-6"></div>
+          </div>
+        </div>
+      </div>
+    ),
+    ssr: false, // Optional: disable server-side rendering
+  });
   const [isAddingFood, setIsAddingFood] = useState(false);
   const isProcessingRef = useRef(false);
 
@@ -16,69 +31,88 @@ export default function MealCard({ meal, planId, dayNumber, onUpdate }) {
       calories: totals.calories + (item.calories || 0),
       protein: totals.protein + (item.protein || 0),
       carbs: totals.carbs + (item.carbs || 0),
-      fats: totals.fats + (item.fats || 0)
+      fats: totals.fats + (item.fats || 0),
     }),
     { calories: 0, protein: 0, carbs: 0, fats: 0 }
   );
 
-  const handleAddFood = useCallback(async (foodData) => {
-    try {
-      await dietPlanService.addFoodItem(planId, dayNumber, meal.type, foodData);
-      // Use setTimeout to ensure state is set after modal operations complete
-      setTimeout(() => {
+  const handleAddFood = useCallback(
+    async (foodData) => {
+      try {
+        await dietPlanService.addFoodItem(
+          planId,
+          dayNumber,
+          meal.type,
+          foodData
+        );
+        // Use setTimeout to ensure state is set after modal operations complete
+        setTimeout(() => {
+          setIsAddingFood(false);
+        }, 0);
+        onUpdate?.();
+      } catch (error) {
+        console.error("Error adding food item:", error);
+        alert("Failed to add food item. Please try again.");
         setIsAddingFood(false);
-      }, 0);
-      onUpdate?.();
-    } catch (error) {
-      console.error('Error adding food item:', error);
-      alert('Failed to add food item. Please try again.');
-      setIsAddingFood(false);
-    }
-  }, [planId, dayNumber, meal.type, onUpdate]);
+      }
+    },
+    [planId, dayNumber, meal.type, onUpdate]
+  );
 
   const handleUpdateFood = async (itemIndex, foodData) => {
     try {
-      await dietPlanService.updateFoodItem(planId, dayNumber, meal.type, itemIndex, foodData);
+      await dietPlanService.updateFoodItem(
+        planId,
+        dayNumber,
+        meal.type,
+        itemIndex,
+        foodData
+      );
       onUpdate?.();
     } catch (error) {
-      console.error('Error updating food item:', error);
-      alert('Failed to update food item. Please try again.');
+      console.error("Error updating food item:", error);
+      alert("Failed to update food item. Please try again.");
     }
   };
 
   const handleDeleteFood = async (itemIndex) => {
-    if (!confirm('Are you sure you want to remove this food item?')) return;
-    
+    if (!confirm("Are you sure you want to remove this food item?")) return;
+
     try {
-      await dietPlanService.deleteFoodItem(planId, dayNumber, meal.type, itemIndex);
+      await dietPlanService.deleteFoodItem(
+        planId,
+        dayNumber,
+        meal.type,
+        itemIndex
+      );
       onUpdate?.();
     } catch (error) {
-      console.error('Error deleting food item:', error);
-      alert('Failed to delete food item. Please try again.');
+      console.error("Error deleting food item:", error);
+      alert("Failed to delete food item. Please try again.");
     }
   };
 
   const handleOpenModal = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (isProcessingRef.current) {
-      console.log('Already processing, ignoring click');
+      console.log("Already processing, ignoring click");
       return;
     }
-    
-    console.log('Opening modal');
+
+    console.log("Opening modal");
     isProcessingRef.current = true;
-    
-    setIsAddingFood(prev => {
+
+    setIsAddingFood((prev) => {
       if (prev === true) {
-        console.log('Modal already open, ignoring');
+        console.log("Modal already open, ignoring");
         return prev;
       }
-      console.log('Setting isAddingFood from', prev, 'to true');
+      console.log("Setting isAddingFood from", prev, "to true");
       return true;
     });
-    
+
     // Reset the processing flag after a short delay
     setTimeout(() => {
       isProcessingRef.current = false;
@@ -86,49 +120,49 @@ export default function MealCard({ meal, planId, dayNumber, onUpdate }) {
   }, []);
 
   const handleCloseModal = useCallback(() => {
-    console.log('Closing modal');
+    console.log("Closing modal");
     isProcessingRef.current = false; // Reset processing flag
-    setIsAddingFood(prev => {
-      console.log('Setting isAddingFood from', prev, 'to false');
+    setIsAddingFood((prev) => {
+      console.log("Setting isAddingFood from", prev, "to false");
       return false;
     });
   }, []);
 
   const getMealIcon = (mealType) => {
     const icons = {
-      'Breakfast': '🌅',
-      'Lunch': '☀️',
-      'Dinner': '🌙',
-      'Snacks': '🍎',
-      'Pre-Workout': '💪',
-      'Post-Workout': '🥤'
+      Breakfast: "🌅",
+      Lunch: "☀️",
+      Dinner: "🌙",
+      Snacks: "🍎",
+      "Pre-Workout": "💪",
+      "Post-Workout": "🥤",
     };
-    return icons[mealType] || '🍽️';
+    return icons[mealType] || "🍽️";
   };
 
   const getMealColor = (mealType) => {
     const colors = {
-      'Breakfast': 'from-orange-500 to-yellow-500',
-      'Lunch': 'from-blue-500 to-cyan-500',
-      'Dinner': 'from-purple-500 to-indigo-500',
-      'Snacks': 'from-green-500 to-emerald-500',
-      'Pre-Workout': 'from-red-500 to-pink-500',
-      'Post-Workout': 'from-teal-500 to-cyan-500'
+      Breakfast: "from-orange-500 to-yellow-500",
+      Lunch: "from-blue-500 to-cyan-500",
+      Dinner: "from-purple-500 to-indigo-500",
+      Snacks: "from-green-500 to-emerald-500",
+      "Pre-Workout": "from-red-500 to-pink-500",
+      "Post-Workout": "from-teal-500 to-cyan-500",
     };
-    return colors[mealType] || 'from-gray-500 to-gray-600';
+    return colors[mealType] || "from-gray-500 to-gray-600";
   };
 
   return (
     <>
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
         {/* Meal Header */}
-        <div className={`bg-gradient-to-r ${getMealColor(meal.type)} px-4 py-3`}>
+        <div
+          className={`bg-gradient-to-r ${getMealColor(meal.type)} px-4 py-3`}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <span className="text-xl">{getMealIcon(meal.type)}</span>
-              <h3 className="text-lg font-semibold text-white">
-                {meal.type}
-              </h3>
+              <h3 className="text-lg font-semibold text-white">{meal.type}</h3>
               <span className="text-white/80 text-sm">
                 ({meal.items.length} items)
               </span>
@@ -149,7 +183,9 @@ export default function MealCard({ meal, planId, dayNumber, onUpdate }) {
               <p className="text-sm font-semibold text-red-600 dark:text-red-400">
                 {Math.round(mealTotals.protein)}g
               </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Protein</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Protein
+              </p>
             </div>
             <div>
               <p className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">

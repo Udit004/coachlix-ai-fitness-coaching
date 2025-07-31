@@ -47,7 +47,7 @@ export default function WorkoutSessionPage() {
     if (planId && user) {
       loadWorkoutData(planId, weekNumber, dayNumber, workoutId);
     }
-
+    router.prefetch(`/workout-plan/${planId}`);
     // Cleanup on unmount
     return () => {
       reset();
