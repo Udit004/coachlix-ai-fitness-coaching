@@ -2,7 +2,7 @@
 import React, { useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../../../../hooks/useAuth";
-import useWorkoutSessionStore from '@/stores/workoutSessionStore';
+import useWorkoutSessionStore from "@/stores/workoutSessionStore";
 import AddExerciseModal from "../AddExerciseModal";
 
 // Components

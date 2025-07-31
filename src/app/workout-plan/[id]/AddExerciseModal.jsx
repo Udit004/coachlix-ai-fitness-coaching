@@ -26,29 +26,65 @@ export default function AddExerciseModal({ onClose, onAdd }) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
+  // Add these state variables at the top of your component
+  const [aiExercise, setAiExercise] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showAiResult, setShowAiResult] = useState(false);
+
   const categories = [
-    "Strength", "Cardio", "Flexibility", "Sports", "Functional", "Plyometric", "Balance"
+    "Strength",
+    "Cardio",
+    "Flexibility",
+    "Sports",
+    "Functional",
+    "Plyometric",
+    "Balance",
   ];
 
   const muscleGroups = [
-    "Chest", "Back", "Shoulders", "Arms", "Legs", "Core", "Glutes", "Calves", "Forearms", "Full Body"
+    "Chest",
+    "Back",
+    "Shoulders",
+    "Arms",
+    "Legs",
+    "Core",
+    "Glutes",
+    "Calves",
+    "Forearms",
+    "Full Body",
   ];
 
   const equipment = [
-    "Barbell", "Dumbbell", "Machine", "Cable", "Bodyweight", "Resistance Band", 
-    "Kettlebell", "Medicine Ball", "TRX", "Cardio Equipment", "Pull-up Bar", "Bench"
+    "Barbell",
+    "Dumbbell",
+    "Machine",
+    "Cable",
+    "Bodyweight",
+    "Resistance Band",
+    "Kettlebell",
+    "Medicine Ball",
+    "TRX",
+    "Cardio Equipment",
+    "Pull-up Bar",
+    "Bench",
   ];
 
   const difficulties = ["Beginner", "Intermediate", "Advanced"];
 
   useEffect(() => {
     fetchExercises();
-  }, [searchTerm, selectedCategory, selectedMuscleGroup, selectedEquipment, selectedDifficulty]);
+  }, [
+    searchTerm,
+    selectedCategory,
+    selectedMuscleGroup,
+    selectedEquipment,
+    selectedDifficulty,
+  ]);
 
   const fetchExercises = async (pageNum = 1) => {
     try {
       setLoading(pageNum === 1);
-      
+
       const options = {
         page: pageNum,
         limit: 20,
@@ -65,7 +101,7 @@ export default function AddExerciseModal({ onClose, onAdd }) {
       if (pageNum === 1) {
         setExercises(newExercises);
       } else {
-        setExercises(prev => [...prev, ...newExercises]);
+        setExercises((prev) => [...prev, ...newExercises]);
       }
 
       setHasMore(newExercises.length === 20);
@@ -84,10 +120,10 @@ export default function AddExerciseModal({ onClose, onAdd }) {
   };
 
   const toggleExerciseSelection = (exercise) => {
-    setSelectedExercises(prev => {
-      const exists = prev.find(e => e._id === exercise._id);
+    setSelectedExercises((prev) => {
+      const exists = prev.find((e) => e._id === exercise._id);
       if (exists) {
-        return prev.filter(e => e._id !== exercise._id);
+        return prev.filter((e) => e._id !== exercise._id);
       } else {
         return [...prev, exercise];
       }
@@ -97,7 +133,7 @@ export default function AddExerciseModal({ onClose, onAdd }) {
   const handleAddExercises = () => {
     if (selectedExercises.length === 0) return;
 
-    const exercisesToAdd = selectedExercises.map(exercise => ({
+    const exercisesToAdd = selectedExercises.map((exercise) => ({
       name: exercise.name,
       category: exercise.category,
       muscleGroups: exercise.primaryMuscleGroups,
@@ -108,7 +144,7 @@ export default function AddExerciseModal({ onClose, onAdd }) {
       targetReps: exercise.metrics?.defaultReps || "8-12",
       targetWeight: 0,
       sets: [],
-      isCompleted: false
+      isCompleted: false,
     }));
 
     onAdd(exercisesToAdd);
@@ -135,6 +171,22 @@ export default function AddExerciseModal({ onClose, onAdd }) {
     setSelectedDifficulty("");
   };
 
+  // Add this function to handle AI search
+  const searchWithAI = async (searchTerm) => {
+    if (!searchTerm || searchTerm.length < 3) return;
+
+    try {
+      setAiLoading(true);
+      const response = await exerciseService.searchExerciseWithAI(searchTerm);
+      setAiExercise(response.exercise);
+      setShowAiResult(true);
+    } catch (error) {
+      console.error("AI search failed:", error);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
@@ -150,7 +202,8 @@ export default function AddExerciseModal({ onClose, onAdd }) {
               </h2>
               {selectedExercises.length > 0 && (
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {selectedExercises.length} exercise{selectedExercises.length !== 1 ? 's' : ''} selected
+                  {selectedExercises.length} exercise
+                  {selectedExercises.length !== 1 ? "s" : ""} selected
                 </p>
               )}
             </div>
@@ -166,7 +219,6 @@ export default function AddExerciseModal({ onClose, onAdd }) {
         {/* Search and Filters */}
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
-            {/* Search */}
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
@@ -178,17 +230,79 @@ export default function AddExerciseModal({ onClose, onAdd }) {
               />
             </div>
 
-            {/* Filter Toggle */}
+            {/* Add AI Search Button */}
+            <button
+              onClick={() => searchWithAI(searchTerm)}
+              disabled={aiLoading || searchTerm.length < 3}
+              className="flex items-center space-x-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+            >
+              <span>🤖</span>
+              <span>{aiLoading ? "Searching..." : "AI Search"}</span>
+            </button>
+
             <button
               onClick={() => setShowFilters(!showFilters)}
               className="flex items-center space-x-2 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               <Filter className="h-5 w-5" />
               <span>Filters</span>
-              <ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${
+                  showFilters ? "rotate-180" : ""
+                }`}
+              />
             </button>
           </div>
+          {showAiResult && aiExercise && (
+            <div className="mb-6 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-purple-900 dark:text-purple-100 flex items-center space-x-2">
+                  <span>🤖</span>
+                  <span>AI Generated Exercise</span>
+                </h3>
+                <button
+                  onClick={() => setShowAiResult(false)}
+                  className="text-purple-600 hover:text-purple-800"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
 
+              <div className="space-y-3">
+                <h4 className="font-medium text-lg">{aiExercise.name}</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {aiExercise.description}
+                </p>
+
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-2 py-1 bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200 rounded text-xs">
+                    {aiExercise.category}
+                  </span>
+                  <span className="px-2 py-1 bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200 rounded text-xs">
+                    {aiExercise.difficulty}
+                  </span>
+                  {aiExercise.primaryMuscleGroups?.map((muscle) => (
+                    <span
+                      key={muscle}
+                      className="px-2 py-1 bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200 rounded text-xs"
+                    >
+                      {muscle}
+                    </span>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => {
+                    toggleExerciseSelection(aiExercise);
+                    setShowAiResult(false);
+                  }}
+                  className="w-full mt-3 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                >
+                  Add This Exercise
+                </button>
+              </div>
+            </div>
+          )}
           {/* Filters */}
           {showFilters && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
@@ -198,8 +312,10 @@ export default function AddExerciseModal({ onClose, onAdd }) {
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 <option value="">All Categories</option>
-                {categories.map(category => (
-                  <option key={category} value={category}>{category}</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
                 ))}
               </select>
 
@@ -209,8 +325,10 @@ export default function AddExerciseModal({ onClose, onAdd }) {
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 <option value="">All Muscle Groups</option>
-                {muscleGroups.map(group => (
-                  <option key={group} value={group}>{group}</option>
+                {muscleGroups.map((group) => (
+                  <option key={group} value={group}>
+                    {group}
+                  </option>
                 ))}
               </select>
 
@@ -220,8 +338,10 @@ export default function AddExerciseModal({ onClose, onAdd }) {
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 <option value="">All Equipment</option>
-                {equipment.map(eq => (
-                  <option key={eq} value={eq}>{eq}</option>
+                {equipment.map((eq) => (
+                  <option key={eq} value={eq}>
+                    {eq}
+                  </option>
                 ))}
               </select>
 
@@ -231,8 +351,10 @@ export default function AddExerciseModal({ onClose, onAdd }) {
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 <option value="">All Difficulties</option>
-                {difficulties.map(diff => (
-                  <option key={diff} value={diff}>{diff}</option>
+                {difficulties.map((diff) => (
+                  <option key={diff} value={diff}>
+                    {diff}
+                  </option>
                 ))}
               </select>
 
@@ -251,26 +373,32 @@ export default function AddExerciseModal({ onClose, onAdd }) {
           {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">Loading exercises...</p>
+              <p className="text-gray-600 dark:text-gray-400 mt-2">
+                Loading exercises...
+              </p>
             </div>
           ) : exercises.length === 0 ? (
             <div className="text-center py-8">
               <Dumbbell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-gray-400">No exercises found</p>
+              <p className="text-gray-600 dark:text-gray-400">
+                No exercises found
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
               {exercises.map((exercise) => {
-                const isSelected = selectedExercises.find(e => e._id === exercise._id);
-                
+                const isSelected = selectedExercises.find(
+                  (e) => e._id === exercise._id
+                );
+
                 return (
                   <div
                     key={exercise._id}
                     onClick={() => toggleExerciseSelection(exercise)}
                     className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
                       isSelected
-                        ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                        ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
                     }`}
                   >
                     <div className="flex items-start justify-between">
@@ -279,11 +407,15 @@ export default function AddExerciseModal({ onClose, onAdd }) {
                           <h3 className="font-semibold text-gray-900 dark:text-white">
                             {exercise.name}
                           </h3>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(exercise.difficulty)}`}>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(
+                              exercise.difficulty
+                            )}`}
+                          >
                             {exercise.difficulty}
                           </span>
                         </div>
-                        
+
                         {exercise.description && (
                           <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
                             {exercise.description}
@@ -295,11 +427,14 @@ export default function AddExerciseModal({ onClose, onAdd }) {
                             <Target className="h-4 w-4" />
                             <span>{exercise.category}</span>
                           </span>
-                          
+
                           {exercise.primaryMuscleGroups?.length > 0 && (
                             <span>
-                              {exercise.primaryMuscleGroups.slice(0, 2).join(", ")}
-                              {exercise.primaryMuscleGroups.length > 2 && ` +${exercise.primaryMuscleGroups.length - 2}`}
+                              {exercise.primaryMuscleGroups
+                                .slice(0, 2)
+                                .join(", ")}
+                              {exercise.primaryMuscleGroups.length > 2 &&
+                                ` +${exercise.primaryMuscleGroups.length - 2}`}
                             </span>
                           )}
 
@@ -307,24 +442,30 @@ export default function AddExerciseModal({ onClose, onAdd }) {
                             <span className="flex items-center space-x-1">
                               <Dumbbell className="h-4 w-4" />
                               <span>{exercise.equipment[0]}</span>
-                              {exercise.equipment.length > 1 && <span>+{exercise.equipment.length - 1}</span>}
+                              {exercise.equipment.length > 1 && (
+                                <span>+{exercise.equipment.length - 1}</span>
+                              )}
                             </span>
                           )}
 
                           {exercise.metrics && (
                             <span className="flex items-center space-x-1">
                               <Clock className="h-4 w-4" />
-                              <span>{exercise.metrics.defaultSets || 3} sets</span>
+                              <span>
+                                {exercise.metrics.defaultSets || 3} sets
+                              </span>
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <div className={`p-2 rounded-lg ${
-                        isSelected 
-                          ? 'bg-blue-600 text-white' 
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-400'
-                      }`}>
+                      <div
+                        className={`p-2 rounded-lg ${
+                          isSelected
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-100 dark:bg-gray-700 text-gray-400"
+                        }`}
+                      >
                         <Check className="h-5 w-5" />
                       </div>
                     </div>
@@ -340,7 +481,7 @@ export default function AddExerciseModal({ onClose, onAdd }) {
                     disabled={loading}
                     className="px-6 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors disabled:opacity-50"
                   >
-                    {loading ? 'Loading...' : 'Load More'}
+                    {loading ? "Loading..." : "Load More"}
                   </button>
                 </div>
               )}
@@ -351,9 +492,10 @@ export default function AddExerciseModal({ onClose, onAdd }) {
         {/* Footer */}
         <div className="flex items-center justify-between p-6 border-t border-gray-200 dark:border-gray-700">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            {selectedExercises.length} exercise{selectedExercises.length !== 1 ? 's' : ''} selected
+            {selectedExercises.length} exercise
+            {selectedExercises.length !== 1 ? "s" : ""} selected
           </p>
-          
+
           <div className="flex items-center space-x-3">
             <button
               onClick={onClose}
@@ -366,7 +508,8 @@ export default function AddExerciseModal({ onClose, onAdd }) {
               disabled={selectedExercises.length === 0}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
             >
-              Add {selectedExercises.length > 0 ? selectedExercises.length : ''} Exercise{selectedExercises.length !== 1 ? 's' : ''}
+              Add {selectedExercises.length > 0 ? selectedExercises.length : ""}{" "}
+              Exercise{selectedExercises.length !== 1 ? "s" : ""}
             </button>
           </div>
         </div>

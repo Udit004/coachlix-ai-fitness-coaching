@@ -1,6 +1,6 @@
 // components/workout-session/EmptyState.jsx
 import React from 'react';
-import { Dumbbell, Plus } from 'lucide-react';
+import { ArrowLeft, Dumbbell, Plus } from 'lucide-react';
 
 const EmptyState = ({ 
   planId, 

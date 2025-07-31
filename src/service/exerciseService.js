@@ -1,22 +1,25 @@
 // services/exerciseService.js
 class ExerciseService {
   constructor() {
-    this.baseURL = '/api/exercises';
+    this.baseURL = "/api/exercises";
   }
 
   // Helper method to get auth headers
   getAuthHeaders() {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token =
+      localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
     return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     };
   }
 
   // Handle API responses
   async handleResponse(response) {
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Unknown error occurred' }));
+      const error = await response
+        .json()
+        .catch(() => ({ message: "Unknown error occurred" }));
       throw new Error(error.message || `HTTP ${response.status}`);
     }
     return response.json();
@@ -26,30 +29,32 @@ class ExerciseService {
   async getExercises(options = {}) {
     try {
       const params = new URLSearchParams();
-      
-      if (options.search) params.append('search', options.search);
-      if (options.category) params.append('category', options.category);
-      if (options.difficulty) params.append('difficulty', options.difficulty);
+
+      if (options.search) params.append("search", options.search);
+      if (options.category) params.append("category", options.category);
+      if (options.difficulty) params.append("difficulty", options.difficulty);
       if (options.equipment && options.equipment.length > 0) {
-        params.append('equipment', options.equipment.join(','));
+        params.append("equipment", options.equipment.join(","));
       }
       if (options.muscleGroups && options.muscleGroups.length > 0) {
-        params.append('muscleGroups', options.muscleGroups.join(','));
+        params.append("muscleGroups", options.muscleGroups.join(","));
       }
-      if (options.popular) params.append('popular', 'true');
-      if (options.limit) params.append('limit', options.limit.toString());
-      if (options.page) params.append('page', options.page.toString());
+      if (options.popular) params.append("popular", "true");
+      if (options.limit) params.append("limit", options.limit.toString());
+      if (options.page) params.append("page", options.page.toString());
 
-      const url = `${this.baseURL}${params.toString() ? `?${params.toString()}` : ''}`;
-      
+      const url = `${this.baseURL}${
+        params.toString() ? `?${params.toString()}` : ""
+      }`;
+
       const response = await fetch(url, {
-        method: 'GET',
+        method: "GET",
         headers: this.getAuthHeaders(),
       });
 
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Error fetching exercises:', error);
+      console.error("Error fetching exercises:", error);
       throw error;
     }
   }
@@ -58,13 +63,13 @@ class ExerciseService {
   async getExercise(exerciseId) {
     try {
       const response = await fetch(`${this.baseURL}/${exerciseId}`, {
-        method: 'GET',
+        method: "GET",
         headers: this.getAuthHeaders(),
       });
 
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Error fetching exercise:', error);
+      console.error("Error fetching exercise:", error);
       throw error;
     }
   }
@@ -73,14 +78,14 @@ class ExerciseService {
   async createExercise(exerciseData) {
     try {
       const response = await fetch(this.baseURL, {
-        method: 'POST',
+        method: "POST",
         headers: this.getAuthHeaders(),
         body: JSON.stringify(exerciseData),
       });
 
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Error creating exercise:', error);
+      console.error("Error creating exercise:", error);
       throw error;
     }
   }
@@ -89,14 +94,14 @@ class ExerciseService {
   async updateExercise(exerciseId, updateData) {
     try {
       const response = await fetch(`${this.baseURL}/${exerciseId}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: this.getAuthHeaders(),
         body: JSON.stringify(updateData),
       });
 
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Error updating exercise:', error);
+      console.error("Error updating exercise:", error);
       throw error;
     }
   }
@@ -105,13 +110,13 @@ class ExerciseService {
   async deleteExercise(exerciseId) {
     try {
       const response = await fetch(`${this.baseURL}/${exerciseId}`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: this.getAuthHeaders(),
       });
 
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Error deleting exercise:', error);
+      console.error("Error deleting exercise:", error);
       throw error;
     }
   }
@@ -120,14 +125,14 @@ class ExerciseService {
   async rateExercise(exerciseId, rating) {
     try {
       const response = await fetch(`${this.baseURL}/${exerciseId}/rate`, {
-        method: 'POST',
+        method: "POST",
         headers: this.getAuthHeaders(),
         body: JSON.stringify({ rating }),
       });
 
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Error rating exercise:', error);
+      console.error("Error rating exercise:", error);
       throw error;
     }
   }
@@ -136,13 +141,13 @@ class ExerciseService {
   async toggleFavorite(exerciseId) {
     try {
       const response = await fetch(`${this.baseURL}/${exerciseId}/favorite`, {
-        method: 'POST',
+        method: "POST",
         headers: this.getAuthHeaders(),
       });
 
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Error toggling favorite:', error);
+      console.error("Error toggling favorite:", error);
       throw error;
     }
   }
@@ -152,7 +157,7 @@ class ExerciseService {
     try {
       return this.getExercises({ popular: true, limit });
     } catch (error) {
-      console.error('Error fetching popular exercises:', error);
+      console.error("Error fetching popular exercises:", error);
       throw error;
     }
   }
@@ -161,19 +166,24 @@ class ExerciseService {
   async getRecommendedExercises(userLevel, equipment, muscleGroups) {
     try {
       const params = new URLSearchParams();
-      if (userLevel) params.append('difficulty', userLevel);
-      if (equipment?.length > 0) params.append('equipment', equipment.join(','));
-      if (muscleGroups?.length > 0) params.append('muscleGroups', muscleGroups.join(','));
-      params.append('recommended', 'true');
+      if (userLevel) params.append("difficulty", userLevel);
+      if (equipment?.length > 0)
+        params.append("equipment", equipment.join(","));
+      if (muscleGroups?.length > 0)
+        params.append("muscleGroups", muscleGroups.join(","));
+      params.append("recommended", "true");
 
-      const response = await fetch(`${this.baseURL}/recommended?${params.toString()}`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
+      const response = await fetch(
+        `${this.baseURL}/recommended?${params.toString()}`,
+        {
+          method: "GET",
+          headers: this.getAuthHeaders(),
+        }
+      );
 
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Error fetching recommended exercises:', error);
+      console.error("Error fetching recommended exercises:", error);
       throw error;
     }
   }
@@ -182,13 +192,13 @@ class ExerciseService {
   async getCategories() {
     try {
       const response = await fetch(`${this.baseURL}/categories`, {
-        method: 'GET',
+        method: "GET",
         headers: this.getAuthHeaders(),
       });
 
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error("Error fetching categories:", error);
       throw error;
     }
   }
@@ -197,13 +207,13 @@ class ExerciseService {
   async getMuscleGroups() {
     try {
       const response = await fetch(`${this.baseURL}/muscle-groups`, {
-        method: 'GET',
+        method: "GET",
         headers: this.getAuthHeaders(),
       });
 
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Error fetching muscle groups:', error);
+      console.error("Error fetching muscle groups:", error);
       throw error;
     }
   }
@@ -212,13 +222,13 @@ class ExerciseService {
   async getEquipment() {
     try {
       const response = await fetch(`${this.baseURL}/equipment`, {
-        method: 'GET',
+        method: "GET",
         headers: this.getAuthHeaders(),
       });
 
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Error fetching equipment:', error);
+      console.error("Error fetching equipment:", error);
       throw error;
     }
   }
@@ -228,10 +238,10 @@ class ExerciseService {
     try {
       return this.getExercises({
         search: searchTerm,
-        ...filters
+        ...filters,
       });
     } catch (error) {
-      console.error('Error searching exercises:', error);
+      console.error("Error searching exercises:", error);
       throw error;
     }
   }
@@ -241,10 +251,10 @@ class ExerciseService {
     try {
       return this.getExercises({
         category,
-        ...additionalFilters
+        ...additionalFilters,
       });
     } catch (error) {
-      console.error('Error fetching exercises by category:', error);
+      console.error("Error fetching exercises by category:", error);
       throw error;
     }
   }
@@ -254,10 +264,10 @@ class ExerciseService {
     try {
       return this.getExercises({
         muscleGroups: [muscleGroup],
-        ...additionalFilters
+        ...additionalFilters,
       });
     } catch (error) {
-      console.error('Error fetching exercises by muscle group:', error);
+      console.error("Error fetching exercises by muscle group:", error);
       throw error;
     }
   }
@@ -267,26 +277,32 @@ class ExerciseService {
     try {
       return this.getExercises({
         equipment: Array.isArray(equipment) ? equipment : [equipment],
-        ...additionalFilters
+        ...additionalFilters,
       });
     } catch (error) {
-      console.error('Error fetching exercises by equipment:', error);
+      console.error("Error fetching exercises by equipment:", error);
       throw error;
     }
   }
 
   // Get exercises for workout plan creation
-  async getExercisesForWorkout(workoutType, difficulty, muscleGroups, equipment, duration) {
+  async getExercisesForWorkout(
+    workoutType,
+    difficulty,
+    muscleGroups,
+    equipment,
+    duration
+  ) {
     try {
       const filters = {
         difficulty,
         limit: Math.ceil(duration / 10), // Rough estimate of exercises needed
       };
 
-      if (workoutType === 'Strength') {
-        filters.category = 'Strength';
-      } else if (workoutType === 'Cardio') {
-        filters.category = 'Cardio';
+      if (workoutType === "Strength") {
+        filters.category = "Strength";
+      } else if (workoutType === "Cardio") {
+        filters.category = "Cardio";
       }
 
       if (muscleGroups?.length > 0) {
@@ -299,23 +315,23 @@ class ExerciseService {
 
       return this.getExercises(filters);
     } catch (error) {
-      console.error('Error fetching exercises for workout:', error);
+      console.error("Error fetching exercises for workout:", error);
       throw error;
     }
   }
 
   // Log exercise usage for analytics
-  async logExerciseUsage(exerciseId, context = 'workout') {
+  async logExerciseUsage(exerciseId, context = "workout") {
     try {
       const response = await fetch(`${this.baseURL}/${exerciseId}/log-usage`, {
-        method: 'POST',
+        method: "POST",
         headers: this.getAuthHeaders(),
         body: JSON.stringify({ context }),
       });
 
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Error logging exercise usage:', error);
+      console.error("Error logging exercise usage:", error);
       // Don't throw error for analytics, just log it
     }
   }
@@ -324,13 +340,13 @@ class ExerciseService {
   async getExerciseStats(exerciseId) {
     try {
       const response = await fetch(`${this.baseURL}/${exerciseId}/stats`, {
-        method: 'GET',
+        method: "GET",
         headers: this.getAuthHeaders(),
       });
 
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Error fetching exercise stats:', error);
+      console.error("Error fetching exercise stats:", error);
       throw error;
     }
   }
@@ -339,13 +355,13 @@ class ExerciseService {
   async getFavoriteExercises() {
     try {
       const response = await fetch(`${this.baseURL}/favorites`, {
-        method: 'GET',
+        method: "GET",
         headers: this.getAuthHeaders(),
       });
 
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Error fetching favorite exercises:', error);
+      console.error("Error fetching favorite exercises:", error);
       throw error;
     }
   }
@@ -354,16 +370,37 @@ class ExerciseService {
   async getExerciseHistory(exerciseId, limit = 10) {
     try {
       const params = new URLSearchParams();
-      if (limit) params.append('limit', limit.toString());
+      if (limit) params.append("limit", limit.toString());
 
-      const response = await fetch(`${this.baseURL}/${exerciseId}/history?${params.toString()}`, {
-        method: 'GET',
+      const response = await fetch(
+        `${this.baseURL}/${exerciseId}/history?${params.toString()}`,
+        {
+          method: "GET",
+          headers: this.getAuthHeaders(),
+        }
+      );
+
+      return this.handleResponse(response);
+    } catch (error) {
+      console.error("Error fetching exercise history:", error);
+      throw error;
+    }
+  }
+
+  // Add this method to your ExerciseService class in exerciseService.js
+
+  // AI-powered exercise search
+  async searchExerciseWithAI(exerciseName) {
+    try {
+      const response = await fetch("/api/exercises/ai-search", {
+        method: "POST",
         headers: this.getAuthHeaders(),
+        body: JSON.stringify({ exerciseName }),
       });
 
       return this.handleResponse(response);
     } catch (error) {
-      console.error('Error fetching exercise history:', error);
+      console.error("Error searching exercise with AI:", error);
       throw error;
     }
   }
