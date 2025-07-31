@@ -1,7 +1,7 @@
 // components/workout-session/WorkoutTimer.jsx
 import React, { useEffect, useRef } from 'react';
 import { Timer, Target } from 'lucide-react';
-import useWorkoutSessionStore from '../../stores/workoutSessionStore';
+import useWorkoutSessionStore from '@/stores/workoutSessionStore';
 
 const WorkoutTimer = () => {
   const {

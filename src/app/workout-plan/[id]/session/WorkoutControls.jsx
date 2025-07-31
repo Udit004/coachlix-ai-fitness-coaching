@@ -1,7 +1,7 @@
 // components/workout-session/WorkoutControls.jsx
 import React from 'react';
 import { Play, Pause, SkipForward, SkipBack } from 'lucide-react';
-import useWorkoutSessionStore from '../../stores/workoutSessionStore';
+import useWorkoutSessionStore from '@/stores/workoutSessionStore';
 
 const WorkoutControls = ({ 
   planId, 

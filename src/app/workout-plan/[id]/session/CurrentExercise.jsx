@@ -1,6 +1,6 @@
 // components/workout-session/CurrentExercise.jsx
 import React from 'react';
-import useWorkoutSessionStore from '../../stores/workoutSessionStore';
+import useWorkoutSessionStore from '@/stores/workoutSessionStore';
 
 const CurrentExercise = () => {
   const {

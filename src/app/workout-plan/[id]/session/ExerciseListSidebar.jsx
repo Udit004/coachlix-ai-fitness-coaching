@@ -1,7 +1,7 @@
 // components/workout-session/ExerciseListSidebar.jsx
 import React from 'react';
 import { CheckCircle, Circle, Plus } from 'lucide-react';
-import useWorkoutSessionStore from '../../stores/workoutSessionStore';
+import useWorkoutSessionStore from '@/stores/workoutSessionStore';
 
 const ExerciseListSidebar = ({ onAddExercise }) => {
   const {

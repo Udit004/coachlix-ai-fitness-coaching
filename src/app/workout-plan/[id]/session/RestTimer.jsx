@@ -1,6 +1,6 @@
 // components/workout-session/RestTimer.jsx
 import React, { useEffect, useRef } from 'react';
-import useWorkoutSessionStore from '../../stores/workoutSessionStore';
+import useWorkoutSessionStore from '@/stores/workoutSessionStore';
 
 const RestTimer = () => {
   const {
