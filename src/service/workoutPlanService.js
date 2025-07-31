@@ -213,7 +213,7 @@ export const addExerciseToWorkout = async (planId, weekNumber, dayNumber, workou
     let url;
     if (typeof workoutId === 'number' || /^\d+$/.test(workoutId)) {
       // If workoutId is a number or numeric string, use index-based endpoint
-      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}/exercises`;
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`;
     } else {
       // If workoutId is an ObjectId, use the existing endpoint
       url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`;
@@ -500,6 +500,257 @@ export const getWorkoutByIndex = async (planId, weekNumber, dayNumber, workoutIn
   }
 };
 
+// Add exercise with AI search integration
+export const addExerciseWithAI = async (planId, weekNumber, dayNumber, workoutId, exerciseName, options = {}) => {
+  try {
+    const headers = await getAuthHeaders();
+    
+    const exerciseData = {
+      exerciseName: exerciseName.trim(),
+      useAI: true,
+      targetSets: options.targetSets || 3,
+      targetReps: options.targetReps || "8-12",
+      targetWeight: options.targetWeight || 0,
+      instructions: options.instructions,
+      category: options.category,
+      muscleGroups: options.muscleGroups,
+      equipment: options.equipment,
+      difficulty: options.difficulty
+    };
+
+    let url;
+    if (typeof workoutId === 'number' || /^\d+$/.test(workoutId)) {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}/exercises`;
+    } else {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`;
+    }
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(exerciseData),
+    });
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error adding exercise with AI:", error);
+    throw error;
+  }
+};
+
+// Add existing exercise by ID
+export const addExistingExerciseById = async (planId, weekNumber, dayNumber, workoutId, exerciseId, options = {}) => {
+  try {
+    const headers = await getAuthHeaders();
+    
+    const exerciseData = {
+      exerciseId,
+      targetSets: options.targetSets || 3,
+      targetReps: options.targetReps || "8-12",
+      targetWeight: options.targetWeight || 0,
+      instructions: options.instructions
+    };
+
+    let url;
+    if (typeof workoutId === 'number' || /^\d+$/.test(workoutId)) {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}/exercises`;
+    } else {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`;
+    }
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(exerciseData),
+    });
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error adding existing exercise:", error);
+    throw error;
+  }
+};
+
+// Add custom exercise
+export const addCustomExerciseToWorkout = async (planId, weekNumber, dayNumber, workoutId, exerciseData) => {
+  try {
+    const headers = await getAuthHeaders();
+    
+    const customExerciseData = {
+      exerciseName: exerciseData.name || exerciseData.exerciseName,
+      customExercise: true,
+      category: exerciseData.category || "Strength",
+      muscleGroups: exerciseData.muscleGroups || [],
+      equipment: exerciseData.equipment || ["Bodyweight"],
+      difficulty: exerciseData.difficulty || "Beginner",
+      targetSets: exerciseData.targetSets || 3,
+      targetReps: exerciseData.targetReps || "8-12",
+      targetWeight: exerciseData.targetWeight || 0,
+      instructions: exerciseData.instructions || ""
+    };
+
+    let url;
+    if (typeof workoutId === 'number' || /^\d+$/.test(workoutId)) {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}/exercises`;
+    } else {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`;
+    }
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(customExerciseData),
+    });
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error adding custom exercise:", error);
+    throw error;
+  }
+};
+
+// Smart exercise addition - tries database first, then AI if not found
+export const addSmartExerciseToWorkout = async (planId, weekNumber, dayNumber, workoutId, exerciseName, options = {}) => {
+  try {
+    console.log("🎯 Smart exercise addition for:", exerciseName);
+
+    // First try to search exercises in database using exercise service
+    try {
+      const searchResults = await searchExercises(exerciseName);
+      
+      if (searchResults.exercises && searchResults.exercises.length > 0) {
+        // Found in database, use the first match
+        const foundExercise = searchResults.exercises[0];
+        console.log("✅ Found exercise in database:", foundExercise.name);
+        
+        return addExistingExerciseById(
+          planId, weekNumber, dayNumber, workoutId, 
+          foundExercise._id, 
+          options
+        );
+      }
+    } catch (searchError) {
+      console.warn("Database search failed, proceeding with AI:", searchError.message);
+    }
+
+    // Not found in database or search failed, use AI
+    console.log("🤖 Exercise not found in database, using AI");
+    
+    return addExerciseWithAI(
+      planId, weekNumber, dayNumber, workoutId, 
+      exerciseName, 
+      options
+    );
+  } catch (error) {
+    console.error("Error with smart exercise addition:", error);
+    throw error;
+  }
+};
+
+// Get workout exercises
+export const getWorkoutExercises = async (planId, weekNumber, dayNumber, workoutId) => {
+  try {
+    const headers = await getAuthHeaders();
+    
+    let url;
+    if (typeof workoutId === 'number' || /^\d+$/.test(workoutId)) {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}/exercises`;
+    } else {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`;
+    }
+    
+    const response = await fetch(url, {
+      method: "GET",
+      headers,
+    });
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error fetching workout exercises:", error);
+    throw error;
+  }
+};
+
+// Update workout exercises (bulk update or reorder)
+export const updateWorkoutExercises = async (planId, weekNumber, dayNumber, workoutId, exercises, action = 'update') => {
+  try {
+    const headers = await getAuthHeaders();
+    
+    let url;
+    if (typeof workoutId === 'number' || /^\d+$/.test(workoutId)) {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}/exercises`;
+    } else {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`;
+    }
+    
+    const response = await fetch(url, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ exercises, action }),
+    });
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error updating workout exercises:", error);
+    throw error;
+  }
+};
+
+// Batch add exercises to workout
+export const batchAddExercisesToWorkout = async (planId, weekNumber, dayNumber, workoutId, exercisesData) => {
+  try {
+    const results = [];
+    
+    for (const exerciseData of exercisesData) {
+      try {
+        let result;
+        
+        if (exerciseData.exerciseId) {
+          // Existing exercise
+          result = await addExistingExerciseById(
+            planId, weekNumber, dayNumber, workoutId,
+            exerciseData.exerciseId,
+            exerciseData.options || {}
+          );
+        } else if (exerciseData.exerciseName && exerciseData.useAI) {
+          // AI exercise
+          result = await addExerciseWithAI(
+            planId, weekNumber, dayNumber, workoutId,
+            exerciseData.exerciseName,
+            exerciseData.options || {}
+          );
+        } else if (exerciseData.exerciseName) {
+          // Smart addition
+          result = await addSmartExerciseToWorkout(
+            planId, weekNumber, dayNumber, workoutId,
+            exerciseData.exerciseName,
+            exerciseData.options || {}
+          );
+        } else {
+          // Custom exercise
+          result = await addCustomExerciseToWorkout(
+            planId, weekNumber, dayNumber, workoutId,
+            exerciseData
+          );
+        }
+        
+        results.push({ success: true, exercise: result.exercise });
+      } catch (error) {
+        results.push({ 
+          success: false, 
+          error: error.message,
+          exerciseName: exerciseData.exerciseName || exerciseData.name 
+        });
+      }
+    }
+    
+    return { results };
+  } catch (error) {
+    console.error("Error batch adding exercises:", error);
+    throw error;
+  }
+};
+
 // Default export with all functions for convenience
 const workoutPlanService = {
   getWorkoutPlans,
@@ -527,6 +778,10 @@ const workoutPlanService = {
   getPopularExercises,
   getWorkoutTemplates,
   getWorkoutByIndex,
+  addExerciseWithAI,
+  addExistingExerciseById,
+  addCustomExerciseToWorkout,
+
 };
 
 export default workoutPlanService;

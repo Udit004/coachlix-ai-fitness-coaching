@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
+import Link from 'next/link';
 import { useCustomTheme } from "@/context/CustomThemeProvider";
 
 export default function Navbar() {
@@ -89,7 +90,7 @@ export default function Navbar() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2">
               <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
-                <Dumbbell className="h-6 w-6 text-white" />
+                <img src="/assets/CoachlixLogo.png" alt="Logo" className="h-6 w-6" />
               </div>
               <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Coachlix
@@ -110,7 +111,7 @@ export default function Navbar() {
           {/* Logo */}
           <div className="flex items-center space-x-2">
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
-              <Dumbbell className="h-6 w-6 text-white" />
+                <img src="/assets/CoachlixLogo.png" alt="Logo" className="h-6 w-6" />
             </div>
             <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               Coachlix
@@ -120,13 +121,13 @@ export default function Navbar() {
           {/* Desktop Navigation - Hidden on tablet and below */}
           <div className="hidden lg:flex items-center space-x-8">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.name}
                 href={link.href}
                 className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:bg-blue-50 dark:hover:bg-gray-800"
               >
                 {link.name}
-              </a>
+              </Link>
             ))}
           </div>
 
@@ -148,18 +149,18 @@ export default function Navbar() {
 
             {!loading && !user && (
               <>
-                <a
+                <Link
                   href="/loginPage"
                   className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
                 >
                   Login
-                </a>
-                <a
+                </Link>
+                <Link
                   href="/signUpPage"
                   className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-full text-sm font-medium hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
                 >
                   Sign Up
-                </a>
+                </Link>
               </>
             )}
 
@@ -184,22 +185,22 @@ export default function Navbar() {
 
                 {showDropdown && (
                   <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-md shadow-lg py-1 z-[10000]">
-                    <a
+                    <Link
                       href="/profile"
                       onClick={closeDropdown}
                       className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
                       <User className="mr-2 w-4 h-4" />
                       Profile
-                    </a>
-                    <a
+                    </Link>
+                    <Link
                       href="/settings"
                       onClick={closeDropdown}
                       className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
                       <Settings className="mr-2 w-4 h-4" />
                       Settings
-                    </a>
+                    </Link>
                     <button
                       onClick={handleLogout}
                       className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -247,33 +248,33 @@ export default function Navbar() {
         >
           <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-800">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.name}
                 href={link.href}
                 className="block text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 px-3 py-2 rounded-md text-base font-medium transition-all duration-200"
                 onClick={() => setIsOpen(false)}
               >
                 {link.name}
-              </a>
+              </Link>
             ))}
 
             <div className="flex flex-col space-y-2 pt-4 border-t border-gray-100 dark:border-gray-800">
               {!loading && !user && (
                 <>
-                  <a
+                  <Link
                     href="/loginPage"
                     className="text-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
                     onClick={() => setIsOpen(false)}
                   >
                     Login
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/signUpPage"
                     className="text-center bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-full text-base font-medium hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
                     onClick={() => setIsOpen(false)}
                   >
                     Sign Up
-                  </a>
+                  </Link>
                 </>
               )}
 
@@ -292,22 +293,22 @@ export default function Navbar() {
                     <span>Hello, {getDisplayName()}</span>
                   </div>
                   <div className="flex flex-col space-y-2">
-                    <a
+                    <Link
                       href="/profile"
                       onClick={() => setIsOpen(false)}
                       className="flex items-center justify-center gap-2 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md transition-colors duration-200"
                     >
                       <User className="w-4 h-4" />
                       Profile
-                    </a>
-                    <a
+                    </Link>
+                    <Link
                       href="/settings"
                       onClick={() => setIsOpen(false)}
                       className="flex items-center justify-center gap-2 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md transition-colors duration-200"
                     >
                       <Settings className="w-4 h-4" />
                       Settings
-                    </a>
+                    </Link>
                     <button
                       onClick={handleLogout}
                       className="flex items-center justify-center gap-2 text-red-600 dark:text-red-400 hover:underline px-3 py-2"
