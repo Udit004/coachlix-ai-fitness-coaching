@@ -39,6 +39,11 @@ export default function DietPlanCard({ plan, onDelete, onClone }) {
 
   // Close menu on escape key
   useEffect(() => {
+
+    router.prefetch(`/diet-plan/${planId}`);
+    router.prefetch(`/diet-plans/${planId}/edit`);
+    router.prefetch(`/diet-plan/${planId}/start`);  
+
     const handleEscape = (event) => {
       if (event.key === 'Escape') {
         setShowMenu(false);

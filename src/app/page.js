@@ -91,9 +91,9 @@ const setupNotifications = async () => {
               console.log("Token saved:", result.tokenSaved);
 
               // Verify the token was saved by fetching it back
-              setTimeout(() => {
-                verifyFCMToken();
-              }, 1000);
+              // setTimeout(() => {
+              //   verifyFCMToken();
+              // }, 1000);
             } else {
               console.error("Failed to save FCM token:", result.message);
             }
@@ -127,6 +127,9 @@ const setupNotifications = async () => {
 
 // Updated useEffect to handle auth state properly
 useEffect(() => {
+
+  router.prefetch("/ai-chat");
+
   setMounted(true);
 
   // Register service worker
@@ -258,7 +261,7 @@ useEffect(() => {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
       {/* Notification Status Bar */}
-      {mounted && (
+      {/* {mounted && (
         <div className="bg-blue-100 px-4 py-2 text-center text-sm">
           <span className="mr-4">
             Notifications:{" "}
@@ -275,7 +278,7 @@ useEffect(() => {
             </button>
           )}
         </div>
-      )}
+      )} */}
 
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-blue-50 via-white to-purple-50 pt-20 pb-32 overflow-hidden">

@@ -50,6 +50,9 @@ export default function SingleDietPlanPage() {
 
   // Fixed useEffect - only run when user is available and not in auth loading state
   useEffect(() => {
+
+    router.prefetch(`/diet-plan/`);
+
     if (!authLoading && user && id) {
       loadDietPlan();
     } else if (!authLoading && !user) {
