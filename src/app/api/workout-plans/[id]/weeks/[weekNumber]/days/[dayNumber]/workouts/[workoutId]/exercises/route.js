@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import WorkoutPlan from '@/models/WorkoutPlan';
 import Exercise from '@/models/Exercise';
-import { verifyFirebaseToken } from '@/lib/firebase-admin';
+import { verifyUserToken } from "@/lib/verifyUser";
 
 export async function POST(request, { params }) {
   try {
@@ -11,17 +11,21 @@ export async function POST(request, { params }) {
     await connectDB();
 
     // Verify authentication
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    const authHeader =
+      request.headers.get("Authorization") ||
+      request.headers.get("authorization");
+    if (!authHeader) {
       return NextResponse.json(
-        { error: 'Authorization token required' },
+        { message: "Authorization header missing" },
         { status: 401 }
       );
     }
 
-    const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await verifyFirebaseToken(token);
-    const userId = decodedToken.uid;
+    const user = await verifyUserToken(authHeader);
+    if (!user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
 
     // Extract route parameters
     const { planId, weekNumber, dayNumber, workoutId } = params;
@@ -326,20 +330,22 @@ export async function POST(request, { params }) {
 export async function GET(request, { params }) {
   try {
     // Connect to database
-    await connectDB();
-
-    // Verify authentication
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    const authHeader =
+      request.headers.get("Authorization") ||
+      request.headers.get("authorization");
+    if (!authHeader) {
       return NextResponse.json(
-        { error: 'Authorization token required' },
+        { message: "Authorization header missing" },
         { status: 401 }
       );
     }
 
-    const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await verifyFirebaseToken(token);
-    const userId = decodedToken.uid;
+    const user = await verifyUserToken(authHeader);
+    if (!user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    await connectDB();
 
     // Extract route parameters
     const { planId, weekNumber, dayNumber, workoutId } = params;
@@ -407,21 +413,22 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   try {
     // Connect to database
-    await connectDB();
-
-    // Verify authentication
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    const authHeader =
+      request.headers.get("Authorization") ||
+      request.headers.get("authorization");
+    if (!authHeader) {
       return NextResponse.json(
-        { error: 'Authorization token required' },
+        { message: "Authorization header missing" },
         { status: 401 }
       );
     }
 
-    const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await verifyFirebaseToken(token);
-    const userId = decodedToken.uid;
+    const user = await verifyUserToken(authHeader);
+    if (!user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
 
+    await connectDB();
     // Extract route parameters
     const { planId, weekNumber, dayNumber, workoutId } = params;
     
