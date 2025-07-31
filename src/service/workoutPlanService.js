@@ -1,4 +1,4 @@
-// services/workoutPlanService.js
+// services/workoutPlanService.js - Fixed version
 import { auth } from "@/lib/firebase";
 
 const BASE_URL = "/api/workout-plans";
@@ -25,7 +25,7 @@ const handleResponse = async (response) => {
   }
 
   const data = await response.json();
-  return data; // Return the full response data
+  return data;
 };
 
 // Get all workout plans for current user
@@ -77,9 +77,7 @@ export const createWorkoutPlan = async (planData) => {
     });
 
     const data = await handleResponse(response);
-
-    // Based on your API, return the plan object
-    return data.plan || data; // Handle both response formats
+    return data.plan || data;
   } catch (error) {
     console.error("Error creating workout plan:", error);
     throw error;
@@ -206,18 +204,26 @@ export const addWorkoutToDay = async (planId, weekNumber, dayNumber, workoutData
   }
 };
 
-// Add exercise to workout
+// FIXED: Add exercise to workout - now accepts both index and ObjectId
 export const addExerciseToWorkout = async (planId, weekNumber, dayNumber, workoutId, exerciseData) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(
-      `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`,
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify(exerciseData),
-      }
-    );
+    
+    // Handle both array index and ObjectId cases
+    let url;
+    if (typeof workoutId === 'number' || /^\d+$/.test(workoutId)) {
+      // If workoutId is a number or numeric string, use index-based endpoint
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}/exercises`;
+    } else {
+      // If workoutId is an ObjectId, use the existing endpoint
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`;
+    }
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(exerciseData),
+    });
 
     return handleResponse(response);
   } catch (error) {
@@ -226,18 +232,24 @@ export const addExerciseToWorkout = async (planId, weekNumber, dayNumber, workou
   }
 };
 
-// Update exercise
+// FIXED: Update exercise - now accepts both index and ObjectId
 export const updateExercise = async (planId, weekNumber, dayNumber, workoutId, exerciseId, exerciseData) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(
-      `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises/${exerciseId}`,
-      {
-        method: "PUT",
-        headers,
-        body: JSON.stringify(exerciseData),
-      }
-    );
+    
+    // Handle both array index and ObjectId cases for workoutId
+    let url;
+    if (typeof workoutId === 'number' || /^\d+$/.test(workoutId)) {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}/exercises/${exerciseId}`;
+    } else {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises/${exerciseId}`;
+    }
+    
+    const response = await fetch(url, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(exerciseData),
+    });
 
     return handleResponse(response);
   } catch (error) {
@@ -246,17 +258,23 @@ export const updateExercise = async (planId, weekNumber, dayNumber, workoutId, e
   }
 };
 
-// Delete exercise
+// FIXED: Delete exercise - now accepts both index and ObjectId
 export const deleteExercise = async (planId, weekNumber, dayNumber, workoutId, exerciseId) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(
-      `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises/${exerciseId}`,
-      {
-        method: "DELETE",
-        headers,
-      }
-    );
+    
+    // Handle both array index and ObjectId cases for workoutId
+    let url;
+    if (typeof workoutId === 'number' || /^\d+$/.test(workoutId)) {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}/exercises/${exerciseId}`;
+    } else {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises/${exerciseId}`;
+    }
+    
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers,
+    });
 
     return handleResponse(response);
   } catch (error) {
@@ -329,17 +347,22 @@ export const getWorkoutStats = async (planId) => {
   }
 };
 
-// Start workout session
+// FIXED: Start workout session - now accepts both index and ObjectId
 export const startWorkoutSession = async (planId, weekNumber, dayNumber, workoutId) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(
-      `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/start`,
-      {
-        method: "POST",
-        headers,
-      }
-    );
+    
+    let url;
+    if (typeof workoutId === 'number' || /^\d+$/.test(workoutId)) {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}/start`;
+    } else {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/start`;
+    }
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+    });
 
     return handleResponse(response);
   } catch (error) {
@@ -348,18 +371,23 @@ export const startWorkoutSession = async (planId, weekNumber, dayNumber, workout
   }
 };
 
-// Complete workout session
+// FIXED: Complete workout session - now accepts both index and ObjectId
 export const completeWorkoutSession = async (planId, weekNumber, dayNumber, workoutId, sessionData) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(
-      `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/complete`,
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify(sessionData),
-      }
-    );
+    
+    let url;
+    if (typeof workoutId === 'number' || /^\d+$/.test(workoutId)) {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}/complete`;
+    } else {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/complete`;
+    }
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(sessionData),
+    });
 
     return handleResponse(response);
   } catch (error) {
@@ -368,18 +396,23 @@ export const completeWorkoutSession = async (planId, weekNumber, dayNumber, work
   }
 };
 
-// Log exercise set
+// FIXED: Log exercise set - now accepts both index and ObjectId
 export const logExerciseSet = async (planId, weekNumber, dayNumber, workoutId, exerciseId, setData) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(
-      `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises/${exerciseId}/sets`,
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify(setData),
-      }
-    );
+    
+    let url;
+    if (typeof workoutId === 'number' || /^\d+$/.test(workoutId)) {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}/exercises/${exerciseId}/sets`;
+    } else {
+      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises/${exerciseId}/sets`;
+    }
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(setData),
+    });
 
     return handleResponse(response);
   } catch (error) {
@@ -447,6 +480,26 @@ export const getWorkoutTemplates = async () => {
   }
 };
 
+// NEW: Helper function to get workout by index from a plan
+export const getWorkoutByIndex = async (planId, weekNumber, dayNumber, workoutIndex) => {
+  try {
+    const plan = await getWorkoutPlan(planId);
+    const week = plan.weeks.find(w => w.weekNumber === weekNumber);
+    if (!week) throw new Error(`Week ${weekNumber} not found`);
+    
+    const day = week.days.find(d => d.dayNumber === dayNumber);
+    if (!day) throw new Error(`Day ${dayNumber} not found`);
+    
+    const workout = day.workouts[workoutIndex];
+    if (!workout) throw new Error(`Workout at index ${workoutIndex} not found`);
+    
+    return workout;
+  } catch (error) {
+    console.error("Error getting workout by index:", error);
+    throw error;
+  }
+};
+
 // Default export with all functions for convenience
 const workoutPlanService = {
   getWorkoutPlans,
@@ -473,6 +526,7 @@ const workoutPlanService = {
   searchExercises,
   getPopularExercises,
   getWorkoutTemplates,
+  getWorkoutByIndex,
 };
 
 export default workoutPlanService;

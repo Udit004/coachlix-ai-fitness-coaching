@@ -1,33 +1,40 @@
 // services/exerciseService.js
+import { auth } from "@/lib/firebase";
+
 class ExerciseService {
   constructor() {
     this.baseURL = "/api/exercises";
   }
 
-  // Helper method to get auth headers
-  getAuthHeaders() {
-    const token =
-      localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+  // Get authorization header with Firebase token (following dietPlanService pattern)
+  async getAuthHeaders() {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const token = await user.getIdToken();
     return {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     };
   }
 
-  // Handle API responses
+  // Handle API responses (following dietPlanService pattern)
   async handleResponse(response) {
     if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ message: "Unknown error occurred" }));
-      throw new Error(error.message || `HTTP ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.message || `HTTP error! status: ${response.status}`
+      );
     }
-    return response.json();
+
+    const data = await response.json();
+    return data; // Return the full response data
   }
 
   // GET /api/exercises - Get exercises with filtering and search
   async getExercises(options = {}) {
     try {
+      const headers = await this.getAuthHeaders();
       const params = new URLSearchParams();
 
       if (options.search) params.append("search", options.search);
@@ -49,7 +56,7 @@ class ExerciseService {
 
       const response = await fetch(url, {
         method: "GET",
-        headers: this.getAuthHeaders(),
+        headers,
       });
 
       return this.handleResponse(response);
@@ -59,12 +66,40 @@ class ExerciseService {
     }
   }
 
+  // AI-powered exercise search (following dietPlanService pattern)
+  async searchExerciseWithAI(exerciseName) {
+    try {
+      if (!exerciseName || exerciseName.trim() === '') {
+        throw new Error("Exercise name is required");
+      }
+
+      console.log("🔍 Searching for exercise with AI:", exerciseName);
+
+      const headers = await this.getAuthHeaders();
+      const response = await fetch("/api/exercises/ai-search", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ exerciseName: exerciseName.trim() }),
+      });
+
+      const result = await this.handleResponse(response);
+      
+      console.log("✅ AI search completed successfully");
+      
+      return result;
+    } catch (error) {
+      console.error("Error searching exercise with AI:", error);
+      throw error;
+    }
+  }
+
   // GET /api/exercises/[id] - Get specific exercise
   async getExercise(exerciseId) {
     try {
+      const headers = await this.getAuthHeaders();
       const response = await fetch(`${this.baseURL}/${exerciseId}`, {
         method: "GET",
-        headers: this.getAuthHeaders(),
+        headers,
       });
 
       return this.handleResponse(response);
@@ -77,9 +112,10 @@ class ExerciseService {
   // POST /api/exercises - Create new exercise
   async createExercise(exerciseData) {
     try {
+      const headers = await this.getAuthHeaders();
       const response = await fetch(this.baseURL, {
         method: "POST",
-        headers: this.getAuthHeaders(),
+        headers,
         body: JSON.stringify(exerciseData),
       });
 
@@ -93,9 +129,10 @@ class ExerciseService {
   // PUT /api/exercises/[id] - Update exercise
   async updateExercise(exerciseId, updateData) {
     try {
+      const headers = await this.getAuthHeaders();
       const response = await fetch(`${this.baseURL}/${exerciseId}`, {
         method: "PUT",
-        headers: this.getAuthHeaders(),
+        headers,
         body: JSON.stringify(updateData),
       });
 
@@ -109,9 +146,10 @@ class ExerciseService {
   // DELETE /api/exercises/[id] - Delete exercise
   async deleteExercise(exerciseId) {
     try {
+      const headers = await this.getAuthHeaders();
       const response = await fetch(`${this.baseURL}/${exerciseId}`, {
         method: "DELETE",
-        headers: this.getAuthHeaders(),
+        headers,
       });
 
       return this.handleResponse(response);
@@ -124,9 +162,10 @@ class ExerciseService {
   // POST /api/exercises/[id]/rate - Rate exercise
   async rateExercise(exerciseId, rating) {
     try {
+      const headers = await this.getAuthHeaders();
       const response = await fetch(`${this.baseURL}/${exerciseId}/rate`, {
         method: "POST",
-        headers: this.getAuthHeaders(),
+        headers,
         body: JSON.stringify({ rating }),
       });
 
@@ -140,9 +179,10 @@ class ExerciseService {
   // POST /api/exercises/[id]/favorite - Toggle favorite
   async toggleFavorite(exerciseId) {
     try {
+      const headers = await this.getAuthHeaders();
       const response = await fetch(`${this.baseURL}/${exerciseId}/favorite`, {
         method: "POST",
-        headers: this.getAuthHeaders(),
+        headers,
       });
 
       return this.handleResponse(response);
@@ -165,6 +205,7 @@ class ExerciseService {
   // GET /api/exercises/recommended - Get recommended exercises
   async getRecommendedExercises(userLevel, equipment, muscleGroups) {
     try {
+      const headers = await this.getAuthHeaders();
       const params = new URLSearchParams();
       if (userLevel) params.append("difficulty", userLevel);
       if (equipment?.length > 0)
@@ -177,7 +218,7 @@ class ExerciseService {
         `${this.baseURL}/recommended?${params.toString()}`,
         {
           method: "GET",
-          headers: this.getAuthHeaders(),
+          headers,
         }
       );
 
@@ -191,9 +232,10 @@ class ExerciseService {
   // GET /api/exercises/categories - Get exercise categories
   async getCategories() {
     try {
+      const headers = await this.getAuthHeaders();
       const response = await fetch(`${this.baseURL}/categories`, {
         method: "GET",
-        headers: this.getAuthHeaders(),
+        headers,
       });
 
       return this.handleResponse(response);
@@ -206,9 +248,10 @@ class ExerciseService {
   // GET /api/exercises/muscle-groups - Get muscle groups
   async getMuscleGroups() {
     try {
+      const headers = await this.getAuthHeaders();
       const response = await fetch(`${this.baseURL}/muscle-groups`, {
         method: "GET",
-        headers: this.getAuthHeaders(),
+        headers,
       });
 
       return this.handleResponse(response);
@@ -221,9 +264,10 @@ class ExerciseService {
   // GET /api/exercises/equipment - Get equipment list
   async getEquipment() {
     try {
+      const headers = await this.getAuthHeaders();
       const response = await fetch(`${this.baseURL}/equipment`, {
         method: "GET",
-        headers: this.getAuthHeaders(),
+        headers,
       });
 
       return this.handleResponse(response);
@@ -323,9 +367,10 @@ class ExerciseService {
   // Log exercise usage for analytics
   async logExerciseUsage(exerciseId, context = "workout") {
     try {
+      const headers = await this.getAuthHeaders();
       const response = await fetch(`${this.baseURL}/${exerciseId}/log-usage`, {
         method: "POST",
-        headers: this.getAuthHeaders(),
+        headers,
         body: JSON.stringify({ context }),
       });
 
@@ -339,9 +384,10 @@ class ExerciseService {
   // Get exercise statistics
   async getExerciseStats(exerciseId) {
     try {
+      const headers = await this.getAuthHeaders();
       const response = await fetch(`${this.baseURL}/${exerciseId}/stats`, {
         method: "GET",
-        headers: this.getAuthHeaders(),
+        headers,
       });
 
       return this.handleResponse(response);
@@ -354,9 +400,10 @@ class ExerciseService {
   // Get user's favorite exercises
   async getFavoriteExercises() {
     try {
+      const headers = await this.getAuthHeaders();
       const response = await fetch(`${this.baseURL}/favorites`, {
         method: "GET",
-        headers: this.getAuthHeaders(),
+        headers,
       });
 
       return this.handleResponse(response);
@@ -369,6 +416,7 @@ class ExerciseService {
   // Get user's exercise history
   async getExerciseHistory(exerciseId, limit = 10) {
     try {
+      const headers = await this.getAuthHeaders();
       const params = new URLSearchParams();
       if (limit) params.append("limit", limit.toString());
 
@@ -376,31 +424,13 @@ class ExerciseService {
         `${this.baseURL}/${exerciseId}/history?${params.toString()}`,
         {
           method: "GET",
-          headers: this.getAuthHeaders(),
+          headers,
         }
       );
 
       return this.handleResponse(response);
     } catch (error) {
       console.error("Error fetching exercise history:", error);
-      throw error;
-    }
-  }
-
-  // Add this method to your ExerciseService class in exerciseService.js
-
-  // AI-powered exercise search
-  async searchExerciseWithAI(exerciseName) {
-    try {
-      const response = await fetch("/api/exercises/ai-search", {
-        method: "POST",
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({ exerciseName }),
-      });
-
-      return this.handleResponse(response);
-    } catch (error) {
-      console.error("Error searching exercise with AI:", error);
       throw error;
     }
   }
