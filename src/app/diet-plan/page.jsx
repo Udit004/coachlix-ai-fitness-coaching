@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import {
   Plus,
   Filter,
@@ -10,7 +11,6 @@ import {
   AlertCircle,
 } from "lucide-react";
 import DietPlanCard from "./DietPlanCard";
-import CreatePlanModal from "./CreatePlanModal";
 import dietPlanService from "../../service/dietPlanService";
 import useDietPlanStore from "../../stores/useDietPlanStore";
 import { useAuth } from "../../hooks/useAuth";
@@ -28,6 +28,21 @@ export default function DietPlansPage() {
     clearError,
     reset,
   } = useDietPlanStore();
+  const CreatePlanModal = dynamic(() => import("./CreatePlanModal"), {
+    loading: () => (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+        <div className="w-[90%] max-w-xl bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
+          <div className="space-y-4 animate-pulse">
+            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+            <div className="h-10 bg-gray-300 dark:bg-gray-600 rounded w-1/2 mt-6"></div>
+          </div>
+        </div>
+      </div>
+    ),
+    ssr: false, // Optional: disable server-side rendering
+  });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedGoal, setSelectedGoal] = useState("");
