@@ -1,6 +1,6 @@
 // app/api/workout-plan/[planId]/weeks/[weekNumber]/days/[dayNumber]/workouts/[workoutId]/exercises/route.js
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
+import { connectDB } from '@/lib/db';
 import WorkoutPlan from '@/models/WorkoutPlan';
 import Exercise from '@/models/Exercise';
 import { verifyFirebaseToken } from '@/lib/firebase-admin';
