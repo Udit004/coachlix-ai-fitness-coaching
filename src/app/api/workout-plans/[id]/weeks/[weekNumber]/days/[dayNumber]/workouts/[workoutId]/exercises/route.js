@@ -1,4 +1,4 @@
-// app/api/workout-plan/[planId]/weeks/[weekNumber]/days/[dayNumber]/workouts/[workoutId]/exercises/route.js
+// app/api/workout-plans/[id]/weeks/[weekNumber]/days/[dayNumber]/workouts/[workoutId]/exercises/route.js
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import WorkoutPlan from '@/models/WorkoutPlan';
@@ -26,9 +26,9 @@ export async function POST(request, { params }) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-
-    // Extract route parameters
-    const { planId, weekNumber, dayNumber, workoutId } = params;
+    // Extract route parameters - FIXED: await params
+    const resolvedParams = await params;
+    const { id: planId, weekNumber, dayNumber, workoutId } = resolvedParams;
     
     // Validate parameters
     if (!planId || !weekNumber || !dayNumber || !workoutId) {
@@ -59,10 +59,10 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Find the workout plan
+    // Find the workout plan - FIXED: use user.userId
     const workoutPlan = await WorkoutPlan.findOne({
       _id: planId,
-      userId: userId
+      userId: user.userId
     });
 
     if (!workoutPlan) {
@@ -90,8 +90,17 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Find the specific workout
-    const workout = day.workouts.find(w => w._id.toString() === workoutId);
+    // Find the specific workout - FIXED: Handle both ObjectId and array index
+    let workout;
+    if (/^[0-9a-fA-F]{24}$/.test(workoutId)) {
+      // ObjectId format
+      workout = day.workouts.find(w => w._id.toString() === workoutId);
+    } else {
+      // Array index format
+      const workoutIndex = parseInt(workoutId);
+      workout = day.workouts[workoutIndex];
+    }
+
     if (!workout) {
       return NextResponse.json(
         { error: 'Workout not found' },
@@ -111,7 +120,7 @@ export async function POST(request, { params }) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Authorization': authHeader // Use the original auth header
           },
           body: JSON.stringify({ exerciseName })
         });
@@ -329,7 +338,7 @@ export async function POST(request, { params }) {
 
 export async function GET(request, { params }) {
   try {
-    // Connect to database
+    // Verify authentication
     const authHeader =
       request.headers.get("Authorization") ||
       request.headers.get("authorization");
@@ -345,15 +354,17 @@ export async function GET(request, { params }) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+    // Connect to database
     await connectDB();
 
-    // Extract route parameters
-    const { planId, weekNumber, dayNumber, workoutId } = params;
+    // Extract route parameters - FIXED: await params
+    const resolvedParams = await params;
+    const { id: planId, weekNumber, dayNumber, workoutId } = resolvedParams;
 
-    // Find the workout plan and get exercises
+    // Find the workout plan and get exercises - FIXED: use user.userId
     const workoutPlan = await WorkoutPlan.findOne({
       _id: planId,
-      userId: userId
+      userId: user.userId
     });
 
     if (!workoutPlan) {
@@ -380,7 +391,17 @@ export async function GET(request, { params }) {
       );
     }
 
-    const workout = day.workouts.find(w => w._id.toString() === workoutId);
+    // Find the specific workout - FIXED: Handle both ObjectId and array index
+    let workout;
+    if (/^[0-9a-fA-F]{24}$/.test(workoutId)) {
+      // ObjectId format
+      workout = day.workouts.find(w => w._id.toString() === workoutId);
+    } else {
+      // Array index format
+      const workoutIndex = parseInt(workoutId);
+      workout = day.workouts[workoutIndex];
+    }
+
     if (!workout) {
       return NextResponse.json(
         { error: 'Workout not found' },
@@ -412,7 +433,7 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
-    // Connect to database
+    // Verify authentication
     const authHeader =
       request.headers.get("Authorization") ||
       request.headers.get("authorization");
@@ -428,9 +449,12 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+    // Connect to database
     await connectDB();
-    // Extract route parameters
-    const { planId, weekNumber, dayNumber, workoutId } = params;
+
+    // Extract route parameters - FIXED: await params
+    const resolvedParams = await params;
+    const { planId, weekNumber, dayNumber, workoutId } = resolvedParams;
     
     // Parse request body - for bulk exercise updates
     const body = await request.json();
@@ -443,10 +467,10 @@ export async function PUT(request, { params }) {
       );
     }
 
-    // Find the workout plan
+    // Find the workout plan - FIXED: use user.userId
     const workoutPlan = await WorkoutPlan.findOne({
       _id: planId,
-      userId: userId
+      userId: user.userId
     });
 
     if (!workoutPlan) {
@@ -459,7 +483,19 @@ export async function PUT(request, { params }) {
     // Navigate to workout
     const week = workoutPlan.weeks.find(w => w.weekNumber === parseInt(weekNumber));
     const day = week?.days.find(d => d.dayNumber === parseInt(dayNumber));
-    const workout = day?.workouts.find(w => w._id.toString() === workoutId);
+    
+    // Find the specific workout - FIXED: Handle both ObjectId and array index
+    let workout;
+    if (day) {
+      if (/^[0-9a-fA-F]{24}$/.test(workoutId)) {
+        // ObjectId format
+        workout = day.workouts.find(w => w._id.toString() === workoutId);
+      } else {
+        // Array index format
+        const workoutIndex = parseInt(workoutId);
+        workout = day.workouts[workoutIndex];
+      }
+    }
 
     if (!workout) {
       return NextResponse.json(
