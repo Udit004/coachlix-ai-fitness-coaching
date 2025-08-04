@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import WorkoutPlan from '@/models/WorkoutPlan';
 import Exercise from '@/models/Exercise';
-import { verifyAuth } from '@/lib/auth';
+import { verifyAuth } from '@/lib/verifyUser';
 
 export async function POST(request, { params }) {
   try {
