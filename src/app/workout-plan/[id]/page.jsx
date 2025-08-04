@@ -86,173 +86,14 @@ export default function WorkoutPlanDetailPage() {
     );
   };
 
-  const handleAddExercise = async (exerciseData, workoutInfo) => {
+  const handleAddExercise = async () => {
     try {
-      console.log("=== DIRECT FETCH APPROACH ===");
-      console.log("exerciseData received:", exerciseData);
-      console.log("workoutInfo received:", workoutInfo);
-
-      // Extract the IDs from workoutInfo parameter
-      const { planId, weekNumber, dayNumber, workoutId } = workoutInfo || {};
-
-      console.log("IDs:", { planId, weekNumber, dayNumber, workoutId });
-
-      // Validate required IDs
-      if (!planId || !weekNumber || !dayNumber || workoutId === undefined) {
-        throw new Error(
-          `Missing required IDs: planId=${planId}, weekNumber=${weekNumber}, dayNumber=${dayNumber}, workoutId=${workoutId}`
-        );
-      }
-
-      const getAuthHeaders = async () => {
-        console.log("=== CHECKING AUTH ===");
-
-        const localToken = localStorage.getItem("authToken");
-        const sessionToken = sessionStorage.getItem("authToken");
-        const altLocalToken = localStorage.getItem("token");
-        const altSessionToken = sessionStorage.getItem("token");
-
-        console.log("localStorage authToken:", localToken);
-        console.log("sessionStorage authToken:", sessionToken);
-        console.log("localStorage token:", altLocalToken);
-        console.log("sessionStorage token:", altSessionToken);
-
-        let cookieToken = null;
-        try {
-          cookieToken =
-            document.cookie.split("token=")[1]?.split(";")[0] ||
-            document.cookie.split("authToken=")[1]?.split(";")[0];
-          console.log("Cookie token:", cookieToken);
-        } catch (e) {
-          console.log("No cookie token found");
-        }
-
-        const token =
-          localToken ||
-          sessionToken ||
-          altLocalToken ||
-          altSessionToken ||
-          cookieToken;
-
-        console.log(
-          "Final token to use:",
-          token ? `${token.substring(0, 10)}...` : "NO TOKEN FOUND"
-        );
-
-        const headers = {
-          "Content-Type": "application/json",
-        };
-
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        } else {
-          console.warn(
-            "⚠️ No authentication token found - this might cause a 401 error"
-          );
-        }
-
-        console.log("Headers to send:", headers);
-        return headers;
-      };
-
-      const headers = await getAuthHeaders();
-      const baseUrl = "http://localhost:3000/api/workout-plans";
-
-      if (Array.isArray(exerciseData)) {
-        console.log("Processing multiple exercises:", exerciseData.length);
-
-        for (const exercise of exerciseData) {
-          console.log(`\n=== Adding exercise: ${exercise.exerciseName} ===`);
-
-          const url = `${baseUrl}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`;
-
-          const requestData = {
-            exerciseName: exercise.exerciseName || exercise.name,
-            name: exercise.name,
-            category: exercise.category,
-            primaryMuscleGroups: exercise.primaryMuscleGroups,
-            secondaryMuscleGroups: exercise.secondaryMuscleGroups || [],
-            equipment: exercise.equipment || [],
-            description: exercise.description || "",
-            difficulty: exercise.difficulty,
-            targetSets: exercise.targetSets || 3,
-            targetReps: exercise.targetReps || "8-12",
-            targetWeight: exercise.targetWeight || 0,
-            restTime: exercise.restTime || 60,
-            sets: [],
-            isCompleted: false,
-          };
-
-          console.log("📤 Sending request to:", url);
-          console.log("📤 Request data:", JSON.stringify(requestData, null, 2));
-          console.log("📤 Headers:", headers);
-
-          const response = await fetch(url, {
-            method: "POST",
-            headers,
-            body: JSON.stringify(requestData),
-          });
-
-          console.log("📥 Response status:", response.status);
-          console.log(
-            "📥 Response headers:",
-            Object.fromEntries(response.headers.entries())
-          );
-
-          const responseText = await response.text();
-          console.log("📥 Response text:", responseText);
-
-          if (!response.ok) {
-            console.error("❌ API Error for", exercise.name);
-            console.error("Status:", response.status);
-            console.error("Response:", responseText);
-
-            if (response.status === 401) {
-              throw new Error(`Authentication failed - please log in again`);
-            } else if (response.status === 403) {
-              throw new Error(
-                `Permission denied - you don't have access to modify this workout`
-              );
-            } else if (response.status === 404) {
-              throw new Error(
-                `Workout not found - please check the workout ID`
-              );
-            } else {
-              throw new Error(
-                `Failed to add ${exercise.name}: ${response.status} - ${responseText}`
-              );
-            }
-          }
-
-          let result;
-          try {
-            result = JSON.parse(responseText);
-            console.log(`✅ Successfully added ${exercise.name}:`, result);
-          } catch (parseError) {
-            console.log(
-              `✅ Successfully added ${exercise.name} (non-JSON response):`,
-              responseText
-            );
-            result = { message: "Success", response: responseText };
-          }
-        }
-
-        console.log("🎉 All exercises added successfully!");
-        alert("All exercises added successfully!");
-
-        if (typeof onClose === "function") {
-          console.log("Closing modal...");
-          onClose();
-        }
-        if (typeof refreshWorkoutData === "function") {
-          console.log("Refreshing workout data...");
-          refreshWorkoutData();
-        }
-      }
+      console.log("🔄 Refreshing workout plan data after adding exercises...");
+      await fetchWorkoutPlan(); // Refresh the entire plan data
+      console.log("✅ Workout plan data refreshed successfully");
     } catch (error) {
-      console.error("💥 Error adding exercise:", error);
-      console.error("Error stack:", error.stack);
-      alert(`Failed to add exercise: ${error.message}`);
+      console.error("❌ Error refreshing workout plan:", error);
+      // Even if refresh fails, we should still close the modal since exercises were added
     }
   };
 
@@ -671,7 +512,11 @@ export default function WorkoutPlanDetailPage() {
       {/* Modals */}
       {showAddExercise && (
         <AddExerciseModal
-          onClose={() => setShowAddExercise(false)}
+          onClose={() => {
+            setShowAddExercise(false);
+            setSelectedDay(null); // Add this
+            setSelectedWorkout(null); // Add this
+          }}
           onAdd={handleAddExercise}
           planId={plan._id}
           weekNumber={activeWeek}
@@ -679,7 +524,6 @@ export default function WorkoutPlanDetailPage() {
           workoutId={selectedWorkout}
         />
       )}
-
       {showProgress && (
         <ProgressTracker plan={plan} onClose={() => setShowProgress(false)} />
       )}

@@ -12,6 +12,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import exerciseService from "../../../service/exerciseService";
+import workoutPlanService from "../../../service/workoutPlanService";
 
 export default function AddExerciseModal({
   onClose,
@@ -158,7 +159,8 @@ export default function AddExerciseModal({
 
   const handleAddExercises = async () => {
     if (selectedExercises.length === 0 || adding) return;
-    if (!planId || !weekNumber || !dayNumber || !workoutId) {
+    
+    if (!planId || !weekNumber || !dayNumber || workoutId === undefined) {
       console.error("Missing required props:", {
         planId,
         weekNumber,
@@ -175,61 +177,71 @@ export default function AddExerciseModal({
       console.log("Selected exercises:", selectedExercises);
       console.log("Context:", { planId, weekNumber, dayNumber, workoutId });
 
-      // Create the exercises data structure that the service expects
+      // Prepare exercises data according to the WorkoutPlan ExerciseSchema
       const exerciseData = {
         exercises: selectedExercises.map((exercise) => ({
-          // Core exercise info
-          exerciseId: exercise._id,
+          // Required fields for WorkoutPlan ExerciseSchema
           exerciseName: exercise.name,
           name: exercise.name,
-
-          // Exercise details
           category: exercise.category || "Strength",
-          primaryMuscleGroups:
-            exercise.primaryMuscleGroups || exercise.muscleGroups || [],
-          secondaryMuscleGroups: exercise.secondaryMuscleGroups || [],
+          
+          // Muscle groups - map primaryMuscleGroups to muscleGroups for WorkoutPlan schema
+          muscleGroups: exercise.primaryMuscleGroups || exercise.muscleGroups || [],
+          
+          // Equipment
           equipment: exercise.equipment || ["Bodyweight"],
-
-          // Instructions and metadata
-          description: exercise.description || "",
-          instructions: Array.isArray(exercise.instructions)
-            ? exercise.instructions.join(". ")
-            : exercise.instructions || exercise.description || "",
-          difficulty: exercise.difficulty || "Beginner",
-
-          // Workout parameters
+          
+          // Target values
           targetSets: exercise.metrics?.defaultSets || 3,
-          targetReps:
-            exercise.metrics?.defaultReps || exercise.targetReps || "8-12",
+          targetReps: exercise.metrics?.defaultReps || exercise.targetReps || "8-12",
           targetWeight: 0,
-          targetTime: 0,
-          targetDistance: 0,
-          restTime: exercise.restTime || 60,
-
-          // Additional data
+          
+          // Instructions and metadata
+          instructions: Array.isArray(exercise.instructions)
+            ? exercise.instructions.map(inst => inst.description || inst).join(". ")
+            : exercise.instructions || exercise.description || "",
+          
+          // Additional fields
           videoUrl: exercise.videoUrl || "",
-          tips: exercise.tips || [],
-          variations: exercise.variations || [],
-          calories: exercise.calories || 0,
-          benefits: exercise.benefits || [],
-          tags: exercise.tags || [],
-          averageRating: exercise.averageRating || 0,
-          popularity: exercise.popularity || 0,
-
-          // State
+          difficulty: exercise.difficulty || "Beginner",
+          
+          // Initialize empty sets array and completion status
           sets: [],
           isCompleted: false,
+          
+          // Personal record tracking
+          personalRecord: {
+            weight: 0,
+            reps: 0,
+            date: null
+          }
         })),
       };
 
       console.log("Prepared exercise data:", exerciseData);
 
-      // Call the onAdd function with the correct parameters
-      // The onAdd function should match the signature: onAdd(planId, weekNumber, dayNumber, workoutId, exerciseData)
-      await onAdd(planId, weekNumber, dayNumber, workoutId, exerciseData);
+      // Use the workout plan service to add exercises
+      await workoutPlanService.addExercisesToWorkout(
+        planId,
+        weekNumber,
+        dayNumber,
+        workoutId,
+        exerciseData
+      );
+
+      console.log("✅ Exercises added successfully!");
+      
+      // Call the onAdd callback if provided (for refreshing parent component)
+      if (onAdd && typeof onAdd === 'function') {
+        await onAdd();
+      }
 
       // Close modal on success
       onClose();
+      
+      // Show success message
+      alert(`Successfully added ${selectedExercises.length} exercise${selectedExercises.length !== 1 ? 's' : ''} to workout!`);
+
     } catch (error) {
       console.error("Error adding exercises:", error);
       alert(`Failed to add exercises: ${error.message || "Unknown error"}`);
@@ -269,6 +281,7 @@ export default function AddExerciseModal({
       setShowAiResult(true);
     } catch (error) {
       console.error("AI search failed:", error);
+      alert("AI search failed. Please try regular search.");
     } finally {
       setAiLoading(false);
     }

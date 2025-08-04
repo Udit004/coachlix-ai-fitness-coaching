@@ -209,117 +209,145 @@ export const addWorkoutToDay = async (
   }
 };
 
-// FIXED: Add exercise to workout - now accepts both index and ObjectId
-export const addExerciseToWorkout = async (planId, weekNumber, dayNumber, workoutId, exerciseData) => {
-  try {
-    console.log('🚀 Adding exercises to workout:', {
-      planId,
-      weekNumber,
-      dayNumber,
-      workoutId,
-      exerciseCount: exerciseData.exercises?.length
-    });
+// ========== EXERCISE MANAGEMENT ==========
 
-    const headers = await getAuthHeaders();
-
-    // Determine the correct URL based on workoutId type
-    let url;
-    if (typeof workoutId === "number" || /^\d+$/.test(workoutId)) {
-      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}/exercises`;
-    } else {
-      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`;
+  // Add exercises to a workout
+  export const addExercisesToWorkout = async (planId, weekNumber, dayNumber, workoutId, exerciseData) => {
+    try {
+      console.log('🚀 Adding exercises to workout:', {
+        planId,
+        weekNumber,
+        dayNumber,
+        workoutId,
+        exerciseCount: exerciseData.exercises?.length || 1
+      });
+  
+      // Determine URL based on workoutId type
+      let url;
+      if (typeof workoutId === "number" || /^\d+$/.test(workoutId)) {
+        // Numeric workoutId - treat as array index
+        url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}/exercises`;
+      } else {
+        // String workoutId - treat as MongoDB _id
+        url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`;
+      }
+  
+      console.log('📤 Request URL:', url);
+      console.log('📤 Request data:', exerciseData);
+  
+      const headers = await getAuthHeaders();
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(exerciseData),
+      });
+  
+      const data = await response.json();
+  
+      if (!response.ok) {
+        console.error('❌ Failed to add exercises:', data);
+        throw new Error(data.error || data.message || 'Failed to add exercises');
+      }
+  
+      console.log('✅ Successfully added exercises:', data);
+      return data;
+  
+    } catch (error) {
+      console.error('❌ Error in addExercisesToWorkout:', error);
+      throw error;
     }
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(exerciseData),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('❌ Failed to add exercises:', data);
-      throw new Error(data.error || data.message || 'Failed to add exercises');
+  };
+  
+  // Get exercises from a workout
+  export const getWorkoutExercisesFromWorkout = async (planId, weekNumber, dayNumber, workoutId) => {
+    try {
+      let url;
+      if (typeof workoutId === "number" || /^\d+$/.test(workoutId)) {
+        url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}/exercises`;
+      } else {
+        url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`;
+      }
+  
+      const headers = await getAuthHeaders();
+      const response = await fetch(url, {
+        headers,
+      });
+  
+      if (!response.ok) {
+        throw new Error(`Failed to fetch workout exercises: ${response.status}`);
+      }
+  
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching workout exercises:', error);
+      throw error;
     }
-
-    console.log('✅ Successfully added exercises:', data);
-    return data;
-
-  } catch (error) {
-    console.error('❌ Error in addExerciseToWorkout:', error);
-    throw error;
-  }
-};
-
-
-
-
-export const updateExercise = async (planId, weekNumber, dayNumber, workoutId, updateData) => {
-  try {
-    const token = await getAuthToken();
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-
-    const response = await fetch(
-      `/api/workout-plans/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`,
-      {
+  };
+  
+  // Update workout exercises
+  export const updateWorkoutExercisesFromWorkout = async (planId, weekNumber, dayNumber, workoutId, updateData) => {
+    try {
+      let url;
+      if (typeof workoutId === "number" || /^\d+$/.test(workoutId)) {
+        url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}/exercises`;
+      } else {
+        url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`;
+      }
+  
+      const headers = await getAuthHeaders();
+      const response = await fetch(url, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify(updateData),
+      });
+  
+      const data = await response.json();
+  
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'Failed to update exercises');
       }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || data.message || 'Failed to update exercises');
+  
+      return data;
+    } catch (error) {
+      console.error('Error updating workout exercises:', error);
+      throw error;
     }
-
-    return data;
-
-  } catch (error) {
-    console.error('Error updating workout exercises:', error);
-    throw error;
-  }
-}
-
-
-export const deleteExercise = async (planId, weekNumber, dayNumber, workoutId, exerciseId) => {
-  try {
-    const token = await this.getAuthToken();
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-
-    const response = await fetch(
-      `/api/workout-plans/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises/${exerciseId}`,
-      {
+  };
+  
+  // Delete a single exercise from workout
+  export const deleteExerciseFromWorkout = async (planId, weekNumber, dayNumber, workoutId, exerciseIndex) => {
+    try {
+      let baseUrl;
+      if (typeof workoutId === "number" || /^\d+$/.test(workoutId)) {
+        baseUrl = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}`;
+      } else {
+        baseUrl = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}`;
+      }
+  
+      const url = `${baseUrl}/exercises/${exerciseIndex}`;
+  
+      const headers = await getAuthHeaders();
+      const response = await fetch(url, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers,
+      });
+  
+      const data = await response.json();
+  
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'Failed to delete exercise');
       }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || data.message || 'Failed to delete exercise');
+  
+      return data;
+    } catch (error) {
+      console.error('Error deleting exercise:', error);
+      throw error;
     }
+  };
 
-    return data;
 
-  } catch (error) {
-    console.error('Error deleting workout exercise:', error);
-    throw error;
-  }
-}
 
+  
 // Add progress entry
 export const addProgressEntry = async (planId, progressData) => {
   try {
