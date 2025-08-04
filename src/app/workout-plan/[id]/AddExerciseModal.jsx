@@ -13,7 +13,14 @@ import {
 } from "lucide-react";
 import exerciseService from "../../../service/exerciseService";
 
-export default function AddExerciseModal({ onClose, onAdd }) {
+export default function AddExerciseModal({
+  onClose,
+  onAdd,
+  planId,
+  weekNumber,
+  dayNumber,
+  workoutId,
+}) {
   const [exercises, setExercises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -26,10 +33,13 @@ export default function AddExerciseModal({ onClose, onAdd }) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  // Add these state variables at the top of your component
+  // AI exercise state
   const [aiExercise, setAiExercise] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [showAiResult, setShowAiResult] = useState(false);
+
+  // Adding exercises state
+  const [adding, setAdding] = useState(false);
 
   const categories = [
     "Strength",
@@ -96,7 +106,19 @@ export default function AddExerciseModal({ onClose, onAdd }) {
       };
 
       const response = await exerciseService.getExercises(options);
-      const newExercises = response.exercises || response;
+
+      // Handle different response formats
+      let newExercises;
+      if (response.exercises) {
+        newExercises = response.exercises;
+      } else if (Array.isArray(response)) {
+        newExercises = response;
+      } else if (response.data) {
+        newExercises = response.data;
+      } else {
+        console.error("Unexpected response format:", response);
+        newExercises = [];
+      }
 
       if (pageNum === 1) {
         setExercises(newExercises);
@@ -108,6 +130,10 @@ export default function AddExerciseModal({ onClose, onAdd }) {
       setPage(pageNum);
     } catch (error) {
       console.error("Error fetching exercises:", error);
+      if (pageNum === 1) {
+        setExercises([]);
+      }
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
@@ -130,24 +156,86 @@ export default function AddExerciseModal({ onClose, onAdd }) {
     });
   };
 
-  const handleAddExercises = () => {
-    if (selectedExercises.length === 0) return;
+  const handleAddExercises = async () => {
+    if (selectedExercises.length === 0 || adding) return;
+    if (!planId || !weekNumber || !dayNumber || !workoutId) {
+      console.error("Missing required props:", {
+        planId,
+        weekNumber,
+        dayNumber,
+        workoutId,
+      });
+      alert("Missing required information to add exercises. Please try again.");
+      return;
+    }
 
-    const exercisesToAdd = selectedExercises.map((exercise) => ({
-      name: exercise.name,
-      category: exercise.category,
-      muscleGroups: exercise.primaryMuscleGroups,
-      equipment: exercise.equipment,
-      instructions: exercise.description,
-      difficulty: exercise.difficulty,
-      targetSets: exercise.metrics?.defaultSets || 3,
-      targetReps: exercise.metrics?.defaultReps || "8-12",
-      targetWeight: 0,
-      sets: [],
-      isCompleted: false,
-    }));
+    try {
+      setAdding(true);
+      console.log("=== ADDING EXERCISES ===");
+      console.log("Selected exercises:", selectedExercises);
+      console.log("Context:", { planId, weekNumber, dayNumber, workoutId });
 
-    onAdd(exercisesToAdd);
+      // Create the exercises data structure that the service expects
+      const exerciseData = {
+        exercises: selectedExercises.map((exercise) => ({
+          // Core exercise info
+          exerciseId: exercise._id,
+          exerciseName: exercise.name,
+          name: exercise.name,
+
+          // Exercise details
+          category: exercise.category || "Strength",
+          primaryMuscleGroups:
+            exercise.primaryMuscleGroups || exercise.muscleGroups || [],
+          secondaryMuscleGroups: exercise.secondaryMuscleGroups || [],
+          equipment: exercise.equipment || ["Bodyweight"],
+
+          // Instructions and metadata
+          description: exercise.description || "",
+          instructions: Array.isArray(exercise.instructions)
+            ? exercise.instructions.join(". ")
+            : exercise.instructions || exercise.description || "",
+          difficulty: exercise.difficulty || "Beginner",
+
+          // Workout parameters
+          targetSets: exercise.metrics?.defaultSets || 3,
+          targetReps:
+            exercise.metrics?.defaultReps || exercise.targetReps || "8-12",
+          targetWeight: 0,
+          targetTime: 0,
+          targetDistance: 0,
+          restTime: exercise.restTime || 60,
+
+          // Additional data
+          videoUrl: exercise.videoUrl || "",
+          tips: exercise.tips || [],
+          variations: exercise.variations || [],
+          calories: exercise.calories || 0,
+          benefits: exercise.benefits || [],
+          tags: exercise.tags || [],
+          averageRating: exercise.averageRating || 0,
+          popularity: exercise.popularity || 0,
+
+          // State
+          sets: [],
+          isCompleted: false,
+        })),
+      };
+
+      console.log("Prepared exercise data:", exerciseData);
+
+      // Call the onAdd function with the correct parameters
+      // The onAdd function should match the signature: onAdd(planId, weekNumber, dayNumber, workoutId, exerciseData)
+      await onAdd(planId, weekNumber, dayNumber, workoutId, exerciseData);
+
+      // Close modal on success
+      onClose();
+    } catch (error) {
+      console.error("Error adding exercises:", error);
+      alert(`Failed to add exercises: ${error.message || "Unknown error"}`);
+    } finally {
+      setAdding(false);
+    }
   };
 
   const getDifficultyColor = (difficulty) => {
@@ -171,7 +259,6 @@ export default function AddExerciseModal({ onClose, onAdd }) {
     setSelectedDifficulty("");
   };
 
-  // Add this function to handle AI search
   const searchWithAI = async (searchTerm) => {
     if (!searchTerm || searchTerm.length < 3) return;
 
@@ -230,7 +317,7 @@ export default function AddExerciseModal({ onClose, onAdd }) {
               />
             </div>
 
-            {/* Add AI Search Button */}
+            {/* AI Search Button */}
             <button
               onClick={() => searchWithAI(searchTerm)}
               disabled={aiLoading || searchTerm.length < 3}
@@ -253,6 +340,8 @@ export default function AddExerciseModal({ onClose, onAdd }) {
               />
             </button>
           </div>
+
+          {/* AI Result */}
           {showAiResult && aiExercise && (
             <div className="mb-6 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg">
               <div className="flex items-center justify-between mb-3">
@@ -303,6 +392,7 @@ export default function AddExerciseModal({ onClose, onAdd }) {
               </div>
             </div>
           )}
+
           {/* Filters */}
           {showFilters && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
@@ -499,17 +589,28 @@ export default function AddExerciseModal({ onClose, onAdd }) {
           <div className="flex items-center space-x-3">
             <button
               onClick={onClose}
-              className="px-6 py-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium rounded-lg transition-colors"
+              disabled={adding}
+              className="px-6 py-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium rounded-lg transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               onClick={handleAddExercises}
-              disabled={selectedExercises.length === 0}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+              disabled={selectedExercises.length === 0 || adding}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center space-x-2"
             >
-              Add {selectedExercises.length > 0 ? selectedExercises.length : ""}{" "}
-              Exercise{selectedExercises.length !== 1 ? "s" : ""}
+              {adding && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              )}
+              <span>
+                {adding
+                  ? "Adding..."
+                  : `Add ${
+                      selectedExercises.length > 0
+                        ? selectedExercises.length
+                        : ""
+                    } Exercise${selectedExercises.length !== 1 ? "s" : ""}`}
+              </span>
             </button>
           </div>
         </div>

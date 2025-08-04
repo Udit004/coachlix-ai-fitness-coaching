@@ -9,9 +9,11 @@ const getAuthHeaders = async () => {
   if (!user) throw new Error("User not authenticated");
 
   const token = await user.getIdToken();
+  console.log("Token:", token); // Log the token for debugging
   return {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
+
   };
 };
 

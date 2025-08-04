@@ -20,7 +20,7 @@ import {
   Settings,
   Eye,
 } from "lucide-react";
-import workoutPlanService from "../../../service/workoutPlanService";
+import workoutPlanService from "@/service/workoutPlanService";
 import { useAuth } from "../../../hooks/useAuth";
 import ProgressTracker from "./ProgressTracker";
 
@@ -55,8 +55,9 @@ export default function WorkoutPlanDetailPage() {
   });
 
   useEffect(() => {
-
-    router.prefetch(`/workout-plan/${id}/session/?week=${activeWeek}&day=${selectedDay}&workout=${selectedWorkout}`);
+    router.prefetch(
+      `/workout-plan/${id}/session/?week=${activeWeek}&day=${selectedDay}&workout=${selectedWorkout}`
+    );
 
     if (id && user) {
       fetchWorkoutPlan();
@@ -80,38 +81,191 @@ export default function WorkoutPlanDetailPage() {
 
   const handleStartWorkout = (weekNumber, dayNumber, workoutId) => {
     // Navigate to the workout session page
-    router.push(`/workout-plan/${id}/session?week=${weekNumber}&day=${dayNumber}&workout=${workoutId}`);
+    router.push(
+      `/workout-plan/${id}/session?week=${weekNumber}&day=${dayNumber}&workout=${workoutId}`
+    );
   };
 
-  const handleAddExercise = async (exerciseData) => {
+  const handleAddExercise = async (exerciseData, workoutInfo) => {
     try {
-      // Add exercises to the selected workout
-      for (const exercise of exerciseData) {
-        await workoutPlanService.addExerciseToWorkout(
-          id,
-          activeWeek,
-          selectedDay,
-          selectedWorkout,
-          exercise
+      console.log("=== DIRECT FETCH APPROACH ===");
+      console.log("exerciseData received:", exerciseData);
+      console.log("workoutInfo received:", workoutInfo);
+
+      // Extract the IDs from workoutInfo parameter
+      const { planId, weekNumber, dayNumber, workoutId } = workoutInfo || {};
+
+      console.log("IDs:", { planId, weekNumber, dayNumber, workoutId });
+
+      // Validate required IDs
+      if (!planId || !weekNumber || !dayNumber || workoutId === undefined) {
+        throw new Error(
+          `Missing required IDs: planId=${planId}, weekNumber=${weekNumber}, dayNumber=${dayNumber}, workoutId=${workoutId}`
         );
       }
-      
-      await fetchWorkoutPlan();
-      setShowAddExercise(false);
-      setSelectedDay(null);
-      setSelectedWorkout(null);
-    } catch (err) {
-      console.error("Error adding exercise:", err);
-      alert("Failed to add exercises. Please try again.");
+
+      const getAuthHeaders = async () => {
+        console.log("=== CHECKING AUTH ===");
+
+        const localToken = localStorage.getItem("authToken");
+        const sessionToken = sessionStorage.getItem("authToken");
+        const altLocalToken = localStorage.getItem("token");
+        const altSessionToken = sessionStorage.getItem("token");
+
+        console.log("localStorage authToken:", localToken);
+        console.log("sessionStorage authToken:", sessionToken);
+        console.log("localStorage token:", altLocalToken);
+        console.log("sessionStorage token:", altSessionToken);
+
+        let cookieToken = null;
+        try {
+          cookieToken =
+            document.cookie.split("token=")[1]?.split(";")[0] ||
+            document.cookie.split("authToken=")[1]?.split(";")[0];
+          console.log("Cookie token:", cookieToken);
+        } catch (e) {
+          console.log("No cookie token found");
+        }
+
+        const token =
+          localToken ||
+          sessionToken ||
+          altLocalToken ||
+          altSessionToken ||
+          cookieToken;
+
+        console.log(
+          "Final token to use:",
+          token ? `${token.substring(0, 10)}...` : "NO TOKEN FOUND"
+        );
+
+        const headers = {
+          "Content-Type": "application/json",
+        };
+
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        } else {
+          console.warn(
+            "⚠️ No authentication token found - this might cause a 401 error"
+          );
+        }
+
+        console.log("Headers to send:", headers);
+        return headers;
+      };
+
+      const headers = await getAuthHeaders();
+      const baseUrl = "http://localhost:3000/api/workout-plans";
+
+      if (Array.isArray(exerciseData)) {
+        console.log("Processing multiple exercises:", exerciseData.length);
+
+        for (const exercise of exerciseData) {
+          console.log(`\n=== Adding exercise: ${exercise.exerciseName} ===`);
+
+          const url = `${baseUrl}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`;
+
+          const requestData = {
+            exerciseName: exercise.exerciseName || exercise.name,
+            name: exercise.name,
+            category: exercise.category,
+            primaryMuscleGroups: exercise.primaryMuscleGroups,
+            secondaryMuscleGroups: exercise.secondaryMuscleGroups || [],
+            equipment: exercise.equipment || [],
+            description: exercise.description || "",
+            difficulty: exercise.difficulty,
+            targetSets: exercise.targetSets || 3,
+            targetReps: exercise.targetReps || "8-12",
+            targetWeight: exercise.targetWeight || 0,
+            restTime: exercise.restTime || 60,
+            sets: [],
+            isCompleted: false,
+          };
+
+          console.log("📤 Sending request to:", url);
+          console.log("📤 Request data:", JSON.stringify(requestData, null, 2));
+          console.log("📤 Headers:", headers);
+
+          const response = await fetch(url, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(requestData),
+          });
+
+          console.log("📥 Response status:", response.status);
+          console.log(
+            "📥 Response headers:",
+            Object.fromEntries(response.headers.entries())
+          );
+
+          const responseText = await response.text();
+          console.log("📥 Response text:", responseText);
+
+          if (!response.ok) {
+            console.error("❌ API Error for", exercise.name);
+            console.error("Status:", response.status);
+            console.error("Response:", responseText);
+
+            if (response.status === 401) {
+              throw new Error(`Authentication failed - please log in again`);
+            } else if (response.status === 403) {
+              throw new Error(
+                `Permission denied - you don't have access to modify this workout`
+              );
+            } else if (response.status === 404) {
+              throw new Error(
+                `Workout not found - please check the workout ID`
+              );
+            } else {
+              throw new Error(
+                `Failed to add ${exercise.name}: ${response.status} - ${responseText}`
+              );
+            }
+          }
+
+          let result;
+          try {
+            result = JSON.parse(responseText);
+            console.log(`✅ Successfully added ${exercise.name}:`, result);
+          } catch (parseError) {
+            console.log(
+              `✅ Successfully added ${exercise.name} (non-JSON response):`,
+              responseText
+            );
+            result = { message: "Success", response: responseText };
+          }
+        }
+
+        console.log("🎉 All exercises added successfully!");
+        alert("All exercises added successfully!");
+
+        if (typeof onClose === "function") {
+          console.log("Closing modal...");
+          onClose();
+        }
+        if (typeof refreshWorkoutData === "function") {
+          console.log("Refreshing workout data...");
+          refreshWorkoutData();
+        }
+      }
+    } catch (error) {
+      console.error("💥 Error adding exercise:", error);
+      console.error("Error stack:", error.stack);
+      alert(`Failed to add exercise: ${error.message}`);
     }
   };
 
   const handleEditWorkout = (weekNumber, dayNumber, workoutId) => {
-    router.push(`/workout-plan/${id}/edit-workout?week=${weekNumber}&day=${dayNumber}&workout=${workoutId}`);
+    router.push(
+      `/workout-plan/${id}/edit-workout?week=${weekNumber}&day=${dayNumber}&workout=${workoutId}`
+    );
   };
 
   const handleAddWorkoutToDay = (weekNumber, dayNumber) => {
-    router.push(`/workout-plan/${id}/add-workout?week=${weekNumber}&day=${dayNumber}`);
+    router.push(
+      `/workout-plan/${id}/add-workout?week=${weekNumber}&day=${dayNumber}`
+    );
   };
 
   const calculateWeekProgress = (week) => {
@@ -390,14 +544,14 @@ export default function WorkoutPlanDetailPage() {
                                 <Circle className="h-4 w-4 opacity-50" />
                               )}
                             </div>
-                            
+
                             <div className="flex items-center justify-between text-xs opacity-75">
                               <span>
                                 {workout.exercises?.length || 0} exercises
                               </span>
                               <span>{workout.estimatedDuration || 30}min</span>
                             </div>
-                            
+
                             <div className="flex space-x-1">
                               <button
                                 onClick={() =>
@@ -410,18 +564,26 @@ export default function WorkoutPlanDetailPage() {
                                 className="flex-1 py-2 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center justify-center space-x-1"
                               >
                                 <Play className="h-3 w-3" />
-                                <span>{workout.isCompleted ? "Review" : "Start"}</span>
+                                <span>
+                                  {workout.isCompleted ? "Review" : "Start"}
+                                </span>
                               </button>
-                              
+
                               <button
-                                onClick={() => handleEditWorkout(activeWeek, day.dayNumber, workout._id || idx)}
+                                onClick={() =>
+                                  handleEditWorkout(
+                                    activeWeek,
+                                    day.dayNumber,
+                                    workout._id || idx
+                                  )
+                                }
                                 className="p-2 bg-white/50 hover:bg-white/75 dark:bg-gray-800/50 dark:hover:bg-gray-800/75 rounded-lg text-xs transition-colors"
                                 title="Edit workout"
                               >
                                 <Settings className="h-3 w-3" />
                               </button>
                             </div>
-                            
+
                             {(workout.exercises?.length || 0) === 0 && (
                               <button
                                 onClick={() => {
@@ -443,7 +605,9 @@ export default function WorkoutPlanDetailPage() {
                         <Plus className="h-6 w-6 mx-auto mb-2 opacity-50" />
                         <p className="text-xs opacity-75 mb-2">No workouts</p>
                         <button
-                          onClick={() => handleAddWorkoutToDay(activeWeek, day.dayNumber)}
+                          onClick={() =>
+                            handleAddWorkoutToDay(activeWeek, day.dayNumber)
+                          }
                           className="text-xs underline hover:no-underline transition-colors"
                         >
                           Add workout
@@ -505,14 +669,14 @@ export default function WorkoutPlanDetailPage() {
       </div>
 
       {/* Modals */}
-      {showAddExercise && selectedDay && selectedWorkout !== null && (
+      {showAddExercise && (
         <AddExerciseModal
-          onClose={() => {
-            setShowAddExercise(false);
-            setSelectedDay(null);
-            setSelectedWorkout(null);
-          }}
+          onClose={() => setShowAddExercise(false)}
           onAdd={handleAddExercise}
+          planId={plan._id}
+          weekNumber={activeWeek}
+          dayNumber={selectedDay}
+          workoutId={selectedWorkout}
         />
       )}
 
