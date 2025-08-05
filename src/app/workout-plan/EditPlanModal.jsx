@@ -1,8 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { X, Plus, Minus, Dumbbell, Target, Clock, Users, Calendar } from "lucide-react";
+import { X, Plus, Minus, Dumbbell, Target, Clock, Users, Calendar, Save } from "lucide-react";
 
-export default function CreatePlanModal({ onClose, onCreate }) {
+export default function EditPlanModal({ plan, onClose, onUpdate }) {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -10,7 +10,7 @@ export default function CreatePlanModal({ onClose, onCreate }) {
     difficulty: "Beginner",
     duration: 8,
     workoutFrequency: 3,
-    selectedDays: [], // New field for selected days
+    selectedDays: [],
     targetMuscleGroups: [],
     equipment: [],
     tags: [],
@@ -50,6 +50,37 @@ export default function CreatePlanModal({ onClose, onCreate }) {
     { value: 6, name: "Saturday", short: "Sat" },
     { value: 7, name: "Sunday", short: "Sun" }
   ];
+
+  // Initialize form data with existing plan data
+  useEffect(() => {
+    if (plan) {
+      // Extract selected days from existing weeks structure
+      const selectedDays = [];
+      if (plan.weeks && plan.weeks.length > 0) {
+        const firstWeek = plan.weeks[0];
+        if (firstWeek.days) {
+          firstWeek.days.forEach(day => {
+            if (!day.isRestDay && day.workouts && day.workouts.length > 0) {
+              selectedDays.push(day.dayNumber);
+            }
+          });
+        }
+      }
+
+      setFormData({
+        name: plan.name || "",
+        description: plan.description || "",
+        goal: plan.goal || "",
+        difficulty: plan.difficulty || "Beginner",
+        duration: plan.duration || 8,
+        workoutFrequency: plan.workoutFrequency || selectedDays.length || 3,
+        selectedDays: selectedDays.sort((a, b) => a - b),
+        targetMuscleGroups: Array.isArray(plan.targetMuscleGroups) ? plan.targetMuscleGroups : [],
+        equipment: Array.isArray(plan.equipment) ? plan.equipment : [],
+        tags: Array.isArray(plan.tags) ? plan.tags : [],
+      });
+    }
+  }, [plan]);
 
   // Update selected days when workout frequency changes
   useEffect(() => {
@@ -110,6 +141,69 @@ export default function CreatePlanModal({ onClose, onCreate }) {
     }
   };
 
+  const updateWeeksStructure = (planData, newSelectedDays, newDuration) => {
+    const weeks = [];
+    
+    for (let weekNum = 1; weekNum <= newDuration; weekNum++) {
+      const existingWeek = planData.weeks?.find(w => w.weekNumber === weekNum);
+      const days = [];
+      
+      for (let dayNum = 1; dayNum <= 7; dayNum++) {
+        const dayName = daysOfWeek[dayNum - 1].name;
+        const isWorkoutDay = newSelectedDays.includes(dayNum);
+        const existingDay = existingWeek?.days?.find(d => d.dayNumber === dayNum);
+        
+        if (isWorkoutDay) {
+          // This should be a workout day
+          if (existingDay && !existingDay.isRestDay && existingDay.workouts?.length > 0) {
+            // Keep existing workout data
+            days.push({
+              ...existingDay,
+              isRestDay: false
+            });
+          } else {
+            // Create new workout day
+            days.push({
+              dayNumber: dayNum,
+              dayName,
+              isRestDay: false,
+              workouts: [{
+                name: `${dayName} Workout`,
+                type: 'Strength',
+                exercises: [],
+                estimatedDuration: 60,
+                intensity: 'Moderate'
+              }],
+              totalDuration: 0,
+              totalCaloriesBurned: 0
+            });
+          }
+        } else {
+          // This should be a rest day
+          days.push({
+            dayNumber: dayNum,
+            dayName,
+            isRestDay: true,
+            workouts: [],
+            totalDuration: 0,
+            totalCaloriesBurned: 0
+          });
+        }
+      }
+      
+      weeks.push({
+        weekNumber: weekNum,
+        days,
+        weeklyGoal: existingWeek?.weeklyGoal || `Week ${weekNum} - Build momentum`,
+        completed: existingWeek?.completed || false,
+        totalWorkouts: existingWeek?.totalWorkouts || 0,
+        totalDuration: existingWeek?.totalDuration || 0
+      });
+    }
+    
+    return weeks;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -138,62 +232,35 @@ export default function CreatePlanModal({ onClose, onCreate }) {
 
     setLoading(true);
     try {
-      // Generate initial week structure based on duration and selected days
-      const weeks = [];
-      for (let weekNum = 1; weekNum <= formData.duration; weekNum++) {
-        const days = [];
-        for (let dayNum = 1; dayNum <= 7; dayNum++) {
-          const dayName = daysOfWeek[dayNum - 1].name;
-          const isWorkoutDay = formData.selectedDays.includes(dayNum);
-          
-          days.push({
-            dayNumber: dayNum,
-            dayName,
-            isRestDay: !isWorkoutDay,
-            workouts: isWorkoutDay ? [{
-              name: `${dayName} Workout`,
-              type: 'Strength',
-              exercises: [],
-              estimatedDuration: 60,
-              intensity: 'Moderate'
-            }] : [],
-            totalDuration: 0,
-            totalCaloriesBurned: 0
-          });
-        }
-        weeks.push({
-          weekNumber: weekNum,
-          days,
-          weeklyGoal: `Week ${weekNum} - Build momentum`,
-          completed: false,
-          totalWorkouts: 0,
-          totalDuration: 0
-        });
-      }
+      // Update the weeks structure if days or duration changed
+      const updatedWeeks = updateWeeksStructure(plan, formData.selectedDays, formData.duration);
 
-      const planData = {
-        ...formData,
-        weeks,
-        startDate: new Date().toISOString(),
-        currentWeek: 1,
-        isActive: true,
-        stats: {
-          totalWorkouts: 0,
-          totalDuration: 0,
-          totalCalories: 0,
-          averageWorkoutDuration: 0,
-          completionRate: 0,
-          strongestLifts: []
-        }
+      const updateData = {
+        name: formData.name,
+        description: formData.description,
+        goal: formData.goal,
+        difficulty: formData.difficulty,
+        duration: formData.duration,
+        workoutFrequency: formData.workoutFrequency,
+        selectedDays: formData.selectedDays,
+        targetMuscleGroups: formData.targetMuscleGroups,
+        equipment: formData.equipment,
+        tags: formData.tags,
+        weeks: updatedWeeks,
+        updatedAt: new Date().toISOString()
       };
 
-      await onCreate(planData);
+      await onUpdate(plan._id, updateData);
     } catch (err) {
-      setError(err.message || "Failed to create workout plan");
+      setError(err.message || "Failed to update workout plan");
     } finally {
       setLoading(false);
     }
   };
+
+  if (!plan) {
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -201,11 +268,11 @@ export default function CreatePlanModal({ onClose, onCreate }) {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-              <Dumbbell className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+              <Save className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Create Workout Plan
+              Edit Workout Plan
             </h2>
           </div>
           <button
@@ -236,7 +303,7 @@ export default function CreatePlanModal({ onClose, onCreate }) {
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="e.g., Full Body Strength Program"
                 required
               />
@@ -251,7 +318,7 @@ export default function CreatePlanModal({ onClose, onCreate }) {
                 value={formData.description}
                 onChange={handleInputChange}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="Describe your workout plan..."
               />
             </div>
@@ -267,7 +334,7 @@ export default function CreatePlanModal({ onClose, onCreate }) {
                 name="goal"
                 value={formData.goal}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 required
               >
                 <option value="">Select a goal</option>
@@ -287,7 +354,7 @@ export default function CreatePlanModal({ onClose, onCreate }) {
                 name="difficulty"
                 value={formData.difficulty}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 {difficulties.map((difficulty) => (
                   <option key={difficulty} value={difficulty}>
@@ -313,7 +380,7 @@ export default function CreatePlanModal({ onClose, onCreate }) {
                   onChange={handleInputChange}
                   min="1"
                   max="52"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   required
                 />
               </div>
@@ -335,7 +402,7 @@ export default function CreatePlanModal({ onClose, onCreate }) {
                   onChange={handleInputChange}
                   min="1"
                   max="7"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   required
                 />
               </div>
@@ -356,7 +423,7 @@ export default function CreatePlanModal({ onClose, onCreate }) {
                 <span>
                   Choose {formData.workoutFrequency} day{formData.workoutFrequency !== 1 ? 's' : ''} for your workouts
                   {formData.selectedDays.length > 0 && (
-                    <span className="ml-2 text-blue-600 dark:text-blue-400">
+                    <span className="ml-2 text-green-600 dark:text-green-400">
                       ({formData.selectedDays.length}/{formData.workoutFrequency} selected)
                     </span>
                   )}
@@ -377,10 +444,10 @@ export default function CreatePlanModal({ onClose, onCreate }) {
                       className={`
                         p-3 rounded-lg text-center transition-all duration-200 border-2
                         ${isSelected 
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-lg' 
+                          ? 'bg-green-600 text-white border-green-600 shadow-lg' 
                           : isDisabled
                             ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700 cursor-not-allowed'
-                            : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer'
+                            : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 cursor-pointer'
                         }
                       `}
                     >
@@ -417,7 +484,7 @@ export default function CreatePlanModal({ onClose, onCreate }) {
                     onChange={() =>
                       handleArrayToggle(formData.targetMuscleGroups, muscle, "targetMuscleGroups")
                     }
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
+                    className="rounded border-gray-300 text-green-600 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700"
                   />
                   <span className="text-sm text-gray-700 dark:text-gray-300">
                     {muscle}
@@ -444,7 +511,7 @@ export default function CreatePlanModal({ onClose, onCreate }) {
                     onChange={() =>
                       handleArrayToggle(formData.equipment, equipment, "equipment")
                     }
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
+                    className="rounded border-gray-300 text-green-600 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700"
                   />
                   <span className="text-sm text-gray-700 dark:text-gray-300">
                     {equipment}
@@ -453,6 +520,19 @@ export default function CreatePlanModal({ onClose, onCreate }) {
               ))}
             </div>
           </div>
+
+          {/* Warning about data changes */}
+          {(formData.duration !== plan.duration || 
+            JSON.stringify(formData.selectedDays) !== JSON.stringify(
+              plan.weeks?.[0]?.days?.filter(d => !d.isRestDay).map(d => d.dayNumber).sort() || []
+            )) && (
+            <div className="bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+              <p className="text-yellow-800 dark:text-yellow-200 text-sm">
+                <strong>Notice:</strong> Changing the duration or workout days will update your plan structure. 
+                Existing workouts will be preserved where possible, but some data may be reorganized.
+              </p>
+            </div>
+          )}
 
           {/* Form Actions */}
           <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
@@ -467,14 +547,17 @@ export default function CreatePlanModal({ onClose, onCreate }) {
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:cursor-not-allowed min-w-[120px]"
+              className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:cursor-not-allowed min-w-[120px]"
             >
               {loading ? (
                 <div className="flex items-center justify-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                 </div>
               ) : (
-                "Create Plan"
+                <div className="flex items-center space-x-2">
+                  <Save className="h-4 w-4" />
+                  <span>Save Changes</span>
+                </div>
               )}
             </button>
           </div>

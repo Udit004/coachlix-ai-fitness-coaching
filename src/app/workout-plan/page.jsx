@@ -32,29 +32,50 @@ export default function WorkoutPlansPage() {
   const [sortBy, setSortBy] = useState("newest");
 
   const CreatePlanModal = dynamic(() => import("./CreatePlanModal"), {
-      loading: () => (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
-          <div className="w-[90%] max-w-xl bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
-            <div className="space-y-4 animate-pulse">
-              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
-              <div className="h-10 bg-gray-300 dark:bg-gray-600 rounded w-1/2 mt-6"></div>
-            </div>
+    loading: () => (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+        <div className="w-[90%] max-w-xl bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
+          <div className="space-y-4 animate-pulse">
+            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+            <div className="h-10 bg-gray-300 dark:bg-gray-600 rounded w-1/2 mt-6"></div>
           </div>
         </div>
-      ),
-      ssr: false, // Optional: disable server-side rendering
-    });
+      </div>
+    ),
+    ssr: false, // Optional: disable server-side rendering
+  });
+
+  // Add this import at the top with other dynamic imports
+  const EditPlanModal = dynamic(() => import("./EditPlanModal"), {
+    loading: () => (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+        <div className="w-[90%] max-w-2xl bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
+          <div className="space-y-4 animate-pulse">
+            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+            <div className="h-10 bg-gray-300 dark:bg-gray-600 rounded w-1/2 mt-6"></div>
+          </div>
+        </div>
+      </div>
+    ),
+    ssr: false,
+  });
+
+  // Add these state variables with your existing useState declarations
+  const [editingPlan, setEditingPlan] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const goals = [
     "Strength Building",
-    "Weight Loss", 
+    "Weight Loss",
     "Muscle Gain",
     "Endurance",
     "General Fitness",
     "Athletic Performance",
-    "Rehabilitation"
+    "Rehabilitation",
   ];
 
   const difficulties = ["Beginner", "Intermediate", "Advanced"];
@@ -105,7 +126,6 @@ export default function WorkoutPlansPage() {
 
   // Fetch workout plans when dependencies change
   useEffect(() => {
-
     router.prefetch("/workout-plans/${id}");
 
     if (!authLoading && user) {
@@ -130,8 +150,8 @@ export default function WorkoutPlansPage() {
         (plan.description &&
           plan.description.toLowerCase().includes(searchLower)) ||
         (plan.goal && plan.goal.toLowerCase().includes(searchLower)) ||
-        (plan.targetMuscleGroups && 
-          plan.targetMuscleGroups.some(group => 
+        (plan.targetMuscleGroups &&
+          plan.targetMuscleGroups.some((group) =>
             group.toLowerCase().includes(searchLower)
           ));
 
@@ -162,7 +182,9 @@ export default function WorkoutPlansPage() {
         difficulty: newPlan.difficulty || "Beginner",
         duration: newPlan.duration,
         workoutFrequency: newPlan.workoutFrequency || 3,
-        targetMuscleGroups: Array.isArray(newPlan.targetMuscleGroups) ? newPlan.targetMuscleGroups : [],
+        targetMuscleGroups: Array.isArray(newPlan.targetMuscleGroups)
+          ? newPlan.targetMuscleGroups
+          : [],
         equipment: Array.isArray(newPlan.equipment) ? newPlan.equipment : [],
         tags: Array.isArray(newPlan.tags) ? newPlan.tags : [],
         isActive: newPlan.isActive !== undefined ? newPlan.isActive : true,
@@ -170,7 +192,7 @@ export default function WorkoutPlansPage() {
         stats: newPlan.stats || {
           totalWorkouts: 0,
           totalDuration: 0,
-          completionRate: 0
+          completionRate: 0,
         },
         createdAt: newPlan.createdAt || new Date().toISOString(),
       };
@@ -180,6 +202,34 @@ export default function WorkoutPlansPage() {
     } catch (err) {
       console.error("Error creating plan:", err);
       setError(err?.message || "Failed to create plan");
+    }
+  };
+
+  // Add this function with your other handlers
+  const handleEditPlan = (plan) => {
+    setEditingPlan(plan);
+    setShowEditModal(true);
+  };
+
+  const handleUpdatePlan = async (planId, updateData) => {
+    try {
+      setError(null);
+      const response = await workoutPlanService.updateWorkoutPlan(
+        planId,
+        updateData
+      );
+      const updatedPlan = response.plan || response;
+
+      if (updatedPlan) {
+        setWorkoutPlans((prev) =>
+          prev.map((plan) => (plan._id === planId ? updatedPlan : plan))
+        );
+        setShowEditModal(false);
+        setEditingPlan(null);
+      }
+    } catch (err) {
+      console.error("Error updating plan:", err);
+      setError(err?.message || "Failed to update plan");
     }
   };
 
@@ -211,7 +261,10 @@ export default function WorkoutPlansPage() {
 
     try {
       setError(null);
-      const response = await workoutPlanService.cloneWorkoutPlan(planId, newName);
+      const response = await workoutPlanService.cloneWorkoutPlan(
+        planId,
+        newName
+      );
       const clonedPlan = response.plan || response;
 
       if (clonedPlan) {
@@ -229,19 +282,28 @@ export default function WorkoutPlansPage() {
         totalPlans: 0,
         activePlans: 0,
         averageDuration: 0,
-        totalWorkouts: 0
+        totalWorkouts: 0,
       };
     }
 
-    const activePlans = workoutPlans.filter(p => p?.isActive);
-    const totalDuration = workoutPlans.reduce((sum, plan) => sum + (plan?.duration || 0), 0);
-    const totalWorkouts = workoutPlans.reduce((sum, plan) => sum + (plan?.stats?.totalWorkouts || 0), 0);
+    const activePlans = workoutPlans.filter((p) => p?.isActive);
+    const totalDuration = workoutPlans.reduce(
+      (sum, plan) => sum + (plan?.duration || 0),
+      0
+    );
+    const totalWorkouts = workoutPlans.reduce(
+      (sum, plan) => sum + (plan?.stats?.totalWorkouts || 0),
+      0
+    );
 
     return {
       totalPlans: workoutPlans.length,
       activePlans: activePlans.length,
-      averageDuration: workoutPlans.length > 0 ? Math.round(totalDuration / workoutPlans.length) : 0,
-      totalWorkouts
+      averageDuration:
+        workoutPlans.length > 0
+          ? Math.round(totalDuration / workoutPlans.length)
+          : 0,
+      totalWorkouts,
     };
   };
 
@@ -330,7 +392,8 @@ export default function WorkoutPlansPage() {
               Workout Plans
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              Design and track your fitness journey with personalized workout plans
+              Design and track your fitness journey with personalized workout
+              plans
             </p>
           </div>
           <button
@@ -522,6 +585,7 @@ export default function WorkoutPlansPage() {
                   plan={plan}
                   onDelete={handleDeletePlan}
                   onClone={handleClonePlan}
+                  onEdit={handleEditPlan} // Add this line
                 />
               );
             })}
@@ -533,6 +597,18 @@ export default function WorkoutPlansPage() {
           <CreatePlanModal
             onClose={() => setShowCreateModal(false)}
             onCreate={handleCreatePlan}
+          />
+        )}
+
+        {/* Edit Plan Modal */}
+        {showEditModal && editingPlan && (
+          <EditPlanModal
+            plan={editingPlan}
+            onClose={() => {
+              setShowEditModal(false);
+              setEditingPlan(null);
+            }}
+            onUpdate={handleUpdatePlan}
           />
         )}
       </div>
