@@ -59,8 +59,9 @@ export default function ProgressTracker({ plan, onClose }) {
 
   const weeklyData = useMemo(() => {
     const weeks = plan.weeks || [];
+    const calculatedWeeklyData = [];
 
-    weeks.forEach((week, index) => {
+    weeks.forEach((week) => {
       const weekData = {
         week: week.weekNumber,
         workouts: 0,
@@ -111,14 +112,16 @@ export default function ProgressTracker({ plan, onClose }) {
         weekData.avgReps = exerciseCount > 0 ? Math.round(totalReps / exerciseCount) : 0;
       }
 
-      weeklyData.push(weekData);
+      calculatedWeeklyData.push(weekData);
     });
 
-    return weeklyData;
+    return calculatedWeeklyData;
   }, [plan.weeks]);
 
   const strengthData = useMemo(() => {
     const exercises = new Map();
+    const calculatedStrengthData = [];
+    
     plan.weeks?.forEach(week => {
       week.days?.forEach(day => {
         day.workouts?.forEach(workout => {
@@ -152,7 +155,7 @@ export default function ProgressTracker({ plan, onClose }) {
       });
 
       weeklyMax.forEach((weight, week) => {
-        strengthData.push({
+        calculatedStrengthData.push({
           week: `Week ${week}`,
           exercise: exerciseName,
           maxWeight: weight
@@ -160,7 +163,7 @@ export default function ProgressTracker({ plan, onClose }) {
       });
     });
 
-    return strengthData.slice(0, 20); // Limit to top 20 entries
+    return calculatedStrengthData.slice(0, 20); // Limit to top 20 entries
   }, [plan.weeks]);
 
   const tabs = [
@@ -306,21 +309,29 @@ export default function ProgressTracker({ plan, onClose }) {
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                   Weekly Completion Rate
                 </h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <RechartsLineChart data={weeklyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="week" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line 
-                      type="monotone" 
-                      dataKey="completionRate" 
-                      stroke="#3b82f6" 
-                      strokeWidth={3}
-                      dot={{ fill: '#3b82f6', strokeWidth: 2, r: 6 }}
-                    />
-                  </RechartsLineChart>
-                </ResponsiveContainer>
+                {weeklyData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <RechartsLineChart data={weeklyData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="week" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line 
+                        type="monotone" 
+                        dataKey="completionRate" 
+                        stroke="#3b82f6" 
+                        strokeWidth={3}
+                        dot={{ fill: '#3b82f6', strokeWidth: 2, r: 6 }}
+                      />
+                    </RechartsLineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600 dark:text-gray-400">
+                      No data available yet. Complete some workouts to see your progress!
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -358,16 +369,24 @@ export default function ProgressTracker({ plan, onClose }) {
                 <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4">
                   Workouts & Duration
                 </h4>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={weeklyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="week" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="workouts" fill="#3b82f6" name="Workouts Completed" />
-                    <Bar dataKey="duration" fill="#10b981" name="Duration (hours)" />
-                  </BarChart>
-                </ResponsiveContainer>
+                {weeklyData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={weeklyData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="week" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="workouts" fill="#3b82f6" name="Workouts Completed" />
+                      <Bar dataKey="duration" fill="#10b981" name="Duration (hours)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600 dark:text-gray-400">
+                      No weekly data available yet.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -417,26 +436,29 @@ export default function ProgressTracker({ plan, onClose }) {
                     Workout Distribution
                   </h4>
                   <div className="space-y-3">
-                    {plan.weeks?.map((week, index) => (
-                      <div key={week.weekNumber} className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                          Week {week.weekNumber}
-                        </span>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full"
-                              style={{ 
-                                width: `${weeklyData[index]?.completionRate || 0}%` 
-                              }}
-                            ></div>
-                          </div>
-                          <span className="text-xs text-gray-600 dark:text-gray-400 w-8">
-                            {weeklyData[index]?.completionRate || 0}%
+                    {plan.weeks?.map((week, index) => {
+                      const weekData = weeklyData[index] || { completionRate: 0 };
+                      return (
+                        <div key={week.weekNumber} className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            Week {week.weekNumber}
                           </span>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full"
+                                style={{ 
+                                  width: `${weekData.completionRate}%` 
+                                }}
+                              ></div>
+                            </div>
+                            <span className="text-xs text-gray-600 dark:text-gray-400 w-8">
+                              {weekData.completionRate}%
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -450,7 +472,7 @@ export default function ProgressTracker({ plan, onClose }) {
                         Average Workout Duration
                       </span>
                       <span className="font-medium text-gray-900 dark:text-white">
-                        {Math.round((stats.totalDuration / stats.totalWorkouts) || 0)} min
+                        {stats.totalWorkouts > 0 ? Math.round(stats.totalDuration / stats.totalWorkouts) : 0} min
                       </span>
                     </div>
                     <div className="flex justify-between">
