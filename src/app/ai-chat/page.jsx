@@ -1,3 +1,4 @@
+// Updated page.jsx with history integration
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import useUserProfileStore from "@/stores/useUserProfileStore";
@@ -12,6 +13,8 @@ import {
   Zap,
   Apple,
   Calendar,
+  Plus,
+  History
 } from "lucide-react";
 import { useAuthContext } from "../../auth/AuthContext";
 
@@ -20,6 +23,8 @@ import ChatHeader from "./ChatHeader";
 import ChatSidebar from "./ChatSidebar";
 import ChatContainer from "./ChatContainer";
 import ErrorBanner from "./ErrorBanner";
+import ChatHistory from "./ChatHistory";
+import { useChatHistory } from "@/hooks/useChatHistory";
 
 const AIChatPage = () => {
   const { user: authUser, loading: authLoading } = useAuthContext();
@@ -32,10 +37,14 @@ const AIChatPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("general");
   const [error, setError] = useState(null);
-
   const [loading, setLoading] = useState(false);
+  
+  // Chat history state
+  const [currentChatId, setCurrentChatId] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [isNewChat, setIsNewChat] = useState(true);
 
-  // User profile state - fetch from backend
+  // User profile state
   const {
     profile: userProfile,
     loading: profileLoading,
@@ -44,6 +53,17 @@ const AIChatPage = () => {
     hasValidProfile,
     clearError,
   } = useUserProfileStore();
+
+  // Chat history hook
+  const {
+    chatHistory,
+    loading: historyLoading,
+    error: historyError,
+    saveChat,
+    updateChat,
+    deleteChat,
+    generateChatTitle
+  } = useChatHistory(authUser?.uid);
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -164,7 +184,7 @@ const AIChatPage = () => {
     clearError,
   ]);
 
-  // Handle sending messages - Use your backend API
+  // Handle sending messages
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isTyping) return;
 
@@ -176,19 +196,19 @@ const AIChatPage = () => {
       plan: selectedPlan,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     const currentInput = inputValue;
     setInputValue("");
     setIsTyping(true);
     setError(null);
 
     try {
-      // Call your backend API instead of DeepSeek directly
       const response = await axios.post("/api/chat", {
         message: currentInput,
         plan: selectedPlan,
         conversationHistory: messages,
-        profile: userProfile, // Pass userProfile for personalization
+        profile: userProfile,
       });
 
       const data = response.data;
@@ -205,12 +225,29 @@ const AIChatPage = () => {
         suggestions: data.suggestions,
       };
 
-      setMessages((prev) => [...prev, aiResponse]);
+      const finalMessages = [...newMessages, aiResponse];
+      setMessages(finalMessages);
+
+      // Auto-save chat after AI response
+      if (authUser?.uid) {
+        if (isNewChat && finalMessages.length >= 2) {
+          // Save new chat after first exchange
+          const title = generateChatTitle(finalMessages);
+          const chatId = await saveChat(title, selectedPlan, finalMessages);
+          if (chatId) {
+            setCurrentChatId(chatId);
+            setIsNewChat(false);
+          }
+        } else if (currentChatId) {
+          // Update existing chat
+          await updateChat(currentChatId, finalMessages);
+        }
+      }
+
     } catch (error) {
       console.error("Error sending message:", error);
       setError(error.message);
 
-      // Add error message to chat
       const errorMessage = {
         id: Date.now() + 1,
         type: "ai",
@@ -223,6 +260,62 @@ const AIChatPage = () => {
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
+    }
+  };
+
+  // Handle selecting a chat from history
+  const handleSelectChat = (chat) => {
+    setMessages(chat.messages || []);
+    setSelectedPlan(chat.plan || "general");
+    setCurrentChatId(chat._id);
+    setIsNewChat(false);
+    setShowHistory(false);
+    setSidebarOpen(false); // Close sidebar on mobile
+    toast.success("Chat loaded successfully");
+  };
+
+  // Handle starting new chat
+  const handleNewChat = () => {
+    setMessages([]);
+    setCurrentChatId(null);
+    setIsNewChat(true);
+    setSelectedPlan("general");
+    setShowHistory(false);
+    setSidebarOpen(false);
+    
+    // Initialize with welcome message after profile loads
+    if (userProfile && !profileLoading) {
+      const welcomeMessage = {
+        id: Date.now(),
+        type: "ai",
+        content: `Welcome back, ${
+          userProfile.name
+        }! 🎯 I'm your AI fitness coach, ready to help you achieve your ${userProfile.fitnessGoal?.replace(
+          "-",
+          " "
+        )} goals.\n\nI can help you with:\n• Personalized workout plans\n• Nutrition guidance\n• Progress tracking\n• Motivation and support\n\nWhat would you like to work on today?`,
+        timestamp: new Date(),
+        suggestions: [
+          `Create a ${userProfile.fitnessGoal?.replace("-", " ")} plan`,
+          "Track my progress",
+          "Get nutrition advice",
+          "Set weekly goals",
+        ],
+      };
+      setMessages([welcomeMessage]);
+    }
+  };
+
+  // Handle deleting a chat
+  const handleDeleteChat = async (chatId) => {
+    try {
+      await deleteChat(chatId);
+      if (currentChatId === chatId) {
+        handleNewChat(); // Start new chat if current chat was deleted
+      }
+      toast.success("Chat deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete chat");
     }
   };
 
@@ -265,9 +358,10 @@ const AIChatPage = () => {
   };
 
   const clearChat = () => {
-    setMessages([messages[0]]); // Keep only the initial message
-    setError(null);
-    toast.success("Chat cleared");
+    if (messages.length > 1) {
+      handleNewChat();
+      toast.success("Started new chat");
+    }
   };
 
   // Auto-scroll to bottom
@@ -281,7 +375,7 @@ const AIChatPage = () => {
 
   // Initialize with welcome message
   useEffect(() => {
-    if (messages.length === 0 && userProfile && !profileLoading) {
+    if (messages.length === 0 && userProfile && !profileLoading && isNewChat) {
       const welcomeMessage = {
         id: Date.now(),
         type: "ai",
@@ -301,12 +395,10 @@ const AIChatPage = () => {
       };
       setMessages([welcomeMessage]);
     }
-  }, [userProfile]);
+  }, [userProfile, profileLoading, isNewChat]);
 
-  const combinedError = error || profileError;
-  // Show loading state
+  const combinedError = error || profileError || historyError;
 
-  // Replace this section in your AIChatPage component:
   // Show loading state
   const isLoading = authLoading || profileLoading;
   if (isLoading) {
@@ -378,8 +470,8 @@ const AIChatPage = () => {
           },
         }}
       />
+      
       {/* Error Banner */}
-      // And in JSX:
       <ErrorBanner
         error={combinedError}
         onClose={() => {
@@ -387,7 +479,8 @@ const AIChatPage = () => {
           clearError();
         }}
       />
-      {/* Chat Header */}
+      
+      {/* Chat Header with New Chat and History buttons */}
       <ChatHeader
         plans={plans}
         selectedPlan={selectedPlan}
@@ -396,12 +489,48 @@ const AIChatPage = () => {
         setSidebarOpen={setSidebarOpen}
         clearChat={clearChat}
         userProfile={userProfile}
+        // Add new props for history
+        onNewChat={handleNewChat}
+        onToggleHistory={() => setShowHistory(!showHistory)}
+        showHistory={showHistory}
+        isNewChat={isNewChat}
       />
+      
       {/* Main Chat Layout - Mobile Optimized */}
       <div className="flex-1 overflow-hidden">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2 sm:py-6 h-full">
           <div className="flex gap-2 sm:gap-6 h-full">
-            {/* Sidebar - Mobile Overlay */}
+            
+            {/* History Sidebar - Show when showHistory is true */}
+            {showHistory && (
+              <div className="w-80 flex-shrink-0 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-gray-200 bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <History className="w-5 h-5 text-gray-600" />
+                      <h3 className="font-semibold text-gray-800">Chat History</h3>
+                    </div>
+                    <button
+                      onClick={handleNewChat}
+                      className="flex items-center space-x-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>New</span>
+                    </button>
+                  </div>
+                </div>
+                <ChatHistory
+                  chatHistory={chatHistory}
+                  loading={historyLoading}
+                  onSelectChat={handleSelectChat}
+                  onDeleteChat={handleDeleteChat}
+                  currentChatId={currentChatId}
+                  plans={plans}
+                />
+              </div>
+            )}
+
+            {/* Main Sidebar - Show when sidebarOpen is true */}
             <div
               className={`${
                 sidebarOpen
@@ -438,11 +567,15 @@ const AIChatPage = () => {
                 messagesEndRef={messagesEndRef}
                 formatTime={formatTime}
                 copyToClipboard={copyToClipboard}
+                // Add chat context
+                currentChatId={currentChatId}
+                isNewChat={isNewChat}
               />
             </div>
           </div>
         </div>
       </div>
+      
       {/* Mobile Sidebar Backdrop */}
       {sidebarOpen && (
         <div
