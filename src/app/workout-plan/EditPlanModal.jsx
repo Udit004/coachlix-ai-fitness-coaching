@@ -1,6 +1,16 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { X, Plus, Minus, Dumbbell, Target, Clock, Users, Calendar, Save } from "lucide-react";
+import {
+  X,
+  Plus,
+  Minus,
+  Dumbbell,
+  Target,
+  Clock,
+  Users,
+  Calendar,
+  Save,
+} from "lucide-react";
 
 export default function EditPlanModal({ plan, onClose, onUpdate }) {
   const [formData, setFormData] = useState({
@@ -22,23 +32,39 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
   const goals = [
     "Strength Building",
     "Weight Loss",
-    "Muscle Gain", 
+    "Muscle Gain",
     "Endurance",
     "General Fitness",
     "Athletic Performance",
-    "Rehabilitation"
+    "Rehabilitation",
   ];
 
   const difficulties = ["Beginner", "Intermediate", "Advanced"];
 
   const muscleGroups = [
-    "Chest", "Back", "Shoulders", "Arms", "Legs", 
-    "Core", "Glutes", "Calves", "Forearms", "Full Body"
+    "Chest",
+    "Back",
+    "Shoulders",
+    "Arms",
+    "Legs",
+    "Core",
+    "Glutes",
+    "Calves",
+    "Forearms",
+    "Full Body",
   ];
 
   const equipmentOptions = [
-    "Barbell", "Dumbbell", "Machine", "Cable", "Bodyweight",
-    "Resistance Band", "Kettlebell", "Medicine Ball", "TRX", "Cardio Equipment"
+    "Barbell",
+    "Dumbbell",
+    "Machine",
+    "Cable",
+    "Bodyweight",
+    "Resistance Band",
+    "Kettlebell",
+    "Medicine Ball",
+    "TRX",
+    "Cardio Equipment",
   ];
 
   const daysOfWeek = [
@@ -48,94 +74,131 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
     { value: 4, name: "Thursday", short: "Thu" },
     { value: 5, name: "Friday", short: "Fri" },
     { value: 6, name: "Saturday", short: "Sat" },
-    { value: 7, name: "Sunday", short: "Sun" }
+    { value: 7, name: "Sunday", short: "Sun" },
   ];
 
   // Initialize form data with existing plan data
   useEffect(() => {
-    if (plan) {
-      // Extract selected days from existing weeks structure
-      const selectedDays = [];
-      if (plan.weeks && plan.weeks.length > 0) {
-        const firstWeek = plan.weeks[0];
-        if (firstWeek.days) {
-          firstWeek.days.forEach(day => {
-            if (!day.isRestDay && day.workouts && day.workouts.length > 0) {
-              selectedDays.push(day.dayNumber);
-            }
-          });
-        }
+    if (plan && plan._id) {
+      // Add plan._id check to ensure plan is fully loaded
+      console.log("Plan data:", plan); // Debug log
+
+      // Extract selected days from existing weeks structure - improved logic
+      let selectedDays = [];
+
+      // First, try to get from plan.selectedDays if it exists
+      if (Array.isArray(plan.selectedDays) && plan.selectedDays.length > 0) {
+        selectedDays = [...plan.selectedDays];
+      }
+      // Otherwise, extract from weeks structure by checking for actual workouts
+      else if (plan.weeks && plan.weeks.length > 0) {
+        const workoutDaysSet = new Set();
+
+        plan.weeks.forEach((week) => {
+          if (week.days) {
+            week.days.forEach((day) => {
+              // Check if day has workouts AND is not a rest day
+              if (!day.isRestDay && day.workouts && day.workouts.length > 0) {
+                workoutDaysSet.add(day.dayNumber);
+              }
+            });
+          }
+        });
+
+        selectedDays = Array.from(workoutDaysSet).sort((a, b) => a - b);
       }
 
-      setFormData({
+      console.log("Extracted selected days:", selectedDays); // Debug log
+      console.log("Setting form data with selected days:", selectedDays); // Additional debug
+
+      setFormData((prevData) => ({
         name: plan.name || "",
         description: plan.description || "",
         goal: plan.goal || "",
         difficulty: plan.difficulty || "Beginner",
         duration: plan.duration || 8,
         workoutFrequency: plan.workoutFrequency || selectedDays.length || 3,
-        selectedDays: selectedDays.sort((a, b) => a - b),
-        targetMuscleGroups: Array.isArray(plan.targetMuscleGroups) ? plan.targetMuscleGroups : [],
+        selectedDays: selectedDays,
+        targetMuscleGroups: Array.isArray(plan.targetMuscleGroups)
+          ? plan.targetMuscleGroups
+          : [],
         equipment: Array.isArray(plan.equipment) ? plan.equipment : [],
         tags: Array.isArray(plan.tags) ? plan.tags : [],
-      });
+      }));
     }
-  }, [plan]);
+  }, [plan?._id]); // Change dependency to plan._id to avoid multiple triggers
+
+  // Debug useEffect to track formData changes
+  useEffect(() => {
+    console.log("FormData updated:", formData);
+    console.log("Selected days in formData:", formData.selectedDays);
+  }, [formData.selectedDays]);
 
   // Update selected days when workout frequency changes
   useEffect(() => {
-    if (formData.workoutFrequency !== formData.selectedDays.length) {
+    // Only run this effect if we have initial data and the frequency actually changed
+    if (
+      formData.selectedDays.length > 0 &&
+      formData.workoutFrequency !== formData.selectedDays.length
+    ) {
+      console.log("Adjusting selected days due to frequency change");
+
       // If frequency is reduced, keep the first N selected days
       if (formData.workoutFrequency < formData.selectedDays.length) {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
-          selectedDays: prev.selectedDays.slice(0, formData.workoutFrequency)
+          selectedDays: prev.selectedDays.slice(0, formData.workoutFrequency),
         }));
       }
       // If frequency is increased and we have fewer selected days, auto-select additional days
-      else if (formData.workoutFrequency > formData.selectedDays.length && formData.selectedDays.length === 0) {
+      else if (
+        formData.workoutFrequency > formData.selectedDays.length &&
+        formData.selectedDays.length === 0
+      ) {
         // Auto-select first N days only if no days are currently selected
-        const autoSelectedDays = daysOfWeek.slice(0, formData.workoutFrequency).map(day => day.value);
-        setFormData(prev => ({
+        const autoSelectedDays = daysOfWeek
+          .slice(0, formData.workoutFrequency)
+          .map((day) => day.value);
+        setFormData((prev) => ({
           ...prev,
-          selectedDays: autoSelectedDays
+          selectedDays: autoSelectedDays,
         }));
       }
     }
-  }, [formData.workoutFrequency]);
+  }, [formData.workoutFrequency]); // Remove formData.selectedDays.length from dependencies
 
   const handleInputChange = (e) => {
     const { name, value, type } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'number' ? parseInt(value) || 0 : value
+      [name]: type === "number" ? parseInt(value) || 0 : value,
     }));
   };
 
   const handleArrayToggle = (array, item, field) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [field]: array.includes(item)
-        ? array.filter(i => i !== item)
-        : [...array, item]
+        ? array.filter((i) => i !== item)
+        : [...array, item],
     }));
   };
 
   const handleDayToggle = (dayValue) => {
     const isSelected = formData.selectedDays.includes(dayValue);
-    
+
     if (isSelected) {
       // Remove day
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        selectedDays: prev.selectedDays.filter(day => day !== dayValue)
+        selectedDays: prev.selectedDays.filter((day) => day !== dayValue),
       }));
     } else {
       // Add day only if we haven't reached the frequency limit
       if (formData.selectedDays.length < formData.workoutFrequency) {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
-          selectedDays: [...prev.selectedDays, dayValue].sort((a, b) => a - b)
+          selectedDays: [...prev.selectedDays, dayValue].sort((a, b) => a - b),
         }));
       }
     }
@@ -143,23 +206,31 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
 
   const updateWeeksStructure = (planData, newSelectedDays, newDuration) => {
     const weeks = [];
-    
+
     for (let weekNum = 1; weekNum <= newDuration; weekNum++) {
-      const existingWeek = planData.weeks?.find(w => w.weekNumber === weekNum);
+      const existingWeek = planData.weeks?.find(
+        (w) => w.weekNumber === weekNum
+      );
       const days = [];
-      
+
       for (let dayNum = 1; dayNum <= 7; dayNum++) {
         const dayName = daysOfWeek[dayNum - 1].name;
         const isWorkoutDay = newSelectedDays.includes(dayNum);
-        const existingDay = existingWeek?.days?.find(d => d.dayNumber === dayNum);
-        
+        const existingDay = existingWeek?.days?.find(
+          (d) => d.dayNumber === dayNum
+        );
+
         if (isWorkoutDay) {
           // This should be a workout day
-          if (existingDay && !existingDay.isRestDay && existingDay.workouts?.length > 0) {
+          if (
+            existingDay &&
+            !existingDay.isRestDay &&
+            existingDay.workouts?.length > 0
+          ) {
             // Keep existing workout data
             days.push({
               ...existingDay,
-              isRestDay: false
+              isRestDay: false,
             });
           } else {
             // Create new workout day
@@ -167,15 +238,17 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
               dayNumber: dayNum,
               dayName,
               isRestDay: false,
-              workouts: [{
-                name: `${dayName} Workout`,
-                type: 'Strength',
-                exercises: [],
-                estimatedDuration: 60,
-                intensity: 'Moderate'
-              }],
+              workouts: [
+                {
+                  name: `${dayName} Workout`,
+                  type: "Strength",
+                  exercises: [],
+                  estimatedDuration: 60,
+                  intensity: "Moderate",
+                },
+              ],
               totalDuration: 0,
-              totalCaloriesBurned: 0
+              totalCaloriesBurned: 0,
             });
           }
         } else {
@@ -186,21 +259,22 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
             isRestDay: true,
             workouts: [],
             totalDuration: 0,
-            totalCaloriesBurned: 0
+            totalCaloriesBurned: 0,
           });
         }
       }
-      
+
       weeks.push({
         weekNumber: weekNum,
         days,
-        weeklyGoal: existingWeek?.weeklyGoal || `Week ${weekNum} - Build momentum`,
+        weeklyGoal:
+          existingWeek?.weeklyGoal || `Week ${weekNum} - Build momentum`,
         completed: existingWeek?.completed || false,
         totalWorkouts: existingWeek?.totalWorkouts || 0,
-        totalDuration: existingWeek?.totalDuration || 0
+        totalDuration: existingWeek?.totalDuration || 0,
       });
     }
-    
+
     return weeks;
   };
 
@@ -226,14 +300,20 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
       return;
     }
     if (formData.selectedDays.length !== formData.workoutFrequency) {
-      setError(`Please select exactly ${formData.workoutFrequency} workout days`);
+      setError(
+        `Please select exactly ${formData.workoutFrequency} workout days`
+      );
       return;
     }
 
     setLoading(true);
     try {
       // Update the weeks structure if days or duration changed
-      const updatedWeeks = updateWeeksStructure(plan, formData.selectedDays, formData.duration);
+      const updatedWeeks = updateWeeksStructure(
+        plan,
+        formData.selectedDays,
+        formData.duration
+      );
 
       const updateData = {
         name: formData.name,
@@ -247,7 +327,7 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
         equipment: formData.equipment,
         tags: formData.tags,
         weeks: updatedWeeks,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
 
       await onUpdate(plan._id, updateData);
@@ -421,10 +501,12 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
               <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
                 <Calendar className="h-4 w-4" />
                 <span>
-                  Choose {formData.workoutFrequency} day{formData.workoutFrequency !== 1 ? 's' : ''} for your workouts
+                  Choose {formData.workoutFrequency} day
+                  {formData.workoutFrequency !== 1 ? "s" : ""} for your workouts
                   {formData.selectedDays.length > 0 && (
                     <span className="ml-2 text-green-600 dark:text-green-400">
-                      ({formData.selectedDays.length}/{formData.workoutFrequency} selected)
+                      ({formData.selectedDays.length}/
+                      {formData.workoutFrequency} selected)
                     </span>
                   )}
                 </span>
@@ -432,9 +514,11 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
               <div className="grid grid-cols-7 gap-2">
                 {daysOfWeek.map((day) => {
                   const isSelected = formData.selectedDays.includes(day.value);
-                  const canSelect = !isSelected && formData.selectedDays.length < formData.workoutFrequency;
+                  const canSelect =
+                    !isSelected &&
+                    formData.selectedDays.length < formData.workoutFrequency;
                   const isDisabled = !isSelected && !canSelect;
-                  
+
                   return (
                     <button
                       key={day.value}
@@ -443,11 +527,12 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
                       disabled={isDisabled}
                       className={`
                         p-3 rounded-lg text-center transition-all duration-200 border-2
-                        ${isSelected 
-                          ? 'bg-green-600 text-white border-green-600 shadow-lg' 
-                          : isDisabled
-                            ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700 cursor-not-allowed'
-                            : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 cursor-pointer'
+                        ${
+                          isSelected
+                            ? "bg-green-600 text-white border-green-600 shadow-lg"
+                            : isDisabled
+                            ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700 cursor-not-allowed"
+                            : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 cursor-pointer"
                         }
                       `}
                     >
@@ -459,9 +544,13 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
               </div>
               {formData.selectedDays.length > 0 && (
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Selected days: {formData.selectedDays.map(dayNum => 
-                    daysOfWeek.find(d => d.value === dayNum)?.name
-                  ).join(', ')}
+                  Selected days:{" "}
+                  {formData.selectedDays
+                    .map(
+                      (dayNum) =>
+                        daysOfWeek.find((d) => d.value === dayNum)?.name
+                    )
+                    .join(", ")}
                 </div>
               )}
             </div>
@@ -482,7 +571,11 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
                     type="checkbox"
                     checked={formData.targetMuscleGroups.includes(muscle)}
                     onChange={() =>
-                      handleArrayToggle(formData.targetMuscleGroups, muscle, "targetMuscleGroups")
+                      handleArrayToggle(
+                        formData.targetMuscleGroups,
+                        muscle,
+                        "targetMuscleGroups"
+                      )
                     }
                     className="rounded border-gray-300 text-green-600 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700"
                   />
@@ -509,7 +602,11 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
                     type="checkbox"
                     checked={formData.equipment.includes(equipment)}
                     onChange={() =>
-                      handleArrayToggle(formData.equipment, equipment, "equipment")
+                      handleArrayToggle(
+                        formData.equipment,
+                        equipment,
+                        "equipment"
+                      )
                     }
                     className="rounded border-gray-300 text-green-600 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700"
                   />
@@ -522,17 +619,55 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
           </div>
 
           {/* Warning about data changes */}
-          {(formData.duration !== plan.duration || 
-            JSON.stringify(formData.selectedDays) !== JSON.stringify(
-              plan.weeks?.[0]?.days?.filter(d => !d.isRestDay).map(d => d.dayNumber).sort() || []
-            )) && (
-            <div className="bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-              <p className="text-yellow-800 dark:text-yellow-200 text-sm">
-                <strong>Notice:</strong> Changing the duration or workout days will update your plan structure. 
-                Existing workouts will be preserved where possible, but some data may be reorganized.
-              </p>
-            </div>
-          )}
+          {(() => {
+            // Get original selected days for comparison
+            let originalSelectedDays = [];
+            if (
+              Array.isArray(plan.selectedDays) &&
+              plan.selectedDays.length > 0
+            ) {
+              originalSelectedDays = [...plan.selectedDays].sort(
+                (a, b) => a - b
+              );
+            } else if (plan.weeks && plan.weeks.length > 0) {
+              const workoutDaysSet = new Set();
+              plan.weeks.forEach((week) => {
+                if (week.days) {
+                  week.days.forEach((day) => {
+                    // Check if day has workouts AND is not a rest day
+                    if (
+                      !day.isRestDay &&
+                      day.workouts &&
+                      day.workouts.length > 0
+                    ) {
+                      workoutDaysSet.add(day.dayNumber);
+                    }
+                  });
+                }
+              });
+              originalSelectedDays = Array.from(workoutDaysSet).sort(
+                (a, b) => a - b
+              );
+            }
+
+            const daysChanged =
+              JSON.stringify(formData.selectedDays) !==
+              JSON.stringify(originalSelectedDays);
+            const durationChanged = formData.duration !== plan.duration;
+
+            return (
+              (daysChanged || durationChanged) && (
+                <div className="bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                  <p className="text-yellow-800 dark:text-yellow-200 text-sm">
+                    <strong>Notice:</strong> Changing the duration or workout
+                    days will update your plan structure. Existing workouts will
+                    be preserved where possible, but some data may be
+                    reorganized.
+                  </p>
+                </div>
+              )
+            );
+          })()}
 
           {/* Form Actions */}
           <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
