@@ -37,6 +37,7 @@ export default function WorkoutPlanDetailPage() {
   const [showProgress, setShowProgress] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedWorkout, setSelectedWorkout] = useState(null);
+  const [showEditPlan, setShowEditPlan] = useState(false);
 
   const AddExerciseModal = dynamic(() => import("./AddExerciseModal"), {
     loading: () => (
@@ -52,6 +53,26 @@ export default function WorkoutPlanDetailPage() {
       </div>
     ),
     ssr: false, // Optional: disable server-side rendering
+  });
+
+  const EditPlanModal = dynamic(() => import("../EditPlanModal"), {
+    loading: () => (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="w-[90%] max-w-2xl bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
+          <div className="space-y-4 animate-pulse">
+            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+            <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+            <div className="flex justify-end space-x-4">
+              <div className="h-10 bg-gray-300 dark:bg-gray-600 rounded w-20"></div>
+              <div className="h-10 bg-gray-300 dark:bg-gray-600 rounded w-32"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    ),
+    ssr: false,
   });
 
   useEffect(() => {
@@ -107,6 +128,21 @@ export default function WorkoutPlanDetailPage() {
     router.push(
       `/workout-plan/${id}/add-workout?week=${weekNumber}&day=${dayNumber}`
     );
+  };
+
+  const handleUpdatePlan = async (planId, updateData) => {
+    try {
+      const response = await workoutPlanService.updateWorkoutPlan(
+        planId,
+        updateData
+      );
+      setPlan(response.plan || response);
+      setShowEditPlan(false);
+      console.log("✅ Workout plan updated successfully");
+    } catch (error) {
+      console.error("❌ Error updating workout plan:", error);
+      throw error;
+    }
   };
 
   const calculateWeekProgress = (week) => {
@@ -236,7 +272,7 @@ export default function WorkoutPlanDetailPage() {
                 <span>Progress</span>
               </button>
               <button
-                onClick={() => router.push(`/workout-plan/${id}/edit`)}
+                onClick={() => setShowEditPlan(true)}
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
               >
                 <Edit className="h-4 w-4" />
@@ -526,6 +562,14 @@ export default function WorkoutPlanDetailPage() {
       )}
       {showProgress && (
         <ProgressTracker plan={plan} onClose={() => setShowProgress(false)} />
+      )}
+
+      {showEditPlan && (
+        <EditPlanModal
+          plan={plan}
+          onClose={() => setShowEditPlan(false)}
+          onUpdate={handleUpdatePlan}
+        />
       )}
     </div>
   );
