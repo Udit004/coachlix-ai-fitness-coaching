@@ -210,7 +210,7 @@ const ChatSidebar = ({
     }
 
     return (
-      <div className="h-full overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         <div className="p-4 space-y-4 lg:space-y-6">
           {/* Personalized Welcome Card */}
           <WelcomeCard userProfile={userProfile} />
@@ -307,11 +307,11 @@ const ChatSidebar = ({
             ? "fixed inset-y-0 left-0 z-50 w-80 bg-white shadow-2xl transform translate-x-0"
             : "hidden lg:block lg:relative lg:inset-auto lg:w-80 lg:bg-transparent lg:shadow-none"
         } 
-        transition-all duration-300 ease-in-out overflow-hidden h-full
+        transition-all duration-300 ease-in-out h-full flex flex-col
       `}
       >
         {/* Enhanced Mobile Header */}
-        <div className="lg:hidden sticky top-0 bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm z-10">
+        <div className="lg:hidden flex-shrink-0 sticky top-0 bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm z-10">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center shadow-sm">
               <Menu className="h-4 w-4 text-white" />
@@ -331,7 +331,7 @@ const ChatSidebar = ({
         </div>
 
         {/* Enhanced Tab Navigation */}
-        <div className="flex border-b border-gray-200 bg-white/95 backdrop-blur-sm sticky top-[73px] lg:top-0 z-10">
+        <div className="flex-shrink-0 flex border-b border-gray-200 bg-white/95 backdrop-blur-sm sticky top-[73px] lg:top-0 z-10">
           <button
             onClick={() => setActiveTab("menu")}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 relative ${
@@ -368,7 +368,7 @@ const ChatSidebar = ({
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-hidden">{renderTabContent()}</div>
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">{renderTabContent()}</div>
       </div>
     </>
   );

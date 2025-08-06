@@ -1,5 +1,5 @@
-// Updated ChatHeader.js
-import React from 'react';
+// Updated ChatHeader.js - Fixed mobile dropdown
+import React, { useState } from 'react';
 import { 
   Menu, 
   Settings, 
@@ -22,8 +22,15 @@ const ChatHeader = ({
   showHistory,
   isNewChat
 }) => {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
   const currentPlan = plans.find(plan => plan.id === selectedPlan);
   const IconComponent = currentPlan?.icon;
+
+  const handlePlanSelect = (planId) => {
+    setSelectedPlan(planId);
+    setIsDropdownOpen(false);
+  };
 
   return (
     <header className="bg-white border-b border-gray-200 shadow-sm px-4 py-3">
@@ -40,8 +47,11 @@ const ChatHeader = ({
           </button>
 
           {/* Plan selector dropdown */}
-          <div className="relative group">
-            <button className="flex items-center space-x-3 px-4 py-2 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 rounded-lg border border-gray-200 transition-all duration-200 min-w-[180px]">
+          <div className="relative">
+            <button 
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center space-x-3 px-4 py-2 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 rounded-lg border border-gray-200 transition-all duration-200 min-w-[180px]"
+            >
               {IconComponent && (
                 <div className={`w-6 h-6 rounded-full bg-gradient-to-r ${currentPlan.color} flex items-center justify-center`}>
                   <IconComponent className="w-3 h-3 text-white" />
@@ -50,33 +60,35 @@ const ChatHeader = ({
               <span className="font-medium text-gray-800 flex-1 text-left truncate">
                 {currentPlan?.name || 'Select Plan'}
               </span>
-              <ChevronDown className="w-4 h-4 text-gray-500 group-hover:text-gray-700 transition-colors" />
+              <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown menu */}
-            <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-              <div className="p-2 space-y-1">
-                {plans.map((plan) => {
-                  const PlanIcon = plan.icon;
-                  return (
-                    <button
-                      key={plan.id}
-                      onClick={() => setSelectedPlan(plan.id)}
-                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
-                        selectedPlan === plan.id
-                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className={`w-6 h-6 rounded-full bg-gradient-to-r ${plan.color} flex items-center justify-center`}>
-                        <PlanIcon className="w-3 h-3 text-white" />
-                      </div>
-                      <span className="font-medium">{plan.name}</span>
-                    </button>
-                  );
-                })}
+            {isDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 animate-in slide-in-from-top-2 duration-200">
+                <div className="p-2 space-y-1">
+                  {plans.map((plan) => {
+                    const PlanIcon = plan.icon;
+                    return (
+                      <button
+                        key={plan.id}
+                        onClick={() => handlePlanSelect(plan.id)}
+                        className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
+                          selectedPlan === plan.id
+                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className={`w-6 h-6 rounded-full bg-gradient-to-r ${plan.color} flex items-center justify-center`}>
+                          <PlanIcon className="w-3 h-3 text-white" />
+                        </div>
+                        <span className="font-medium">{plan.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -167,6 +179,14 @@ const ChatHeader = ({
           )}
         </div>
       </div>
+
+      {/* Backdrop to close dropdown when clicking outside */}
+      {isDropdownOpen && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => setIsDropdownOpen(false)}
+        />
+      )}
     </header>
   );
 };

@@ -1,4 +1,4 @@
-// components/ChatHistory/ChatHistory.jsx
+// components/ChatHistory/ChatHistory.jsx - Fixed Scrollable Version
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   History, 
@@ -43,51 +43,55 @@ const ChatHistorySkeleton = ({ count = 5 }) => (
 
 // Empty state component
 const EmptyState = ({ searchTerm, filterPlan, onNewChat }) => (
-  <div className="p-6 text-center">
-    <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-      {searchTerm || filterPlan !== 'all' ? (
-        <Search className="w-8 h-8 text-gray-400" />
-      ) : (
-        <MessageCircle className="w-8 h-8 text-gray-400" />
-      )}
+  <div className="flex-1 flex items-center justify-center p-6">
+    <div className="text-center">
+      <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+        {searchTerm || filterPlan !== 'all' ? (
+          <Search className="w-8 h-8 text-gray-400" />
+        ) : (
+          <MessageCircle className="w-8 h-8 text-gray-400" />
+        )}
+      </div>
+      
+      <h3 className="text-lg font-medium text-gray-900 mb-2">
+        {searchTerm || filterPlan !== 'all' ? 'No matching chats' : 'No chat history yet'}
+      </h3>
+      
+      <p className="text-gray-500 mb-4 text-sm">
+        {searchTerm || filterPlan !== 'all' 
+          ? 'Try adjusting your search or filters'
+          : 'Start your first conversation to see it here'
+        }
+      </p>
+      
+      <button
+        onClick={onNewChat}
+        className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        <Plus className="w-4 h-4" />
+        <span>Start New Chat</span>
+      </button>
     </div>
-    
-    <h3 className="text-lg font-medium text-gray-900 mb-2">
-      {searchTerm || filterPlan !== 'all' ? 'No matching chats' : 'No chat history yet'}
-    </h3>
-    
-    <p className="text-gray-500 mb-4 text-sm">
-      {searchTerm || filterPlan !== 'all' 
-        ? 'Try adjusting your search or filters'
-        : 'Start your first conversation to see it here'
-      }
-    </p>
-    
-    <button
-      onClick={onNewChat}
-      className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-    >
-      <Plus className="w-4 h-4" />
-      <span>Start New Chat</span>
-    </button>
   </div>
 );
 
 // Error state component
 const ErrorState = ({ error, onRetry }) => (
-  <div className="p-6 text-center">
-    <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-      <AlertCircle className="w-8 h-8 text-red-500" />
+  <div className="flex-1 flex items-center justify-center p-6">
+    <div className="text-center">
+      <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+        <AlertCircle className="w-8 h-8 text-red-500" />
+      </div>
+      <h3 className="text-lg font-medium text-gray-900 mb-2">Unable to load chats</h3>
+      <p className="text-gray-500 mb-4 text-sm">{error}</p>
+      <button
+        onClick={onRetry}
+        className="inline-flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+      >
+        <RefreshCw className="w-4 h-4" />
+        <span>Try Again</span>
+      </button>
     </div>
-    <h3 className="text-lg font-medium text-gray-900 mb-2">Unable to load chats</h3>
-    <p className="text-gray-500 mb-4 text-sm">{error}</p>
-    <button
-      onClick={onRetry}
-      className="inline-flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-    >
-      <RefreshCw className="w-4 h-4" />
-      <span>Try Again</span>
-    </button>
   </div>
 );
 
@@ -391,12 +395,16 @@ const ChatHistory = ({
   }, [authUser?.uid, retryFetch]);
 
   if (error && chats.length === 0) {
-    return <ErrorState error={error} onRetry={handleRetry} />;
+    return (
+      <div className="h-full flex flex-col bg-white">
+        <ErrorState error={error} onRetry={handleRetry} />
+      </div>
+    );
   }
 
   return (
     <div className="h-full flex flex-col bg-white">
-      {/* Header */}
+      {/* Fixed Header */}
       <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
@@ -465,8 +473,8 @@ const ChatHistory = ({
         </div>
       </div>
 
-      {/* Chat List */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Scrollable Chat List */}
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         {loading && chats.length === 0 ? (
           <ChatHistorySkeleton />
         ) : Object.keys(groupedChats).length === 0 ? (
