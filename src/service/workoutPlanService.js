@@ -1112,12 +1112,31 @@ const workoutPlanService = {
   getWorkoutExercisesFromWorkout,
   updateWorkoutExercisesFromWorkout,
   deleteExerciseFromWorkout,
+
   addProgressEntry,
+  updateProgressEntry,
+  deleteProgressEntry,
+  getProgressEntry,
   getProgressHistory,
-  cloneWorkoutPlan,
+
   getWorkoutStats,
+  getWeeklyProgress,
+  updateWorkoutStatus,
+  updateExerciseProgress,
+  getAchievements,
+  getPersonalRecords,
+  exportProgressData,
+  batchUpdateProgress,
+
+
+
+  cloneWorkoutPlan,
+
+
   startWorkoutSession,
   completeWorkoutSession,
+
+  
   logExerciseSet,
   generateAIWorkoutPlan,
   searchExercises,
