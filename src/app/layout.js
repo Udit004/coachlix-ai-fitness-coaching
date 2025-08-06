@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import ConditionalFooter from "@/components/ConditionalFooter";
 import { AuthProvider } from "@/auth/AuthContext";
 import { CustomThemeProvider } from "@/context/CustomThemeProvider";
+import QueryProvider from "@/providers/QueryProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -64,6 +65,7 @@ export default function RootLayout({ children }) {
         <CustomThemeProvider>
           <AuthProvider>
             <Navbar />
+            <QueryProvider></QueryProvider>
             {children}
             <ConditionalFooter />
           </AuthProvider>

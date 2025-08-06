@@ -20,8 +20,8 @@ import QuickActions from './QuickActions';
 import ProgressStats from './ProgressStats';
 import GoalProgress from './GoalProgress';
 import useChatStore from '@/stores/useChatStore';
-import { useChatManager } from '@/hooks/useChatQueries';
 import { useAuthContext } from '@/auth/AuthContext';
+import { useChatHistory } from '@/hooks/useChatHistory';
 
 const ChatHistorySection = ({ 
   chatHistory = [], 
@@ -283,14 +283,12 @@ const ChatSidebar = ({
     loadChat
   } = useChatStore();
 
-  // Chat manager with React Query
+  // Chat history hook
   const {
     chatHistory,
-    historyLoading,
-    historyError,
-    deleteChat,
-    deletingChat
-  } = useChatManager(authUser?.uid);
+    loading: historyLoading,
+    deleteChat
+  } = useChatHistory(authUser?.uid);
 
   // Prevent body scroll when sidebar is open on mobile
   useEffect(() => {
@@ -519,16 +517,6 @@ const ChatSidebar = ({
             )}
           </div>
         </div>
-
-        {/* Loading Overlay for Delete Operations */}
-        {deletingChat && (
-          <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-50">
-            <div className="flex items-center space-x-2 text-gray-600">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
-              <span className="text-sm">Deleting chat...</span>
-            </div>
-          </div>
-        )}
       </div>
     </>
   );

@@ -1,7 +1,8 @@
-// Updated page.jsx with history integration
+// page.jsx - Fixed version without React Query dependency
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import useUserProfileStore from "@/stores/useUserProfileStore";
+import useChatStore from "@/stores/useChatStore";
 import { toast, Toaster } from "react-hot-toast";
 import axios from "axios";
 import {
@@ -28,21 +29,35 @@ import { useChatHistory } from "@/hooks/useChatHistory";
 
 const AIChatPage = () => {
   const { user: authUser, loading: authLoading } = useAuthContext();
-
-  // State management
-  const [messages, setMessages] = useState([]);
-  const [inputValue, setInputValue] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState("general");
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
   
-  // Chat history state
-  const [currentChatId, setCurrentChatId] = useState(null);
-  const [showHistory, setShowHistory] = useState(false);
-  const [isNewChat, setIsNewChat] = useState(true);
+  // Zustand stores
+  const {
+    messages,
+    currentChatId,
+    selectedPlan,
+    isNewChat,
+    isTyping,
+    sidebarOpen,
+    showHistory,
+    inputValue,
+    error,
+    // Actions
+    setMessages,
+    addMessage,
+    updateLastMessage,
+    setCurrentChatId,
+    setSelectedPlan,
+    setIsNewChat,
+    setIsTyping,
+    setSidebarOpen,
+    setShowHistory,
+    setInputValue,
+    setError,
+    clearError,
+    startNewChat,
+    loadChat,
+    generateChatTitle
+  } = useChatStore();
 
   // User profile state
   const {
@@ -51,10 +66,10 @@ const AIChatPage = () => {
     error: profileError,
     fetchUserProfile,
     hasValidProfile,
-    clearError,
+    clearError: clearProfileError,
   } = useUserProfileStore();
 
-  // Chat history hook
+  // Chat history hook (local implementation, not React Query)
   const {
     chatHistory,
     loading: historyLoading,
@@ -62,11 +77,15 @@ const AIChatPage = () => {
     saveChat,
     updateChat,
     deleteChat,
-    generateChatTitle
+    generateChatTitle: generateTitle
   } = useChatHistory(authUser?.uid);
 
+  // Refs
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+
+  // Recording state (separate from store for now)
+  const [isRecording, setIsRecording] = useState(false);
 
   // Training plans configuration
   const plans = [
@@ -154,7 +173,7 @@ const AIChatPage = () => {
       }
 
       if (profileError) {
-        clearError();
+        clearProfileError();
       }
 
       try {
@@ -168,9 +187,7 @@ const AIChatPage = () => {
         await fetchUserProfile(userId, { maxAge: 5 * 60 * 1000 });
       } catch (error) {
         console.error("Failed to load user profile:", error);
-        setError(
-          "Failed to load your profile. Some features may not work properly."
-        );
+        setError("Failed to load your profile. Some features may not work properly.");
       }
     };
 
@@ -181,29 +198,31 @@ const AIChatPage = () => {
     fetchUserProfile,
     hasValidProfile,
     profileError,
-    clearError,
+    clearProfileError,
+    setError
   ]);
 
-  // Handle sending messages
+  // Handle sending messages with local axios call
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isTyping) return;
 
     const userMessage = {
       id: Date.now(),
-      type: "user",
+      role: "user",
       content: inputValue,
       timestamp: new Date(),
       plan: selectedPlan,
     };
 
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+    // Add user message
+    addMessage(userMessage);
     const currentInput = inputValue;
     setInputValue("");
     setIsTyping(true);
     setError(null);
 
     try {
+      // Send message using axios
       const response = await axios.post("/api/chat", {
         message: currentInput,
         plan: selectedPlan,
@@ -219,28 +238,29 @@ const AIChatPage = () => {
 
       const aiResponse = {
         id: Date.now() + 1,
-        type: "ai",
+        role: "ai",
         content: data.response,
         timestamp: new Date(),
-        suggestions: data.suggestions,
+        suggestions: data.suggestions || [],
       };
 
-      const finalMessages = [...newMessages, aiResponse];
-      setMessages(finalMessages);
+      addMessage(aiResponse);
 
       // Auto-save chat after AI response
       if (authUser?.uid) {
-        if (isNewChat && finalMessages.length >= 2) {
+        const updatedMessages = [...messages, userMessage, aiResponse];
+        
+        if (isNewChat && updatedMessages.length >= 2) {
           // Save new chat after first exchange
-          const title = generateChatTitle(finalMessages);
-          const chatId = await saveChat(title, selectedPlan, finalMessages);
+          const title = generateChatTitle(updatedMessages);
+          const chatId = await saveChat(title, selectedPlan, updatedMessages);
           if (chatId) {
             setCurrentChatId(chatId);
             setIsNewChat(false);
           }
         } else if (currentChatId) {
           // Update existing chat
-          await updateChat(currentChatId, finalMessages);
+          await updateChat(currentChatId, updatedMessages);
         }
       }
 
@@ -250,14 +270,13 @@ const AIChatPage = () => {
 
       const errorMessage = {
         id: Date.now() + 1,
-        type: "ai",
-        content:
-          "I apologize, but I'm having trouble responding right now. Please try again in a moment.",
+        role: "ai",
+        content: "I apologize, but I'm having trouble responding right now. Please try again in a moment.",
         timestamp: new Date(),
         suggestions: ["Try again", "Check connection", "Refresh page"],
         isError: true,
       };
-      setMessages((prev) => [...prev, errorMessage]);
+      addMessage(errorMessage);
     } finally {
       setIsTyping(false);
     }
@@ -265,29 +284,19 @@ const AIChatPage = () => {
 
   // Handle selecting a chat from history
   const handleSelectChat = (chat) => {
-    setMessages(chat.messages || []);
-    setSelectedPlan(chat.plan || "general");
-    setCurrentChatId(chat._id);
-    setIsNewChat(false);
-    setShowHistory(false);
-    setSidebarOpen(false); // Close sidebar on mobile
+    loadChat(chat);
     toast.success("Chat loaded successfully");
   };
 
   // Handle starting new chat
   const handleNewChat = () => {
-    setMessages([]);
-    setCurrentChatId(null);
-    setIsNewChat(true);
-    setSelectedPlan("general");
-    setShowHistory(false);
-    setSidebarOpen(false);
+    startNewChat();
     
     // Initialize with welcome message after profile loads
     if (userProfile && !profileLoading) {
       const welcomeMessage = {
         id: Date.now(),
-        type: "ai",
+        role: "ai",
         content: `Welcome back, ${
           userProfile.name
         }! 🎯 I'm your AI fitness coach, ready to help you achieve your ${userProfile.fitnessGoal?.replace(
@@ -378,7 +387,7 @@ const AIChatPage = () => {
     if (messages.length === 0 && userProfile && !profileLoading && isNewChat) {
       const welcomeMessage = {
         id: Date.now(),
-        type: "ai",
+        role: "ai",
         content: `Welcome back, ${
           userProfile.name
         }! 🎯 I'm your AI fitness coach, ready to help you achieve your ${userProfile.fitnessGoal?.replace(
@@ -395,7 +404,7 @@ const AIChatPage = () => {
       };
       setMessages([welcomeMessage]);
     }
-  }, [userProfile, profileLoading, isNewChat]);
+  }, [userProfile, profileLoading, isNewChat, messages.length, setMessages]);
 
   const combinedError = error || profileError || historyError;
 
@@ -476,7 +485,7 @@ const AIChatPage = () => {
         error={combinedError}
         onClose={() => {
           setError(null);
-          clearError();
+          clearProfileError();
         }}
       />
       
