@@ -211,26 +211,32 @@ export const addWorkoutToDay = async (
 
 // ========== EXERCISE MANAGEMENT ==========
 
-  // Add exercises to a workout
-export const addExercisesToWorkout = async (planId, weekNumber, dayNumber, workoutId, exerciseData) => {
+// Add exercises to a workout
+export const addExercisesToWorkout = async (
+  planId,
+  weekNumber,
+  dayNumber,
+  workoutId,
+  exerciseData
+) => {
   try {
-    console.log('🚀 Adding exercises to workout:', {
+    console.log("🚀 Adding exercises to workout:", {
       planId,
       weekNumber,
       dayNumber,
       workoutId,
-      exerciseCount: exerciseData.exercises?.length || 1
+      exerciseCount: exerciseData.exercises?.length || 1,
     });
 
     // Simplified URL construction - no need for /index/
     const url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`;
 
-    console.log('📤 Request URL:', url);
-    console.log('📤 Request data:', exerciseData);
+    console.log("📤 Request URL:", url);
+    console.log("📤 Request data:", exerciseData);
 
     const headers = await getAuthHeaders();
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: JSON.stringify(exerciseData),
     });
@@ -238,21 +244,25 @@ export const addExercisesToWorkout = async (planId, weekNumber, dayNumber, worko
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('❌ Failed to add exercises:', data);
-      throw new Error(data.error || data.message || 'Failed to add exercises');
+      console.error("❌ Failed to add exercises:", data);
+      throw new Error(data.error || data.message || "Failed to add exercises");
     }
 
-    console.log('✅ Successfully added exercises:', data);
+    console.log("✅ Successfully added exercises:", data);
     return data;
-
   } catch (error) {
-    console.error('❌ Error in addExercisesToWorkout:', error);
+    console.error("❌ Error in addExercisesToWorkout:", error);
     throw error;
   }
 };
 
 // Get exercises from a workout
-export const getWorkoutExercisesFromWorkout = async (planId, weekNumber, dayNumber, workoutId) => {
+export const getWorkoutExercisesFromWorkout = async (
+  planId,
+  weekNumber,
+  dayNumber,
+  workoutId
+) => {
   try {
     // Simplified URL construction
     const url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`;
@@ -268,20 +278,26 @@ export const getWorkoutExercisesFromWorkout = async (planId, weekNumber, dayNumb
 
     return await response.json();
   } catch (error) {
-    console.error('Error fetching workout exercises:', error);
+    console.error("Error fetching workout exercises:", error);
     throw error;
   }
 };
 
 // Update workout exercises
-export const updateWorkoutExercisesFromWorkout = async (planId, weekNumber, dayNumber, workoutId, updateData) => {
+export const updateWorkoutExercisesFromWorkout = async (
+  planId,
+  weekNumber,
+  dayNumber,
+  workoutId,
+  updateData
+) => {
   try {
     // Simplified URL construction
     const url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/exercises`;
 
     const headers = await getAuthHeaders();
     const response = await fetch(url, {
-      method: 'PUT',
+      method: "PUT",
       headers,
       body: JSON.stringify(updateData),
     });
@@ -289,18 +305,26 @@ export const updateWorkoutExercisesFromWorkout = async (planId, weekNumber, dayN
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || data.message || 'Failed to update exercises');
+      throw new Error(
+        data.error || data.message || "Failed to update exercises"
+      );
     }
 
     return data;
   } catch (error) {
-    console.error('Error updating workout exercises:', error);
+    console.error("Error updating workout exercises:", error);
     throw error;
   }
 };
 
 // Delete a single exercise from workout
-export const deleteExerciseFromWorkout = async (planId, weekNumber, dayNumber, workoutId, exerciseIndex) => {
+export const deleteExerciseFromWorkout = async (
+  planId,
+  weekNumber,
+  dayNumber,
+  workoutId,
+  exerciseIndex
+) => {
   try {
     // Simplified URL construction
     const baseUrl = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}`;
@@ -308,24 +332,26 @@ export const deleteExerciseFromWorkout = async (planId, weekNumber, dayNumber, w
 
     const headers = await getAuthHeaders();
     const response = await fetch(url, {
-      method: 'DELETE',
+      method: "DELETE",
       headers,
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || data.message || 'Failed to delete exercise');
+      throw new Error(
+        data.error || data.message || "Failed to delete exercise"
+      );
     }
 
     return data;
   } catch (error) {
-    console.error('Error deleting exercise:', error);
+    console.error("Error deleting exercise:", error);
     throw error;
   }
 };
 
-
+// =================== PROGRESS METHODS ===================//
 
 // Add progress entry
 export const addProgressEntry = async (planId, progressData) => {
@@ -349,12 +375,213 @@ export const getProgressHistory = async (planId) => {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${BASE_URL}/${planId}/progress`, {
+      method: "GET",
       headers,
     });
 
     return handleResponse(response);
   } catch (error) {
     console.error("Error fetching progress history:", error);
+    throw error;
+  }
+};
+
+// Update specific progress entry
+export const updateProgressEntry = async (planId, progressId, progressData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(
+      `${BASE_URL}/${planId}/progress/${progressId}`,
+      {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(progressData),
+      }
+    );
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error updating progress entry:", error);
+    throw error;
+  }
+};
+
+// Delete specific progress entry
+export const deleteProgressEntry = async (planId, progressId) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(
+      `${BASE_URL}/${planId}/progress/${progressId}`,
+      {
+        method: "DELETE",
+        headers,
+      }
+    );
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error deleting progress entry:", error);
+    throw error;
+  }
+};
+
+// Get specific progress entry
+export const getProgressEntry = async (planId, progressId) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(
+      `${BASE_URL}/${planId}/progress/${progressId}`,
+      {
+        method: "GET",
+        headers,
+      }
+    );
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error fetching progress entry:", error);
+    throw error;
+  }
+};
+
+
+
+// =================== STATISTICS METHODS ===================
+
+// Get comprehensive workout statistics
+export const getWorkoutStats = async (planId) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${BASE_URL}/${planId}/stats`, {
+      method: "GET",
+      headers,
+    });
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error fetching workout stats:", error);
+    throw error;
+  }
+};
+
+// =================== ADDITIONAL UTILITY METHODS ===================
+
+// Get weekly progress data
+export const getWeeklyProgress = async (planId, weekNumber) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${BASE_URL}/${planId}/weeks/${weekNumber}/progress`, {
+      method: "GET",
+      headers,
+    });
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error fetching weekly progress:", error);
+    throw error;
+  }
+};
+
+// Update workout completion status
+export const updateWorkoutStatus = async (planId, weekNumber, dayNumber, workoutIndex, status) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${BASE_URL}/${planId}/workout-status`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({
+        weekNumber,
+        dayNumber,
+        workoutIndex,
+        status,
+        completedAt: status === 'completed' ? new Date().toISOString() : null
+      }),
+    });
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error updating workout status:", error);
+    throw error;
+  }
+};
+
+// Update exercise completion and sets
+export const updateExerciseProgress = async (planId, weekNumber, dayNumber, workoutIndex, exerciseIndex, exerciseData) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${BASE_URL}/${planId}/exercise-progress`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({
+        weekNumber,
+        dayNumber,
+        workoutIndex,
+        exerciseIndex,
+        ...exerciseData
+      }),
+    });
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error updating exercise progress:", error);
+    throw error;
+  }
+};
+
+// Get achievements for a plan
+export const getAchievements = async (planId) => {
+  try {
+    const stats = await getWorkoutStats(planId);
+    return stats.achievements || [];
+  } catch (error) {
+    console.error("Error fetching achievements:", error);
+    throw error;
+  }
+};
+
+// Get personal records
+export const getPersonalRecords = async (planId) => {
+  try {
+    const stats = await getWorkoutStats(planId);
+    return stats.exerciseStats?.personalRecords || [];
+  } catch (error) {
+    console.error("Error fetching personal records:", error);
+    throw error;
+  }
+};
+
+// Export progress data (for backup/sharing)
+export const exportProgressData = async (planId, format = 'json') => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${BASE_URL}/${planId}/export?format=${format}`, {
+      method: "GET",
+      headers,
+    });
+
+    if (format === 'csv') {
+      return await response.text();
+    }
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error exporting progress data:", error);
+    throw error;
+  }
+};
+
+// Batch update multiple progress entries
+export const batchUpdateProgress = async (planId, progressEntries) => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${BASE_URL}/${planId}/progress/batch`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ entries: progressEntries }),
+    });
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error batch updating progress:", error);
     throw error;
   }
 };
@@ -372,21 +599,6 @@ export const cloneWorkoutPlan = async (planId, newName) => {
     return handleResponse(response);
   } catch (error) {
     console.error("Error cloning workout plan:", error);
-    throw error;
-  }
-};
-
-// Get workout statistics
-export const getWorkoutStats = async (planId) => {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/${planId}/stats`, {
-      headers,
-    });
-
-    return handleResponse(response);
-  } catch (error) {
-    console.error("Error fetching workout stats:", error);
     throw error;
   }
 };

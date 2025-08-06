@@ -1,4 +1,4 @@
-// api/workout-plans/[id]/stats/route.js - Get workout plan statistics
+// api/workout-plans/[id]/stats/route.js - Get comprehensive workout plan statistics
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "../../../../../lib/db";
 import WorkoutPlan from "@/models/WorkoutPlan";
@@ -27,7 +27,7 @@ export async function GET(request, { params }) {
 
     await connectDB();
 
-    // Find the workout plan
+    // Find the workout plan with all necessary data
     const plan = await WorkoutPlan.findOne({
       _id: planId,
       userId: user.uid
@@ -47,7 +47,8 @@ export async function GET(request, { params }) {
       success: true,
       stats,
       planId: planId,
-      planName: plan.name
+      planName: plan.name,
+      lastUpdated: new Date().toISOString()
     });
     
   } catch (error) {
@@ -59,247 +60,354 @@ export async function GET(request, { params }) {
   }
 }
 
-// Helper function to calculate workout statistics
+// Helper function to calculate comprehensive workout statistics
 function calculateWorkoutStats(plan) {
   const stats = {
-    overview: {
-      totalWeeks: plan.weeks?.length || 0,
-      totalWorkouts: 0,
+    // Basic plan info
+    totalWorkouts: 0,
+    totalDuration: 0, // in minutes
+    totalCalories: 0,
+    averageWorkoutDuration: 0,
+    completionRate: 0,
+    consistency: 0,
+    caloriesBurned: 0,
+    strengthGains: 0,
+    
+    // Weekly breakdown
+    weeklyData: [],
+    
+    // Exercise analytics
+    exerciseStats: {
       totalExercises: 0,
-      estimatedDuration: 0,
-      workoutFrequency: plan.workoutFrequency || 0,
-      difficulty: plan.difficulty,
-      goal: plan.goal
-    },
-    progress: {
-      completedWorkouts: 0,
       completedExercises: 0,
       totalSets: 0,
       totalReps: 0,
-      averageIntensity: 0,
-      consistencyRate: 0
+      averageWeight: 0,
+      personalRecords: []
     },
-    muscleGroups: {},
-    equipment: {},
-    weeklyBreakdown: [],
+    
+    // Muscle groups and equipment distribution
+    muscleGroupDistribution: {},
+    equipmentUsage: {},
+    
+    // Progress tracking
+    progressMetrics: {
+      weightProgress: [],
+      measurementProgress: {},
+      strengthProgress: [],
+      consistencyTrend: []
+    },
+    
+    // Achievements and milestones
     achievements: [],
-    recommendations: []
+    milestones: []
   };
 
   if (!plan.weeks || plan.weeks.length === 0) {
     return stats;
   }
 
-  let totalIntensity = 0;
-  let intensityCount = 0;
   let totalCompletedWorkouts = 0;
-  let totalCompletedExercises = 0;
+  let totalPlannedWorkouts = 0;
+  let totalActualDuration = 0;
+  let totalEstimatedDuration = 0;
   let totalSets = 0;
   let totalReps = 0;
+  let totalWeight = 0;
+  let weightCount = 0;
 
   // Process each week
   plan.weeks.forEach((week, weekIndex) => {
-    const weekStats = {
-      weekNumber: week.weekNumber || weekIndex + 1,
-      theme: week.theme || 'Training Week',
-      totalWorkouts: 0,
+    const weekData = {
+      week: week.weekNumber || weekIndex + 1,
+      workouts: 0,
       completedWorkouts: 0,
-      totalExercises: 0,
-      completedExercises: 0,
-      estimatedDuration: 0,
-      actualDuration: 0
+      duration: 0,
+      completionRate: 0,
+      avgWeight: 0,
+      avgReps: 0,
+      totalCalories: 0
     };
 
-    // Process each day
+    // Process each day in the week
     week.days?.forEach(day => {
-      day.workouts?.forEach(workout => {
-        stats.overview.totalWorkouts++;
-        weekStats.totalWorkouts++;
-        
-        if (workout.duration) {
-          stats.overview.estimatedDuration += workout.duration;
-          weekStats.estimatedDuration += workout.duration;
-        }
-
-        if (workout.intensity) {
-          totalIntensity += workout.intensity;
-          intensityCount++;
-        }
-
-        // Check if workout is completed
-        if (workout.completed || workout.status === 'completed') {
-          totalCompletedWorkouts++;
-          weekStats.completedWorkouts++;
+      if (!day.isRestDay && day.workouts) {
+        day.workouts.forEach(workout => {
+          totalPlannedWorkouts++;
+          weekData.workouts++;
           
-          if (workout.actualDuration) {
-            weekStats.actualDuration += workout.actualDuration;
-          }
-        }
+          // Add estimated duration
+          const estimatedDuration = workout.estimatedDuration || 0;
+          totalEstimatedDuration += estimatedDuration;
 
-        // Process exercises
-        workout.exercises?.forEach(exercise => {
-          stats.overview.totalExercises++;
-          weekStats.totalExercises++;
-
-          // Count muscle groups
-          exercise.muscleGroups?.forEach(group => {
-            stats.muscleGroups[group] = (stats.muscleGroups[group] || 0) + 1;
-          });
-
-          // Count equipment
-          if (exercise.equipment) {
-            stats.equipment[exercise.equipment] = (stats.equipment[exercise.equipment] || 0) + 1;
-          }
-
-          // Count sets and reps if exercise is completed
-          if (exercise.completed || exercise.status === 'completed') {
-            totalCompletedExercises++;
-            weekStats.completedExercises++;
-
-            if (exercise.sets) {
-              totalSets += exercise.sets;
-            }
+          // Check if workout is completed
+          if (workout.isCompleted || workout.completedAt) {
+            totalCompletedWorkouts++;
+            weekData.completedWorkouts++;
             
-            if (exercise.actualReps) {
-              totalReps += exercise.actualReps;
-            } else if (exercise.reps && !isNaN(parseInt(exercise.reps))) {
-              totalReps += parseInt(exercise.reps) * (exercise.sets || 1);
+            const actualDuration = workout.actualDuration || estimatedDuration;
+            totalActualDuration += actualDuration;
+            weekData.duration += actualDuration;
+            
+            if (workout.caloriesBurned) {
+              stats.totalCalories += workout.caloriesBurned;
+              weekData.totalCalories += workout.caloriesBurned;
             }
+          }
+
+          // Process exercises in the workout
+          if (workout.exercises) {
+            workout.exercises.forEach(exercise => {
+              stats.exerciseStats.totalExercises++;
+              
+              // Count muscle groups
+              if (exercise.muscleGroups) {
+                exercise.muscleGroups.forEach(group => {
+                  stats.muscleGroupDistribution[group] = 
+                    (stats.muscleGroupDistribution[group] || 0) + 1;
+                });
+              }
+              
+              // Count equipment usage
+              if (exercise.equipment) {
+                exercise.equipment.forEach(equip => {
+                  stats.equipmentUsage[equip] = 
+                    (stats.equipmentUsage[equip] || 0) + 1;
+                });
+              }
+
+              // Process completed exercises
+              if (exercise.isCompleted) {
+                stats.exerciseStats.completedExercises++;
+                
+                // Process sets
+                if (exercise.sets && exercise.sets.length > 0) {
+                  exercise.sets.forEach(set => {
+                    if (set.completed) {
+                      totalSets++;
+                      if (set.reps) totalReps += set.reps;
+                      if (set.weight && set.weight > 0) {
+                        totalWeight += set.weight;
+                        weightCount++;
+                      }
+                    }
+                  });
+                }
+                
+                // Track personal records
+                if (exercise.personalRecord) {
+                  stats.exerciseStats.personalRecords.push({
+                    exercise: exercise.name,
+                    weight: exercise.personalRecord.weight,
+                    reps: exercise.personalRecord.reps,
+                    date: exercise.personalRecord.date
+                  });
+                }
+              }
+            });
           }
         });
-      });
+      }
     });
 
-    stats.weeklyBreakdown.push(weekStats);
+    // Calculate week completion rate
+    weekData.completionRate = weekData.workouts > 0 
+      ? Math.round((weekData.completedWorkouts / weekData.workouts) * 100) 
+      : 0;
+    
+    stats.weeklyData.push(weekData);
   });
 
-  // Calculate averages and percentages
-  stats.progress.completedWorkouts = totalCompletedWorkouts;
-  stats.progress.completedExercises = totalCompletedExercises;
-  stats.progress.totalSets = totalSets;
-  stats.progress.totalReps = totalReps;
-  stats.progress.averageIntensity = intensityCount > 0 ? Math.round(totalIntensity / intensityCount) : 0;
-  stats.progress.consistencyRate = stats.overview.totalWorkouts > 0 
-    ? Math.round((totalCompletedWorkouts / stats.overview.totalWorkouts) * 100) 
+  // Calculate overall statistics
+  stats.totalWorkouts = totalCompletedWorkouts;
+  stats.totalDuration = Math.round(totalActualDuration);
+  stats.averageWorkoutDuration = totalCompletedWorkouts > 0 
+    ? Math.round(totalActualDuration / totalCompletedWorkouts) 
+    : 0;
+  
+  stats.completionRate = totalPlannedWorkouts > 0 
+    ? Math.round((totalCompletedWorkouts / totalPlannedWorkouts) * 100) 
+    : 0;
+  
+  stats.consistency = stats.completionRate; // Same as completion rate for now
+  stats.caloriesBurned = stats.totalCalories;
+  
+  // Exercise statistics
+  stats.exerciseStats.totalSets = totalSets;
+  stats.exerciseStats.totalReps = totalReps;
+  stats.exerciseStats.averageWeight = weightCount > 0 
+    ? Math.round(totalWeight / weightCount) 
     : 0;
 
-  // Calculate achievements
-  stats.achievements = calculateAchievements(stats);
+  // Process progress data if available
+  if (plan.progress && plan.progress.length > 0) {
+    stats.progressMetrics = calculateProgressMetrics(plan.progress);
+  }
 
-  // Generate recommendations
-  stats.recommendations = generateRecommendations(stats, plan);
+  // Calculate achievements
+  stats.achievements = calculateAchievements(stats, plan);
+  
+  // Calculate milestones
+  stats.milestones = calculateMilestones(stats, plan);
 
   return stats;
 }
 
+// Helper function to calculate progress metrics from progress entries
+function calculateProgressMetrics(progressEntries) {
+  const metrics = {
+    weightProgress: [],
+    measurementProgress: {
+      chest: [],
+      waist: [],
+      hips: [],
+      arms: [],
+      thighs: []
+    },
+    strengthProgress: [],
+    consistencyTrend: []
+  };
+
+  // Sort progress entries by date
+  const sortedProgress = [...progressEntries].sort((a, b) => 
+    new Date(a.date) - new Date(b.date)
+  );
+
+  // Process weight progress
+  sortedProgress.forEach(entry => {
+    if (entry.weight) {
+      metrics.weightProgress.push({
+        date: entry.date,
+        weight: entry.weight
+      });
+    }
+    
+    // Process measurements
+    if (entry.measurements) {
+      Object.keys(entry.measurements).forEach(measurement => {
+        if (metrics.measurementProgress[measurement]) {
+          metrics.measurementProgress[measurement].push({
+            date: entry.date,
+            value: entry.measurements[measurement]
+          });
+        }
+      });
+    }
+  });
+
+  return metrics;
+}
+
 // Helper function to calculate achievements
-function calculateAchievements(stats) {
+function calculateAchievements(stats, plan) {
   const achievements = [];
 
-  if (stats.progress.completedWorkouts >= 1) {
+  // Basic achievements
+  if (stats.totalWorkouts >= 1) {
     achievements.push({
-      title: "First Workout Complete!",
-      description: "You've completed your first workout",
+      id: "first_workout",
+      title: "First Steps",
+      description: "Completed your first workout",
       icon: "🎯",
-      unlockedAt: new Date()
+      earnedAt: new Date(),
+      category: "milestone"
     });
   }
 
-  if (stats.progress.completedWorkouts >= 10) {
+  if (stats.totalWorkouts >= 10) {
     achievements.push({
-      title: "Consistency Champion",
-      description: "10 workouts completed",
-      icon: "🏆",
-      unlockedAt: new Date()
-    });
-  }
-
-  if (stats.progress.consistencyRate >= 80) {
-    achievements.push({
-      title: "Dedication Master",
-      description: "Maintaining 80%+ consistency",
+      id: "consistency_10",
+      title: "Building Momentum",
+      description: "Completed 10 workouts",
       icon: "💪",
-      unlockedAt: new Date()
+      earnedAt: new Date(),
+      category: "consistency"
     });
   }
 
-  if (stats.progress.totalSets >= 100) {
+  if (stats.totalWorkouts >= 50) {
     achievements.push({
-      title: "Set Crusher",
-      description: "100+ sets completed",
-      icon: "🔥",
-      unlockedAt: new Date()
+      id: "consistency_50",
+      title: "Dedication Master",
+      description: "Completed 50 workouts",
+      icon: "🏆",
+      earnedAt: new Date(),
+      category: "consistency"
     });
   }
 
-  const muscleGroupCount = Object.keys(stats.muscleGroups).length;
+  // Consistency achievements
+  if (stats.completionRate >= 80) {
+    achievements.push({
+      id: "high_consistency",
+      title: "Consistency Champion",
+      description: "Maintaining 80%+ completion rate",
+      icon: "⚡",
+      earnedAt: new Date(),
+      category: "consistency"
+    });
+  }
+
+  // Strength achievements
+  if (stats.exerciseStats.totalSets >= 100) {
+    achievements.push({
+      id: "sets_100",
+      title: "Set Crusher",
+      description: "Completed 100+ sets",
+      icon: "🔥",
+      earnedAt: new Date(),
+      category: "strength"
+    });
+  }
+
+  // Variety achievements
+  const muscleGroupCount = Object.keys(stats.muscleGroupDistribution).length;
   if (muscleGroupCount >= 5) {
     achievements.push({
+      id: "well_rounded",
       title: "Well-Rounded Athlete",
       description: "Training 5+ muscle groups",
-      icon: "⚡",
-      unlockedAt: new Date()
+      icon: "🎪",
+      earnedAt: new Date(),
+      category: "variety"
     });
   }
 
   return achievements;
 }
 
-// Helper function to generate recommendations
-function generateRecommendations(stats, plan) {
-  const recommendations = [];
-
-  // Consistency recommendations
-  if (stats.progress.consistencyRate < 50) {
-    recommendations.push({
-      type: "consistency",
-      title: "Improve Consistency",
-      message: "Try to maintain at least 3 workouts per week for better results",
-      priority: "high"
+// Helper function to calculate milestones
+function calculateMilestones(stats, plan) {
+  const milestones = [];
+  
+  // Duration milestones
+  if (stats.totalDuration >= 600) { // 10 hours
+    milestones.push({
+      title: "Time Investment",
+      description: "10+ hours of training completed",
+      progress: Math.min(100, (stats.totalDuration / 600) * 100),
+      target: "10 hours",
+      current: `${Math.round(stats.totalDuration / 60)} hours`
     });
   }
 
-  // Intensity recommendations
-  if (stats.progress.averageIntensity < 60) {
-    recommendations.push({
-      type: "intensity",
-      title: "Increase Intensity",
-      message: "Consider increasing workout intensity for better progress",
-      priority: "medium"
-    });
-  }
+  // Workout count milestones
+  milestones.push({
+    title: "Workout Progress",
+    description: "Journey to 100 workouts",
+    progress: Math.min(100, (stats.totalWorkouts / 100) * 100),
+    target: "100 workouts",
+    current: `${stats.totalWorkouts} workouts`
+  });
 
-  // Muscle group balance
-  const muscleGroups = Object.keys(stats.muscleGroups);
-  if (muscleGroups.length < 3) {
-    recommendations.push({
-      type: "variety",
-      title: "Add Variety",
-      message: "Include more muscle groups for balanced development",
-      priority: "medium"
-    });
-  }
+  // Consistency milestone
+  milestones.push({
+    title: "Consistency Goal",
+    description: "Maintain 90% completion rate",
+    progress: Math.min(100, (stats.completionRate / 90) * 100),
+    target: "90% completion",
+    current: `${stats.completionRate}% completion`
+  });
 
-  // Progress recommendations
-  if (stats.progress.completedWorkouts === 0) {
-    recommendations.push({
-      type: "motivation",
-      title: "Get Started!",
-      message: "Complete your first workout to begin your fitness journey",
-      priority: "high"
-    });
-  }
-
-  // Equipment recommendations
-  const equipmentCount = Object.keys(stats.equipment).length;
-  if (equipmentCount === 0) {
-    recommendations.push({
-      type: "equipment",
-      title: "Consider Equipment",
-      message: "Adding basic equipment can increase workout variety",
-      priority: "low"
-    });
-  }
-
-  return recommendations;
+  return milestones;
 }
