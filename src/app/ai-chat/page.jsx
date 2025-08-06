@@ -1,8 +1,9 @@
-// page.jsx - Fixed version without React Query dependency
+// page.jsx - Enhanced version with improved loading and ChatHistory
 "use client";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, Suspense, lazy } from "react";
 import useUserProfileStore from "@/stores/useUserProfileStore";
 import useChatStore from "@/stores/useChatStore";
+import useChatHistoryStore from "@/stores/useChatHistoryStore";
 import { toast, Toaster } from "react-hot-toast";
 import axios from "axios";
 import {
@@ -15,21 +16,53 @@ import {
   Apple,
   Calendar,
   Plus,
-  History
+  History,
+  AlertCircle
 } from "lucide-react";
 import { useAuthContext } from "../../auth/AuthContext";
 
-// Import all components
-import ChatHeader from "./ChatHeader";
-import ChatSidebar from "./ChatSidebar";
-import ChatContainer from "./ChatContainer";
-import ErrorBanner from "./ErrorBanner";
-import ChatHistory from "./ChatHistory";
-import { useChatHistory } from "@/hooks/useChatHistory";
+// Lazy loaded components for better performance
+const ChatHeader = lazy(() => import("./ChatHeader"));
+const ChatSidebar = lazy(() => import("./ChatSidebar"));
+const ChatContainer = lazy(() => import("./ChatContainer"));
+const ErrorBanner = lazy(() => import("./ErrorBanner"));
+
+// Enhanced loading components
+import EnhancedLoading, { 
+  ProfileLoading, 
+  ChatLoading, 
+  InitializingLoading 
+} from "./LoadingStates/EnhancedLoading";
+
+// Loading fallbacks for lazy components
+const ComponentLoading = ({ type = "default" }) => (
+  <div className="animate-pulse">
+    {type === "header" && (
+      <div className="h-16 bg-gray-200 rounded-lg mb-4"></div>
+    )}
+    {type === "sidebar" && (
+      <div className="w-80 h-full bg-gray-200 rounded-lg"></div>
+    )}
+    {type === "chat" && (
+      <div className="flex-1 bg-gray-200 rounded-lg"></div>
+    )}
+    {type === "default" && (
+      <div className="h-32 bg-gray-200 rounded-lg"></div>
+    )}
+  </div>
+);
 
 const AIChatPage = () => {
   const { user: authUser, loading: authLoading } = useAuthContext();
   
+  // Local loading states for better UX
+  const [initializingStage, setInitializingStage] = useState("initial");
+  const [componentLoaded, setComponentLoaded] = useState({
+    header: false,
+    sidebar: false,
+    chat: false
+  });
+
   // Zustand stores
   const {
     messages,
@@ -69,16 +102,12 @@ const AIChatPage = () => {
     clearError: clearProfileError,
   } = useUserProfileStore();
 
-  // Chat history hook (local implementation, not React Query)
+  // Chat history store
   const {
-    chatHistory,
-    loading: historyLoading,
-    error: historyError,
-    saveChat,
-    updateChat,
-    deleteChat,
-    generateChatTitle: generateTitle
-  } = useChatHistory(authUser?.uid);
+    saveChat: saveHistoryChat,
+    updateChat: updateHistoryChat,
+    fetchChats
+  } = useChatHistoryStore();
 
   // Refs
   const messagesEndRef = useRef(null);
@@ -162,36 +191,50 @@ const AIChatPage = () => {
     },
   ];
 
-  // Fetch user profile data on mount
+  // Enhanced loading sequence
   useEffect(() => {
-    const loadProfile = async () => {
+    const initializeApp = async () => {
       if (authLoading) return;
 
-      if (!authUser) {
-        console.log("No authenticated user found");
-        return;
-      }
-
-      if (profileError) {
-        clearProfileError();
-      }
-
       try {
-        const userId = authUser.uid;
+        // Stage 1: Initial setup
+        setInitializingStage("initializing");
+        await new Promise(resolve => setTimeout(resolve, 800));
 
-        if (hasValidProfile()) {
-          console.log("📦 Using existing profile data from store");
+        if (!authUser) {
+          console.log("No authenticated user found");
           return;
         }
 
-        await fetchUserProfile(userId, { maxAge: 5 * 60 * 1000 });
+        // Stage 2: Profile loading
+        setInitializingStage("profile");
+        
+        if (profileError) {
+          clearProfileError();
+        }
+
+        const userId = authUser.uid;
+
+        if (!hasValidProfile()) {
+          await fetchUserProfile(userId, { maxAge: 5 * 60 * 1000 });
+        }
+
+        // Stage 3: Chat preparation
+        setInitializingStage("chat");
+        await new Promise(resolve => setTimeout(resolve, 600));
+
+        // Stage 4: Finalization
+        setInitializingStage("ready");
+        await new Promise(resolve => setTimeout(resolve, 400));
+
       } catch (error) {
-        console.error("Failed to load user profile:", error);
+        console.error("Failed to initialize app:", error);
         setError("Failed to load your profile. Some features may not work properly.");
+        setInitializingStage("error");
       }
     };
 
-    loadProfile();
+    initializeApp();
   }, [
     authUser,
     authLoading,
@@ -202,7 +245,15 @@ const AIChatPage = () => {
     setError
   ]);
 
-  // Handle sending messages with local axios call
+  // Component loading handlers
+  const handleComponentLoad = (componentName) => {
+    setComponentLoaded(prev => ({
+      ...prev,
+      [componentName]: true
+    }));
+  };
+
+  // Handle sending messages with enhanced error handling
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isTyping) return;
 
@@ -246,28 +297,28 @@ const AIChatPage = () => {
 
       addMessage(aiResponse);
 
-      // Auto-save chat after AI response
+      // Auto-save chat using the enhanced store
       if (authUser?.uid) {
         const updatedMessages = [...messages, userMessage, aiResponse];
         
         if (isNewChat && updatedMessages.length >= 2) {
           // Save new chat after first exchange
           const title = generateChatTitle(updatedMessages);
-          const chatId = await saveChat(title, selectedPlan, updatedMessages);
+          const chatId = await saveHistoryChat(authUser.uid, title, selectedPlan, updatedMessages);
           if (chatId) {
             setCurrentChatId(chatId);
             setIsNewChat(false);
           }
         } else if (currentChatId) {
           // Update existing chat
-          await updateChat(currentChatId, updatedMessages);
+          await updateHistoryChat(currentChatId, updatedMessages);
         }
       }
 
     } catch (error) {
       console.error("Error sending message:", error);
       setError(error.message);
-
+      
       const errorMessage = {
         id: Date.now() + 1,
         role: "ai",
@@ -317,6 +368,7 @@ const AIChatPage = () => {
 
   // Handle deleting a chat
   const handleDeleteChat = async (chatId) => {
+    const deleteChat = useChatHistoryStore.getState().deleteChat;
     try {
       await deleteChat(chatId);
       if (currentChatId === chatId) {
@@ -406,63 +458,43 @@ const AIChatPage = () => {
     }
   }, [userProfile, profileLoading, isNewChat, messages.length, setMessages]);
 
-  const combinedError = error || profileError || historyError;
+  const combinedError = error || profileError;
 
-  // Show loading state
-  const isLoading = authLoading || profileLoading;
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center px-4">
-        <div className="text-center max-w-md mx-auto">
-          {/* AI Avatar with pulsing effect */}
-          <div className="relative mb-8">
-            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
-              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
-                <Dumbbell className="w-8 h-8 text-blue-600" />
+  // Show different loading states based on initialization stage
+  if (authLoading || initializingStage !== "ready") {
+    switch (initializingStage) {
+      case "initial":
+      case "initializing":
+        return <InitializingLoading />;
+      case "profile":
+        return <ProfileLoading />;
+      case "chat":
+        return <ChatLoading />;
+      case "error":
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center px-4">
+            <div className="text-center max-w-md mx-auto">
+              <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertCircle className="w-8 h-8 text-red-500" />
               </div>
-            </div>
-            {/* Pulsing rings */}
-            <div className="absolute inset-0 w-20 h-20 mx-auto">
-              <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-20"></div>
-              <div
-                className="absolute inset-2 bg-purple-400 rounded-full animate-ping opacity-30"
-                style={{ animationDelay: "0.5s" }}
-              ></div>
-            </div>
-          </div>
-
-          {/* Thinking dots animation */}
-          <div className="flex justify-center items-center space-x-2 mb-6">
-            <div className="flex space-x-1 bg-white/80 backdrop-blur-sm rounded-full px-4 py-3 shadow-lg">
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-              <div
-                className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                style={{ animationDelay: "0.1s" }}
-              ></div>
-              <div
-                className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                style={{ animationDelay: "0.2s" }}
-              ></div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                Oops! Something went wrong
+              </h3>
+              <p className="text-gray-600 mb-4">
+                We're having trouble loading your AI trainer. Please try refreshing the page.
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Refresh Page
+              </button>
             </div>
           </div>
-
-          {/* Dynamic loading text */}
-          <div className="space-y-2">
-            <h3 className="text-xl font-semibold text-gray-800">
-              Waking up your AI trainer...
-            </h3>
-            <p className="text-gray-600 text-sm animate-pulse">
-              Preparing personalized fitness insights
-            </p>
-          </div>
-
-          {/* Subtle progress indication */}
-          <div className="mt-8 w-32 h-1 bg-gray-200 rounded-full mx-auto overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full animate-pulse"></div>
-          </div>
-        </div>
-      </div>
-    );
+        );
+      default:
+        return <EnhancedLoading stage={initializingStage} />;
+    }
   }
 
   return (
@@ -480,66 +512,43 @@ const AIChatPage = () => {
         }}
       />
       
-      {/* Error Banner */}
-      <ErrorBanner
-        error={combinedError}
-        onClose={() => {
-          setError(null);
-          clearProfileError();
-        }}
-      />
+      {/* Error Banner with Suspense */}
+      {combinedError && (
+        <Suspense fallback={<ComponentLoading type="default" />}>
+          <ErrorBanner
+            error={combinedError}
+            onClose={() => {
+              setError(null);
+              clearProfileError();
+            }}
+          />
+        </Suspense>
+      )}
       
-      {/* Chat Header with New Chat and History buttons */}
-      <ChatHeader
-        plans={plans}
-        selectedPlan={selectedPlan}
-        setSelectedPlan={setSelectedPlan}
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-        clearChat={clearChat}
-        userProfile={userProfile}
-        // Add new props for history
-        onNewChat={handleNewChat}
-        onToggleHistory={() => setShowHistory(!showHistory)}
-        showHistory={showHistory}
-        isNewChat={isNewChat}
-      />
+      {/* Chat Header with Suspense */}
+      <Suspense fallback={<ComponentLoading type="header" />}>
+        <ChatHeader
+          plans={plans}
+          selectedPlan={selectedPlan}
+          setSelectedPlan={setSelectedPlan}
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          clearChat={clearChat}
+          userProfile={userProfile}
+          onNewChat={handleNewChat}
+          onToggleHistory={() => setShowHistory(!showHistory)}
+          showHistory={showHistory}
+          isNewChat={isNewChat}
+          onLoad={() => handleComponentLoad('header')}
+        />
+      </Suspense>
       
-      {/* Main Chat Layout - Mobile Optimized */}
+      {/* Main Chat Layout with Enhanced Loading */}
       <div className="flex-1 overflow-hidden">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2 sm:py-6 h-full">
           <div className="flex gap-2 sm:gap-6 h-full">
             
-            {/* History Sidebar - Show when showHistory is true */}
-            {showHistory && (
-              <div className="w-80 flex-shrink-0 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-gray-200 bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <History className="w-5 h-5 text-gray-600" />
-                      <h3 className="font-semibold text-gray-800">Chat History</h3>
-                    </div>
-                    <button
-                      onClick={handleNewChat}
-                      className="flex items-center space-x-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>New</span>
-                    </button>
-                  </div>
-                </div>
-                <ChatHistory
-                  chatHistory={chatHistory}
-                  loading={historyLoading}
-                  onSelectChat={handleSelectChat}
-                  onDeleteChat={handleDeleteChat}
-                  currentChatId={currentChatId}
-                  plans={plans}
-                />
-              </div>
-            )}
-
-            {/* Main Sidebar - Show when sidebarOpen is true */}
+            {/* Enhanced Sidebar with Suspense */}
             <div
               className={`${
                 sidebarOpen
@@ -547,39 +556,42 @@ const AIChatPage = () => {
                   : "hidden lg:block"
               } w-full lg:w-80 flex-shrink-0 overflow-y-auto h-full p-4 lg:p-0`}
             >
-              <ChatSidebar
-                plans={plans}
-                selectedPlan={selectedPlan}
-                setSelectedPlan={setSelectedPlan}
-                sidebarOpen={sidebarOpen}
-                setSidebarOpen={setSidebarOpen}
-                handleSuggestionClick={handleSuggestionClick}
-                userProfile={userProfile}
-                quickActions={quickActions}
-              />
+              <Suspense fallback={<ComponentLoading type="sidebar" />}>
+                <ChatSidebar
+                  plans={plans}
+                  selectedPlan={selectedPlan}
+                  setSelectedPlan={setSelectedPlan}
+                  handleSuggestionClick={handleSuggestionClick}
+                  userProfile={userProfile}
+                  quickActions={quickActions}
+                  onLoad={() => handleComponentLoad('sidebar')}
+                />
+              </Suspense>
             </div>
 
-            {/* Chat Container - Mobile Optimized */}
+            {/* Chat Container with Suspense */}
             <div className="flex-1 h-full min-w-0">
-              <ChatContainer
-                messages={messages}
-                isTyping={isTyping}
-                inputValue={inputValue}
-                setInputValue={setInputValue}
-                handleSendMessage={handleSendMessage}
-                handleSuggestionClick={handleSuggestionClick}
-                handleKeyPress={handleKeyPress}
-                isRecording={isRecording}
-                toggleRecording={toggleRecording}
-                userProfile={userProfile}
-                textareaRef={textareaRef}
-                messagesEndRef={messagesEndRef}
-                formatTime={formatTime}
-                copyToClipboard={copyToClipboard}
-                // Add chat context
-                currentChatId={currentChatId}
-                isNewChat={isNewChat}
-              />
+              <Suspense fallback={<ComponentLoading type="chat" />}>
+                <ChatContainer
+                  messages={messages}
+                  isTyping={isTyping}
+                  inputValue={inputValue}
+                  setInputValue={setInputValue}
+                  handleSendMessage={handleSendMessage}
+                  handleSuggestionClick={handleSuggestionClick}
+                  handleKeyPress={handleKeyPress}
+                  isRecording={isRecording}
+                  toggleRecording={toggleRecording}
+                  userProfile={userProfile}
+                  textareaRef={textareaRef}
+                  messagesEndRef={messagesEndRef}
+                  formatTime={formatTime}
+                  copyToClipboard={copyToClipboard}
+                  currentChatId={currentChatId}
+                  isNewChat={isNewChat}
+                  onLoad={() => handleComponentLoad('chat')}
+                />
+              </Suspense>
             </div>
           </div>
         </div>
@@ -588,7 +600,7 @@ const AIChatPage = () => {
       {/* Mobile Sidebar Backdrop */}
       {sidebarOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40 backdrop-blur-sm transition-all duration-300"
           onClick={() => setSidebarOpen(false)}
         />
       )}
