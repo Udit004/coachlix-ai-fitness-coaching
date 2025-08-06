@@ -32,7 +32,7 @@ import EnhancedLoading, {
   ProfileLoading, 
   ChatLoading, 
   InitializingLoading 
-} from "./LoadingStates/EnhancedLoading";
+} from "./EnhancedLoading";
 
 // Loading fallbacks for lazy components
 const ComponentLoading = ({ type = "default" }) => (
