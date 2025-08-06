@@ -1,9 +1,12 @@
+// Updated ChatHeader.js
 import React from 'react';
 import { 
-  Bot, 
   Menu, 
+  Settings, 
+  Plus, 
+  History,
   Trash2,
-  Settings
+  ChevronDown
 } from 'lucide-react';
 
 const ChatHeader = ({ 
@@ -13,112 +16,158 @@ const ChatHeader = ({
   sidebarOpen, 
   setSidebarOpen, 
   clearChat, 
-  userProfile 
+  userProfile,
+  onNewChat,
+  onToggleHistory,
+  showHistory,
+  isNewChat
 }) => {
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    const name = userProfile?.name || 'there';
-    
-    if (hour < 12) return `Good morning, ${name}`;
-    if (hour < 17) return `Good afternoon, ${name}`;
-    return `Good evening, ${name}`;
-  };
+  const currentPlan = plans.find(plan => plan.id === selectedPlan);
+  const IconComponent = currentPlan?.icon;
 
   return (
-    <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14 sm:h-16">
-          {/* Left Section - Logo and Greeting */}
-          <div className="flex items-center space-x-3 flex-1 min-w-0 max-w-xs sm:max-w-sm lg:max-w-md">
-            <div className="p-2 bg-blue-600 rounded-lg flex-shrink-0">
-              <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-sm sm:text-base font-semibold text-gray-900 truncate">
-                {getGreeting()}
-              </h1>
-              <p className="text-xs text-gray-600 truncate hidden sm:block">
-                Ready to level up your training?
-              </p>
+    <header className="bg-white border-b border-gray-200 shadow-sm px-4 py-3">
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
+        
+        {/* Left side - Menu and Plan Selector */}
+        <div className="flex items-center space-x-4">
+          {/* Mobile menu button */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="lg:hidden p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          {/* Plan selector dropdown */}
+          <div className="relative group">
+            <button className="flex items-center space-x-3 px-4 py-2 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 rounded-lg border border-gray-200 transition-all duration-200 min-w-[180px]">
+              {IconComponent && (
+                <div className={`w-6 h-6 rounded-full bg-gradient-to-r ${currentPlan.color} flex items-center justify-center`}>
+                  <IconComponent className="w-3 h-3 text-white" />
+                </div>
+              )}
+              <span className="font-medium text-gray-800 flex-1 text-left truncate">
+                {currentPlan?.name || 'Select Plan'}
+              </span>
+              <ChevronDown className="w-4 h-4 text-gray-500 group-hover:text-gray-700 transition-colors" />
+            </button>
+
+            {/* Dropdown menu */}
+            <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="p-2 space-y-1">
+                {plans.map((plan) => {
+                  const PlanIcon = plan.icon;
+                  return (
+                    <button
+                      key={plan.id}
+                      onClick={() => setSelectedPlan(plan.id)}
+                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
+                        selectedPlan === plan.id
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className={`w-6 h-6 rounded-full bg-gradient-to-r ${plan.color} flex items-center justify-center`}>
+                        <PlanIcon className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="font-medium">{plan.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
+        </div>
+
+        {/* Center - Chat Status */}
+        <div className="hidden sm:flex items-center space-x-2">
+          {isNewChat ? (
+            <div className="flex items-center space-x-2 text-green-600">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium">New Chat</span>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-2 text-blue-600">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <span className="text-sm font-medium">Continuing Chat</span>
+            </div>
+          )}
+        </div>
+
+        {/* Right side - Action buttons */}
+        <div className="flex items-center space-x-2">
           
-          {/* Center Section - Plan Selector (Desktop Only) */}
-          <div className="hidden lg:flex items-center justify-center flex-1 px-4">
-            <div className="flex items-center space-x-1 bg-gray-50 rounded-lg p-1 max-w-4xl overflow-x-auto">
-              {plans.map((plan) => {
-                const IconComponent = plan.icon;
-                const isSelected = selectedPlan === plan.id;
-                return (
-                  <button
-                    key={plan.id}
-                    onClick={() => setSelectedPlan(plan.id)}
-                    className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-200 whitespace-nowrap ${
-                      isSelected
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-                    }`}
-                  >
-                    <IconComponent className="h-3.5 w-3.5" />
-                    <span className="hidden xl:inline">{plan.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {/* New Chat Button */}
+          <button
+            onClick={onNewChat}
+            className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            title="Start new chat"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">New Chat</span>
+          </button>
 
-          {/* Right Section - Action Buttons */}
-          <div className="flex items-center space-x-1 flex-shrink-0">
-            <button 
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors lg:hidden"
-              aria-label="Toggle menu"
-            >
-              <Menu className="h-4 w-4" />
-            </button>
-            <button 
+          {/* History Toggle Button */}
+          <button
+            onClick={onToggleHistory}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+              showHistory 
+                ? 'bg-gray-800 text-white' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+            title="Toggle chat history"
+          >
+            <History className="w-4 h-4" />
+            <span className="hidden sm:inline">History</span>
+          </button>
+
+          {/* Clear Chat Button */}
+          {!isNewChat && (
+            <button
               onClick={clearChat}
-              className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-              title="Clear Chat"
+              className="flex items-center space-x-2 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+              title="Clear current chat"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Clear</span>
             </button>
-            <button 
-              className="hidden sm:flex p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-              title="Settings"
-            >
-              <Settings className="h-4 w-4" />
-            </button>
-          </div>
+          )}
+
+          {/* Settings button */}
+          <button
+            className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Settings"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
-      {/* Mobile Plan Selector - Below header */}
-      <div className="lg:hidden border-t border-gray-100 bg-gray-50">
-        <div className="w-full px-4 sm:px-6">
-          <div className="flex items-center space-x-2 py-2 overflow-x-auto">
-            {plans.map((plan) => {
-              const IconComponent = plan.icon;
-              const isSelected = selectedPlan === plan.id;
-              return (
-                <button
-                  key={plan.id}
-                  onClick={() => setSelectedPlan(plan.id)}
-                  className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-                    isSelected
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/70'
-                  }`}
-                >
-                  <IconComponent className="h-4 w-4" />
-                  <span>{plan.name}</span>
-                </button>
-              );
-            })}
-          </div>
+      {/* Mobile status bar */}
+      <div className="sm:hidden mt-2 flex items-center justify-between text-xs">
+        <div className="flex items-center space-x-2">
+          {userProfile?.name && (
+            <span className="text-gray-600">
+              Hello, {userProfile.name}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center space-x-2">
+          {isNewChat ? (
+            <div className="flex items-center space-x-1 text-green-600">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+              <span>New</span>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-1 text-blue-600">
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+              <span>Continuing</span>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </header>
   );
 };
 

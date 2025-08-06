@@ -7,9 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postbuild": "next-sitemap"
+    "postbuild": "next-sitemap",
+    "cleanup:chats": "node scripts/cleanup-old-chats.js",
+    "cleanup:chats:advanced": "node scripts/cleanup-old-chats.js advanced",
+    "cleanup:chats:check": "curl -X GET http://localhost:3000/api/chat-cleanup"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.84.1",
     "axios": "^1.10.0",
     "cloudinary": "^2.7.0",
     "firebase": "^10.5.0",

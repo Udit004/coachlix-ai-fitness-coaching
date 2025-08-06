@@ -1,4 +1,3 @@
-// hooks/useChatHistory.js
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -32,17 +31,23 @@ export const useChatHistory = (userId) => {
   // Save new chat
   const saveChat = async (title, plan, messages) => {
     if (!userId || !messages.length) return null;
-    
+
+    // ✅ Sanitize messages to match schema
+    const sanitizedMessages = messages.map(msg => ({
+      role: msg.role, // must be "user" or "ai"
+      content: msg.content,
+      timestamp: msg.timestamp || new Date()
+    }));
+
     try {
       const response = await axios.post('/api/chat-history', {
         userId,
-        title: title || generateChatTitle(messages),
+        title: title || generateChatTitle(sanitizedMessages),
         plan,
-        messages
+        messages: sanitizedMessages
       });
       
       if (response.data.success) {
-        // Add to local state
         setChatHistory(prev => [response.data.chat, ...prev]);
         return response.data.chatId;
       }
@@ -56,24 +61,29 @@ export const useChatHistory = (userId) => {
   // Update existing chat
   const updateChat = async (chatId, messages, title = null) => {
     if (!chatId || !messages.length) return;
+
+    const sanitizedMessages = messages.map(msg => ({
+      role: msg.role,
+      content: msg.content,
+      timestamp: msg.timestamp || new Date()
+    }));
     
     try {
       await axios.put('/api/chat-history', {
         chatId,
-        messages,
+        messages: sanitizedMessages,
         title
       });
-      
-      // Update local state
+
       setChatHistory(prev => 
         prev.map(chat => 
           chat._id === chatId 
             ? { 
                 ...chat, 
-                messages, 
+                messages: sanitizedMessages, 
                 updatedAt: new Date(),
-                messageCount: messages.length,
-                lastMessage: messages[messages.length - 1]?.content?.substring(0, 100) || "",
+                messageCount: sanitizedMessages.length,
+                lastMessage: sanitizedMessages[sanitizedMessages.length - 1]?.content?.substring(0, 100) || "",
                 ...(title && { title })
               }
             : chat
@@ -89,8 +99,6 @@ export const useChatHistory = (userId) => {
   const deleteChat = async (chatId) => {
     try {
       await axios.delete(`/api/chat-history?chatId=${chatId}`);
-      
-      // Remove from local state
       setChatHistory(prev => prev.filter(chat => chat._id !== chatId));
     } catch (err) {
       console.error('Error deleting chat:', err);
@@ -98,9 +106,9 @@ export const useChatHistory = (userId) => {
     }
   };
 
-  // Generate chat title from first message
+  // ✅ Corrected to use `role` instead of `type`
   const generateChatTitle = (messages) => {
-    const firstUserMessage = messages.find(msg => msg.type === 'user');
+    const firstUserMessage = messages.find(msg => msg.role === 'user');
     if (firstUserMessage) {
       const title = firstUserMessage.content.substring(0, 50);
       return title.length < 50 ? title : title + '...';
@@ -108,7 +116,6 @@ export const useChatHistory = (userId) => {
     return 'New Chat';
   };
 
-  // Auto-fetch on userId change
   useEffect(() => {
     fetchChatHistory();
   }, [userId]);
