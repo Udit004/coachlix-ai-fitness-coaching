@@ -6,7 +6,7 @@ To craft a comprehensive and appealing README for the "Udit004/coachlix-ai-fitne
 
 Welcome to **CoachLix**, the next-generation AI-driven fitness coaching application designed to help you achieve your wellness goals. Built using [Next.js](https://nextjs.org), CoachLix offers personalized workout and nutrition plans tailored to your needs.
 
-![CoachLix Logo](public/assets/logo.png) <!-- A placeholder for your project logo -->
+![CoachLix Logo](https://github.com/Udit004/coachlix-ai-fitness-coaching/blob/main/public/CoachlixLogo.ico) <!-- A placeholder for your project logo -->
 
 ## 🚀 Features
 
