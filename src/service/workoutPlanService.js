@@ -1146,6 +1146,7 @@ const workoutPlanService = {
   addExerciseWithAI,
   addExistingExerciseById,
   addCustomExerciseToWorkout,
+  batchAddExercisesToWorkout,
 };
 
 export default workoutPlanService;
