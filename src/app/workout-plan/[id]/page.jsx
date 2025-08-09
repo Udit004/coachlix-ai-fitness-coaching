@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
@@ -20,8 +20,12 @@ import {
   Settings,
   Eye,
 } from "lucide-react";
-import workoutPlanService from "@/service/workoutPlanService";
 import { useAuth } from "../../../hooks/useAuth";
+import { 
+  useWorkoutPlan, 
+  useUpdateWorkoutPlan, 
+  useAddExercisesToWorkout 
+} from "../../../hooks/useWorkoutQueries";
 import ProgressTracker from "./ProgressTracker";
 
 export default function WorkoutPlanDetailPage() {
@@ -29,9 +33,6 @@ export default function WorkoutPlanDetailPage() {
   const router = useRouter();
   const { user } = useAuth();
 
-  const [plan, setPlan] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [activeWeek, setActiveWeek] = useState(1);
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
@@ -39,6 +40,28 @@ export default function WorkoutPlanDetailPage() {
   const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [showEditPlan, setShowEditPlan] = useState(false);
 
+  // React Query hooks
+  const { 
+    data: planData, 
+    isLoading: loading, 
+    error: fetchError,
+    refetch
+  } = useWorkoutPlan(id);
+
+  const updatePlanMutation = useUpdateWorkoutPlan();
+  const addExercisesMutation = useAddExercisesToWorkout();
+
+  // Extract plan from response
+  const plan = planData?.plan || planData;
+
+  // Update active week when plan data changes
+  React.useEffect(() => {
+    if (plan?.currentWeek) {
+      setActiveWeek(plan.currentWeek);
+    }
+  }, [plan?.currentWeek]);
+
+  // Dynamic imports
   const AddExerciseModal = dynamic(() => import("./AddExerciseModal"), {
     loading: () => (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
@@ -52,7 +75,7 @@ export default function WorkoutPlanDetailPage() {
         </div>
       </div>
     ),
-    ssr: false, // Optional: disable server-side rendering
+    ssr: false,
   });
 
   const EditPlanModal = dynamic(() => import("../EditPlanModal"), {
@@ -75,46 +98,30 @@ export default function WorkoutPlanDetailPage() {
     ssr: false,
   });
 
-  useEffect(() => {
-    router.prefetch(
-      `/workout-plan/${id}/session/?week=${activeWeek}&day=${selectedDay}&workout=${selectedWorkout}`
-    );
-
-    if (id && user) {
-      fetchWorkoutPlan();
-    }
-  }, [id, user]);
-
-  const fetchWorkoutPlan = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await workoutPlanService.getWorkoutPlan(id);
-      setPlan(response.plan || response);
-      setActiveWeek(response.plan?.currentWeek || 1);
-    } catch (err) {
-      console.error("Error fetching workout plan:", err);
-      setError(err.message || "Failed to fetch workout plan");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Handlers
   const handleStartWorkout = (weekNumber, dayNumber, workoutId) => {
-    // Navigate to the workout session page
     router.push(
       `/workout-plan/${id}/session?week=${weekNumber}&day=${dayNumber}&workout=${workoutId}`
     );
   };
 
-  const handleAddExercise = async () => {
+  const handleAddExercise = async (selectedExercises) => {
     try {
-      console.log("🔄 Refreshing workout plan data after adding exercises...");
-      await fetchWorkoutPlan(); // Refresh the entire plan data
-      console.log("✅ Workout plan data refreshed successfully");
+      await addExercisesMutation.mutateAsync({
+        planId: id,
+        weekNumber: activeWeek,
+        dayNumber: selectedDay,
+        workoutId: selectedWorkout,
+        exercises: selectedExercises,
+      });
+      
+      console.log("✅ Exercises added successfully");
+      setShowAddExercise(false);
+      setSelectedDay(null);
+      setSelectedWorkout(null);
     } catch (error) {
-      console.error("❌ Error refreshing workout plan:", error);
-      // Even if refresh fails, we should still close the modal since exercises were added
+      console.error("❌ Error adding exercises:", error);
+      alert("Failed to add exercises. Please try again.");
     }
   };
 
@@ -132,11 +139,7 @@ export default function WorkoutPlanDetailPage() {
 
   const handleUpdatePlan = async (planId, updateData) => {
     try {
-      const response = await workoutPlanService.updateWorkoutPlan(
-        planId,
-        updateData
-      );
-      setPlan(response.plan || response);
+      await updatePlanMutation.mutateAsync({ planId, updateData });
       setShowEditPlan(false);
       console.log("✅ Workout plan updated successfully");
     } catch (error) {
@@ -145,15 +148,20 @@ export default function WorkoutPlanDetailPage() {
     }
   };
 
-  const calculateWeekProgress = (week) => {
-    if (!week?.days) return 0;
+  // Calculated values
+  const currentWeek = useMemo(() => {
+    return plan?.weeks?.find((w) => w.weekNumber === activeWeek);
+  }, [plan?.weeks, activeWeek]);
 
-    const totalWorkouts = week.days.reduce(
+  const weekProgress = useMemo(() => {
+    if (!currentWeek?.days) return 0;
+
+    const totalWorkouts = currentWeek.days.reduce(
       (total, day) => total + (day.workouts?.length || 0),
       0
     );
 
-    const completedWorkouts = week.days.reduce(
+    const completedWorkouts = currentWeek.days.reduce(
       (total, day) =>
         total + (day.workouts?.filter((w) => w.isCompleted).length || 0),
       0
@@ -162,7 +170,7 @@ export default function WorkoutPlanDetailPage() {
     return totalWorkouts > 0
       ? Math.round((completedWorkouts / totalWorkouts) * 100)
       : 0;
-  };
+  }, [currentWeek]);
 
   const getDayStatus = (day) => {
     if (day.isRestDay) return "rest";
@@ -206,6 +214,8 @@ export default function WorkoutPlanDetailPage() {
     );
   }
 
+  const error = fetchError?.message;
+
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
@@ -213,8 +223,14 @@ export default function WorkoutPlanDetailPage() {
           <div className="text-center py-12">
             <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
             <button
+              onClick={() => refetch()}
+              className="mr-4 text-blue-600 hover:text-blue-800 dark:text-blue-400 underline"
+            >
+              Try Again
+            </button>
+            <button
               onClick={() => router.back()}
-              className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 underline"
             >
               Go Back
             </button>
@@ -232,14 +248,17 @@ export default function WorkoutPlanDetailPage() {
             <p className="text-gray-600 dark:text-gray-400">
               Workout plan not found
             </p>
+            <button
+              onClick={() => router.back()}
+              className="mt-4 text-blue-600 hover:text-blue-800 dark:text-blue-400 underline"
+            >
+              Go Back
+            </button>
           </div>
         </div>
       </div>
     );
   }
-
-  const currentWeek = plan.weeks?.find((w) => w.weekNumber === activeWeek);
-  const weekProgress = calculateWeekProgress(currentWeek);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -273,10 +292,11 @@ export default function WorkoutPlanDetailPage() {
               </button>
               <button
                 onClick={() => setShowEditPlan(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                disabled={updatePlanMutation.isLoading}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors"
               >
                 <Edit className="h-4 w-4" />
-                <span>Edit Plan</span>
+                <span>{updatePlanMutation.isLoading ? "Updating..." : "Edit Plan"}</span>
               </button>
             </div>
           </div>
@@ -293,54 +313,6 @@ export default function WorkoutPlanDetailPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Goal</p>
-                <p className="font-semibold text-gray-900 dark:text-white">
-                  {plan.goal}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
-                <Calendar className="h-6 w-6 text-green-600 dark:text-green-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Duration
-                </p>
-                <p className="font-semibold text-gray-900 dark:text-white">
-                  {plan.duration} weeks
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                <Users className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Frequency
-                </p>
-                <p className="font-semibold text-gray-900 dark:text-white">
-                  {plan.workoutFrequency}x/week
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-orange-100 dark:bg-orange-900 rounded-lg">
-                <Trophy className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Progress
-                </p>
                 <p className="font-semibold text-gray-900 dark:text-white">
                   {plan.stats?.completionRate || 0}%
                 </p>
@@ -468,10 +440,13 @@ export default function WorkoutPlanDetailPage() {
                                   setSelectedWorkout(workout._id || idx);
                                   setShowAddExercise(true);
                                 }}
-                                className="w-full py-2 px-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-400 rounded-lg text-xs font-medium transition-colors flex items-center justify-center space-x-1"
+                                disabled={addExercisesMutation.isLoading}
+                                className="w-full py-2 px-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:bg-gray-300 dark:disabled:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg text-xs font-medium transition-colors flex items-center justify-center space-x-1"
                               >
                                 <Plus className="h-3 w-3" />
-                                <span>Add Exercises</span>
+                                <span>
+                                  {addExercisesMutation.isLoading ? "Adding..." : "Add Exercises"}
+                                </span>
                               </button>
                             )}
                           </div>
@@ -550,16 +525,18 @@ export default function WorkoutPlanDetailPage() {
         <AddExerciseModal
           onClose={() => {
             setShowAddExercise(false);
-            setSelectedDay(null); // Add this
-            setSelectedWorkout(null); // Add this
+            setSelectedDay(null);
+            setSelectedWorkout(null);
           }}
           onAdd={handleAddExercise}
           planId={plan._id}
           weekNumber={activeWeek}
           dayNumber={selectedDay}
           workoutId={selectedWorkout}
+          isLoading={addExercisesMutation.isLoading}
         />
       )}
+      
       {showProgress && (
         <ProgressTracker plan={plan} onClose={() => setShowProgress(false)} />
       )}
@@ -569,8 +546,9 @@ export default function WorkoutPlanDetailPage() {
           plan={plan}
           onClose={() => setShowEditPlan(false)}
           onUpdate={handleUpdatePlan}
+          isLoading={updatePlanMutation.isLoading}
         />
       )}
     </div>
   );
-}
+};

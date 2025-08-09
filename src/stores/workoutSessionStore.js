@@ -1,16 +1,11 @@
-// stores/workoutSessionStore.js
+// stores/workoutSessionStore.js - Updated with React Query integration
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import workoutPlanService from '../service/workoutPlanService';
 
 const useWorkoutSessionStore = create(
   devtools(
     (set, get) => ({
-      // State
-      loading: true,
-      saving: false,
-      workoutData: null,
-      planData: null,
+      // UI State - Keep in Zustand
       currentExerciseIndex: 0,
       isPlaying: false,
       timer: 0,
@@ -24,13 +19,7 @@ const useWorkoutSessionStore = create(
       soundEnabled: true,
       isEditing: false,
       showAddExerciseModal: false,
-      error: null,
 
-      // Actions
-      setLoading: (loading) => set({ loading }),
-      setSaving: (saving) => set({ saving }),
-      setError: (error) => set({ error }),
-      
       // Timer actions
       incrementTimer: () => set((state) => ({ timer: state.timer + 1 })),
       incrementExerciseTimer: () => set((state) => ({ exerciseTimer: state.exerciseTimer + 1 })),
@@ -46,9 +35,9 @@ const useWorkoutSessionStore = create(
         currentSet: 1 
       }),
       
-      nextExercise: () => {
-        const { currentExerciseIndex, workoutData } = get();
-        const maxIndex = (workoutData?.exercises?.length || 0) - 1;
+      nextExercise: (totalExercises) => {
+        const { currentExerciseIndex } = get();
+        const maxIndex = totalExercises - 1;
         if (currentExerciseIndex < maxIndex) {
           set({
             currentExerciseIndex: currentExerciseIndex + 1,
@@ -73,8 +62,8 @@ const useWorkoutSessionStore = create(
       incrementCurrentSet: () => set((state) => ({ currentSet: state.currentSet + 1 })),
       
       // Exercise completion
-      completeExercise: (exerciseIndex) => {
-        const { completedExercises, exerciseData, workoutData, currentExerciseIndex } = get();
+      completeExercise: (exerciseIndex, totalExercises, restTime = 60) => {
+        const { completedExercises, exerciseData, currentExerciseIndex } = get();
         
         set({
           completedExercises: [...completedExercises, exerciseIndex],
@@ -88,11 +77,9 @@ const useWorkoutSessionStore = create(
         });
 
         // Start rest timer if not last exercise
-        if (currentExerciseIndex < (workoutData?.exercises?.length || 0) - 1) {
-          const currentExercise = workoutData?.exercises?.[currentExerciseIndex];
-          const restTime = currentExercise?.restTime || 60;
+        if (currentExerciseIndex < totalExercises - 1) {
           set({ restTimer: restTime, isResting: true });
-          get().nextExercise();
+          get().nextExercise(totalExercises);
         }
       },
 
@@ -151,175 +138,32 @@ const useWorkoutSessionStore = create(
       toggleEditing: () => set((state) => ({ isEditing: !state.isEditing })),
       toggleAddExerciseModal: () => set((state) => ({ showAddExerciseModal: !state.showAddExerciseModal })),
 
-      // Data loading
-      loadWorkoutData: async (planId, weekNumber, dayNumber, workoutId) => {
-        try {
-          set({ loading: true, error: null });
-          
-          const response = await workoutPlanService.getWorkoutPlan(planId);
-          const plan = response.plan || response;
-          
-          // Find the specific workout
-          const week = plan.weeks?.find((w) => w.weekNumber === weekNumber);
-          const day = week?.days?.find((d) => d.dayNumber === dayNumber);
-          const workout = day?.workouts?.find(
-            (w, index) =>
-              w._id === workoutId ||
-              w.id === workoutId ||
-              index.toString() === workoutId ||
-              index === parseInt(workoutId)
-          );
-
-          if (!workout) {
-            throw new Error("Workout not found");
-          }
-
-          // Initialize exercise data
-          const initialData = {};
-          if (workout.exercises && workout.exercises.length > 0) {
-            workout.exercises.forEach((exercise, index) => {
-              initialData[index] = {
-                completed: exercise.isCompleted || false,
-                sets: exercise.completedSets || [],
-                notes: exercise.notes || "",
-              };
-            });
-
-            // Set completed exercises
-            const completed = workout.exercises
-              .map((ex, idx) => (ex.isCompleted ? idx : null))
-              .filter((idx) => idx !== null);
-            
-            set({ completedExercises: completed });
-          }
-
-          set({
-            planData: plan,
-            workoutData: workout,
-            exerciseData: initialData,
-            loading: false
+      // Initialize exercise data from workout (called when React Query data changes)
+      initializeExerciseData: (workout) => {
+        const initialData = {};
+        if (workout?.exercises && workout.exercises.length > 0) {
+          workout.exercises.forEach((exercise, index) => {
+            initialData[index] = {
+              completed: exercise.isCompleted || false,
+              sets: exercise.completedSets || [],
+              notes: exercise.notes || "",
+            };
           });
 
-        } catch (error) {
-          console.error("Error loading workout data:", error);
-          set({ error: error.message, loading: false });
-        }
-      },
-
-      // Save progress
-      saveProgress: async (planId, weekNumber, dayNumber, workoutId) => {
-        try {
-          set({ saving: true, error: null });
-          const { exerciseData, workoutData } = get();
-
-          // Save individual exercise progress
-          for (const [index, data] of Object.entries(exerciseData)) {
-            if (data.sets.length > 0 || data.completed || data.notes) {
-              await workoutPlanService.updateExercise(
-                planId,
-                weekNumber,
-                dayNumber,
-                workoutId,
-                workoutData.exercises[index]._id || index,
-                {
-                  completedSets: data.sets,
-                  isCompleted: data.completed,
-                  notes: data.notes,
-                }
-              );
-            }
-          }
-
-          set({ saving: false });
-          return { success: true };
-        } catch (error) {
-          console.error("Error saving progress:", error);
-          set({ error: error.message, saving: false });
-          return { success: false, error: error.message };
-        }
-      },
-
-      // Complete workout
-      completeWorkout: async (planId, weekNumber, dayNumber, workoutId) => {
-        try {
-          set({ saving: true, error: null });
-          const { timer, workoutData, completedExercises, exerciseData, notes } = get();
-
-          const sessionData = {
-            duration: Math.floor(timer / 60),
-            totalExercises: workoutData?.exercises?.length || 0,
-            completedExercises: completedExercises.length,
-            totalSets: Object.values(exerciseData).reduce(
-              (total, ex) => total + (ex.sets?.length || 0),
-              0
-            ),
-            exercises: Object.keys(exerciseData).map((index) => ({
-              exerciseIndex: parseInt(index),
-              completed: exerciseData[index].completed,
-              actualSets: exerciseData[index].sets,
-              notes: exerciseData[index].notes,
-            })),
-            notes: notes,
-            averageIntensity: workoutData?.intensity || "Moderate",
-          };
-
-          await workoutPlanService.completeWorkoutSession(
-            planId,
-            weekNumber,
-            dayNumber,
-            workoutId,
-            sessionData
-          );
-
-          set({ saving: false });
-          return { success: true };
-        } catch (error) {
-          console.error("Error completing workout:", error);
-          set({ error: error.message, saving: false });
-          return { success: false, error: error.message };
-        }
-      },
-
-      // Add exercises
-      addExercises: async (planId, weekNumber, dayNumber, workoutId, selectedExercises, refreshCallback) => {
-        try {
-          set({ saving: true, error: null });
-
-          // Add each exercise to the workout
-          for (const exercise of selectedExercises) {
-            await workoutPlanService.addExerciseToWorkout(
-              planId,
-              weekNumber,
-              dayNumber,
-              workoutId,
-              exercise
-            );
-          }
-
-          // Refresh workout data
-          if (refreshCallback) {
-            await refreshCallback();
-          }
-
+          // Set completed exercises
+          const completed = workout.exercises
+            .map((ex, idx) => (ex.isCompleted ? idx : null))
+            .filter((idx) => idx !== null);
+          
           set({ 
-            saving: false, 
-            showAddExerciseModal: false 
+            exerciseData: initialData,
+            completedExercises: completed 
           });
-          
-          return { success: true, count: selectedExercises.length };
-        } catch (error) {
-          console.error("Error adding exercises:", error);
-          set({ error: error.message, saving: false });
-          return { success: false, error: error.message };
         }
       },
 
       // Reset store
       reset: () => set({
-        loading: true,
-        saving: false,
-        workoutData: null,
-        planData: null,
         currentExerciseIndex: 0,
         isPlaying: false,
         timer: 0,
@@ -333,24 +177,17 @@ const useWorkoutSessionStore = create(
         soundEnabled: true,
         isEditing: false,
         showAddExerciseModal: false,
-        error: null,
       }),
 
-      // Computed getters
-      getCurrentExercise: () => {
-        const { workoutData, currentExerciseIndex } = get();
-        return workoutData?.exercises?.[currentExerciseIndex];
+      // Computed getters (now need workout data passed in)
+      getCurrentExercise: (exercises) => {
+        const { currentExerciseIndex } = get();
+        return exercises?.[currentExerciseIndex];
       },
 
-      getProgressPercentage: () => {
-        const { workoutData, completedExercises } = get();
-        const totalExercises = workoutData?.exercises?.length || 0;
+      getProgressPercentage: (totalExercises) => {
+        const { completedExercises } = get();
         return totalExercises > 0 ? (completedExercises.length / totalExercises) * 100 : 0;
-      },
-
-      getExercises: () => {
-        const { workoutData } = get();
-        return workoutData?.exercises || [];
       },
     }),
     {

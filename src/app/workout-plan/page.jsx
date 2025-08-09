@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
@@ -13,24 +13,55 @@ import {
   Calendar,
   Clock,
   Trophy,
-  Router,
 } from "lucide-react";
 import WorkoutPlanCard from "./WorkoutPlanCard";
-import workoutPlanService from "../../service/workoutPlanService";
 import { useAuth } from "../../hooks/useAuth";
+import { 
+  useWorkoutPlans, 
+  useCreateWorkoutPlan, 
+  useUpdateWorkoutPlan, 
+  useDeleteWorkoutPlan, 
+  useCloneWorkoutPlan 
+} from "../../hooks/useWorkoutQueries";
 
 export default function WorkoutPlansPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [workoutPlans, setWorkoutPlans] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedGoal, setSelectedGoal] = useState("");
   const [selectedDifficulty, setSelectedDifficulty] = useState("");
   const [sortBy, setSortBy] = useState("newest");
+  const [editingPlan, setEditingPlan] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
+  // Query options
+  const queryOptions = useMemo(() => ({
+    activeOnly: true,
+    ...(selectedGoal && { goal: selectedGoal }),
+    ...(selectedDifficulty && { difficulty: selectedDifficulty }),
+    sort: sortBy === "newest" ? "-createdAt"
+      : sortBy === "oldest" ? "createdAt"
+      : sortBy === "updated" ? "-updatedAt"
+      : sortBy === "popular" ? "popular"
+      : "-createdAt",
+  }), [selectedGoal, selectedDifficulty, sortBy]);
+
+  // React Query hooks
+  const { 
+    data: workoutPlansData, 
+    isLoading: loading, 
+    error: fetchError,
+    refetch 
+  } = useWorkoutPlans(queryOptions);
+
+  const createPlanMutation = useCreateWorkoutPlan();
+  const updatePlanMutation = useUpdateWorkoutPlan();
+  const deletePlanMutation = useDeleteWorkoutPlan();
+  const clonePlanMutation = useCloneWorkoutPlan();
+
+  // Dynamic imports
   const CreatePlanModal = dynamic(() => import("./CreatePlanModal"), {
     loading: () => (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
@@ -44,10 +75,9 @@ export default function WorkoutPlansPage() {
         </div>
       </div>
     ),
-    ssr: false, // Optional: disable server-side rendering
+    ssr: false,
   });
 
-  // Add this import at the top with other dynamic imports
   const EditPlanModal = dynamic(() => import("./EditPlanModal"), {
     loading: () => (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
@@ -64,10 +94,6 @@ export default function WorkoutPlansPage() {
     ssr: false,
   });
 
-  // Add these state variables with your existing useState declarations
-  const [editingPlan, setEditingPlan] = useState(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-
   const goals = [
     "Strength Building",
     "Weight Loss",
@@ -80,64 +106,16 @@ export default function WorkoutPlansPage() {
 
   const difficulties = ["Beginner", "Intermediate", "Advanced"];
 
-  // Memoized fetch function to prevent unnecessary re-renders
-  const fetchWorkoutPlans = useCallback(async () => {
-    if (!user) return;
+  // Extract workout plans from the response
+  const workoutPlans = useMemo(() => {
+    if (!workoutPlansData) return [];
+    return Array.isArray(workoutPlansData.plans) ? workoutPlansData.plans 
+      : Array.isArray(workoutPlansData) ? workoutPlansData 
+      : [];
+  }, [workoutPlansData]);
 
-    try {
-      setLoading(true);
-      setError(null);
-
-      const options = {
-        activeOnly: true,
-        ...(selectedGoal && { goal: selectedGoal }),
-        ...(selectedDifficulty && { difficulty: selectedDifficulty }),
-        sort:
-          sortBy === "newest"
-            ? "-createdAt"
-            : sortBy === "oldest"
-            ? "createdAt"
-            : sortBy === "updated"
-            ? "-updatedAt"
-            : sortBy === "popular"
-            ? "popular"
-            : "-createdAt",
-      };
-
-      const data = await workoutPlanService.getWorkoutPlans(options);
-
-      // Ensure data structure is valid
-      if (data && Array.isArray(data.plans)) {
-        setWorkoutPlans(data.plans);
-      } else if (Array.isArray(data)) {
-        setWorkoutPlans(data);
-      } else {
-        console.warn("Unexpected data structure:", data);
-        setWorkoutPlans([]);
-      }
-    } catch (err) {
-      console.error("Error fetching workout plans:", err);
-      setError(err?.message || "Failed to fetch workout plans");
-      setWorkoutPlans([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [user, selectedGoal, selectedDifficulty, sortBy]);
-
-  // Fetch workout plans when dependencies change
-  useEffect(() => {
-    router.prefetch("/workout-plans/${id}");
-
-    if (!authLoading && user) {
-      fetchWorkoutPlans();
-    } else if (!authLoading && !user) {
-      setWorkoutPlans([]);
-      setLoading(false);
-    }
-  }, [authLoading, user, fetchWorkoutPlans]);
-
-  // Safe filter with null checks
-  const filteredPlans = React.useMemo(() => {
+  // Filter plans based on search term
+  const filteredPlans = useMemo(() => {
     if (!Array.isArray(workoutPlans)) return [];
 
     return workoutPlans.filter((plan) => {
@@ -159,124 +137,8 @@ export default function WorkoutPlansPage() {
     });
   }, [workoutPlans, searchTerm]);
 
-  const handleCreatePlan = async (planData) => {
-    try {
-      setError(null);
-
-      if (!planData || !planData.name?.trim()) {
-        throw new Error("Plan name is required");
-      }
-
-      const response = await workoutPlanService.createWorkoutPlan(planData);
-      const newPlan = response.plan || response;
-
-      if (!newPlan) {
-        throw new Error("Failed to create plan - no data returned");
-      }
-
-      const planWithDefaults = {
-        _id: newPlan._id || newPlan.id,
-        name: newPlan.name,
-        description: newPlan.description || "",
-        goal: newPlan.goal,
-        difficulty: newPlan.difficulty || "Beginner",
-        duration: newPlan.duration,
-        workoutFrequency: newPlan.workoutFrequency || 3,
-        targetMuscleGroups: Array.isArray(newPlan.targetMuscleGroups)
-          ? newPlan.targetMuscleGroups
-          : [],
-        equipment: Array.isArray(newPlan.equipment) ? newPlan.equipment : [],
-        tags: Array.isArray(newPlan.tags) ? newPlan.tags : [],
-        isActive: newPlan.isActive !== undefined ? newPlan.isActive : true,
-        weeks: newPlan.weeks || [],
-        stats: newPlan.stats || {
-          totalWorkouts: 0,
-          totalDuration: 0,
-          completionRate: 0,
-        },
-        createdAt: newPlan.createdAt || new Date().toISOString(),
-      };
-
-      setWorkoutPlans((prev) => [planWithDefaults, ...prev]);
-      setShowCreateModal(false);
-    } catch (err) {
-      console.error("Error creating plan:", err);
-      setError(err?.message || "Failed to create plan");
-    }
-  };
-
-  // Add this function with your other handlers
-  const handleEditPlan = (plan) => {
-    setEditingPlan(plan);
-    setShowEditModal(true);
-  };
-
-  const handleUpdatePlan = async (planId, updateData) => {
-    try {
-      setError(null);
-      const response = await workoutPlanService.updateWorkoutPlan(
-        planId,
-        updateData
-      );
-      const updatedPlan = response.plan || response;
-
-      if (updatedPlan) {
-        setWorkoutPlans((prev) =>
-          prev.map((plan) => (plan._id === planId ? updatedPlan : plan))
-        );
-        setShowEditModal(false);
-        setEditingPlan(null);
-      }
-    } catch (err) {
-      console.error("Error updating plan:", err);
-      setError(err?.message || "Failed to update plan");
-    }
-  };
-
-  const handleDeletePlan = async (planId) => {
-    if (!planId) {
-      console.error("No plan ID provided for deletion");
-      return;
-    }
-
-    if (!confirm("Are you sure you want to delete this workout plan?")) return;
-
-    try {
-      setError(null);
-      await workoutPlanService.deleteWorkoutPlan(planId);
-      setWorkoutPlans((prev) =>
-        prev.filter((plan) => plan && plan._id !== planId)
-      );
-    } catch (err) {
-      console.error("Error deleting plan:", err);
-      setError(err?.message || "Failed to delete plan");
-    }
-  };
-
-  const handleClonePlan = async (planId, newName) => {
-    if (!planId || !newName?.trim()) {
-      console.error("Plan ID and name are required for cloning");
-      return;
-    }
-
-    try {
-      setError(null);
-      const response = await workoutPlanService.cloneWorkoutPlan(
-        planId,
-        newName
-      );
-      const clonedPlan = response.plan || response;
-
-      if (clonedPlan) {
-        setWorkoutPlans((prev) => [clonedPlan, ...prev]);
-      }
-    } catch (err) {
-      console.error("Error cloning plan:", err);
-      setError(err?.message || "Failed to clone plan");
-    }
-  };
-
-  const calculateStats = () => {
+  // Calculate stats
+  const stats = useMemo(() => {
     if (!Array.isArray(workoutPlans) || workoutPlans.length === 0) {
       return {
         totalPlans: 0,
@@ -305,9 +167,68 @@ export default function WorkoutPlansPage() {
           : 0,
       totalWorkouts,
     };
+  }, [workoutPlans]);
+
+  // Handlers
+  const handleCreatePlan = async (planData) => {
+    try {
+      if (!planData || !planData.name?.trim()) {
+        throw new Error("Plan name is required");
+      }
+
+      await createPlanMutation.mutateAsync(planData);
+      setShowCreateModal(false);
+    } catch (err) {
+      console.error("Error creating plan:", err);
+      throw err; // Re-throw to let the modal handle the error
+    }
   };
 
-  const stats = calculateStats();
+  const handleEditPlan = (plan) => {
+    setEditingPlan(plan);
+    setShowEditModal(true);
+  };
+
+  const handleUpdatePlan = async (planId, updateData) => {
+    try {
+      await updatePlanMutation.mutateAsync({ planId, updateData });
+      setShowEditModal(false);
+      setEditingPlan(null);
+    } catch (err) {
+      console.error("Error updating plan:", err);
+      throw err;
+    }
+  };
+
+  const handleDeletePlan = async (planId) => {
+    if (!planId) {
+      console.error("No plan ID provided for deletion");
+      return;
+    }
+
+    if (!confirm("Are you sure you want to delete this workout plan?")) return;
+
+    try {
+      await deletePlanMutation.mutateAsync(planId);
+    } catch (err) {
+      console.error("Error deleting plan:", err);
+      alert("Failed to delete plan. Please try again.");
+    }
+  };
+
+  const handleClonePlan = async (planId, newName) => {
+    if (!planId || !newName?.trim()) {
+      console.error("Plan ID and name are required for cloning");
+      return;
+    }
+
+    try {
+      await clonePlanMutation.mutateAsync({ planId, newName });
+    } catch (err) {
+      console.error("Error cloning plan:", err);
+      alert("Failed to clone plan. Please try again.");
+    }
+  };
 
   // Show loading while auth is loading
   if (authLoading) {
@@ -382,6 +303,10 @@ export default function WorkoutPlansPage() {
     );
   }
 
+  const error = fetchError?.message || createPlanMutation.error?.message || 
+                updatePlanMutation.error?.message || deletePlanMutation.error?.message || 
+                clonePlanMutation.error?.message;
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
@@ -398,10 +323,11 @@ export default function WorkoutPlansPage() {
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="mt-4 sm:mt-0 inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+            disabled={createPlanMutation.isLoading}
+            className="mt-4 sm:mt-0 inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
           >
             <Plus className="h-5 w-5" />
-            <span>Create Plan</span>
+            <span>{createPlanMutation.isLoading ? "Creating..." : "Create Plan"}</span>
           </button>
         </div>
 
@@ -537,7 +463,7 @@ export default function WorkoutPlansPage() {
               <p className="text-red-800 dark:text-red-200">Error: {error}</p>
             </div>
             <button
-              onClick={fetchWorkoutPlans}
+              onClick={() => refetch()}
               className="mt-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 underline"
             >
               Try again
@@ -585,7 +511,9 @@ export default function WorkoutPlansPage() {
                   plan={plan}
                   onDelete={handleDeletePlan}
                   onClone={handleClonePlan}
-                  onEdit={handleEditPlan} // Add this line
+                  onEdit={handleEditPlan}
+                  isDeleting={deletePlanMutation.isLoading}
+                  isCloning={clonePlanMutation.isLoading}
                 />
               );
             })}
@@ -597,6 +525,7 @@ export default function WorkoutPlansPage() {
           <CreatePlanModal
             onClose={() => setShowCreateModal(false)}
             onCreate={handleCreatePlan}
+            isLoading={createPlanMutation.isLoading}
           />
         )}
 
@@ -609,6 +538,7 @@ export default function WorkoutPlansPage() {
               setEditingPlan(null);
             }}
             onUpdate={handleUpdatePlan}
+            isLoading={updatePlanMutation.isLoading}
           />
         )}
       </div>

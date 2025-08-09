@@ -3,6 +3,12 @@ import React, { useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../../../../hooks/useAuth";
 import useWorkoutSessionStore from "@/stores/workoutSessionStore";
+import { 
+  useWorkoutSession, 
+  useSaveWorkoutProgress, 
+  useCompleteWorkoutSession, 
+  useAddExercisesToWorkout 
+} from "../../../../hooks/useWorkoutQueries";
 import AddExerciseModal from "../AddExerciseModal";
 
 // Components
@@ -27,32 +33,54 @@ export default function WorkoutSessionPage() {
   const dayNumber = parseInt(searchParams.get("day")) || 1;
   const workoutId = searchParams.get("workout");
 
+  // React Query hooks
+  const { 
+    data: sessionData, 
+    isLoading: loading, 
+    error: fetchError 
+  } = useWorkoutSession(planId, weekNumber, dayNumber, workoutId);
+
+  const saveProgressMutation = useSaveWorkoutProgress();
+  const completeWorkoutMutation = useCompleteWorkoutSession();
+  const addExercisesMutation = useAddExercisesToWorkout();
+
   // Store state and actions
   const {
-    loading,
-    workoutData,
     showAddExerciseModal,
-    error,
-    loadWorkoutData,
+    exerciseData,
+    timer,
+    completedExercises,
+    notes,
     toggleAddExerciseModal,
-    addExercises,
     reset,
-    getExercises,
+    initializeExerciseData,
+    getCurrentExercise,
+    getProgressPercentage,
   } = useWorkoutSessionStore();
 
-  const exercises = getExercises();
+  // Extract data from response
+  const plan = sessionData?.plan;
+  const workoutData = sessionData?.workout;
+  const exercises = workoutData?.exercises || [];
 
-  // Load workout data on mount
+  // Initialize exercise data when workout data changes
   useEffect(() => {
-    if (planId && user) {
-      loadWorkoutData(planId, weekNumber, dayNumber, workoutId);
+    if (workoutData) {
+      initializeExerciseData(workoutData);
     }
+  }, [workoutData, initializeExerciseData]);
+
+  // Prefetch return route
+  useEffect(() => {
     router.prefetch(`/workout-plan/${planId}`);
-    // Cleanup on unmount
+  }, [planId, router]);
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
       reset();
     };
-  }, [planId, user, weekNumber, dayNumber, workoutId, loadWorkoutData, reset]);
+  }, [reset]);
 
   // Handle navigation
   const handleBack = () => {
@@ -60,21 +88,61 @@ export default function WorkoutSessionPage() {
   };
 
   // Handle progress save with user feedback
-  const handleProgressSave = (result) => {
-    if (result.success) {
+  const handleProgressSave = async () => {
+    try {
+      await saveProgressMutation.mutateAsync({
+        planId,
+        weekNumber,
+        dayNumber,
+        workoutId,
+        exerciseData,
+      });
+      
       alert("Progress saved successfully!");
-    } else {
+      return { success: true };
+    } catch (error) {
+      console.error("Error saving progress:", error);
       alert("Failed to save progress. Please try again.");
+      return { success: false, error: error.message };
     }
   };
 
   // Handle workout completion with navigation
-  const handleWorkoutComplete = (result) => {
-    if (result.success) {
+  const handleWorkoutComplete = async () => {
+    try {
+      const sessionDataToSave = {
+        duration: Math.floor(timer / 60),
+        totalExercises: exercises.length,
+        completedExercises: completedExercises.length,
+        totalSets: Object.values(exerciseData).reduce(
+          (total, ex) => total + (ex.sets?.length || 0),
+          0
+        ),
+        exercises: Object.keys(exerciseData).map((index) => ({
+          exerciseIndex: parseInt(index),
+          completed: exerciseData[index].completed,
+          actualSets: exerciseData[index].sets,
+          notes: exerciseData[index].notes,
+        })),
+        notes: notes,
+        averageIntensity: workoutData?.intensity || "Moderate",
+      };
+
+      await completeWorkoutMutation.mutateAsync({
+        planId,
+        weekNumber,
+        dayNumber,
+        workoutId,
+        sessionData: sessionDataToSave,
+      });
+
       alert("Workout completed successfully!");
       router.push(`/workout-plan/${planId}`);
-    } else {
+      return { success: true };
+    } catch (error) {
+      console.error("Error completing workout:", error);
       alert("Failed to complete workout. Please try again.");
+      return { success: false, error: error.message };
     }
   };
 
@@ -84,28 +152,32 @@ export default function WorkoutSessionPage() {
   };
 
   const handleAddExercisesFromModal = async (selectedExercises) => {
-    const result = await addExercises(
-      planId,
-      weekNumber,
-      dayNumber,
-      workoutId,
-      selectedExercises,
-      () => loadWorkoutData(planId, weekNumber, dayNumber, workoutId)
-    );
+    try {
+      await addExercisesMutation.mutateAsync({
+        planId,
+        weekNumber,
+        dayNumber,
+        workoutId,
+        exercises: selectedExercises,
+      });
 
-    if (result.success) {
-      const exerciseCount = result.count;
+      const exerciseCount = selectedExercises.length;
       alert(
         `${exerciseCount} exercise${
           exerciseCount !== 1 ? "s" : ""
         } added successfully!`
       );
-    } else {
+      
+      return { success: true, count: exerciseCount };
+    } catch (error) {
+      console.error("Error adding exercises:", error);
       alert("Failed to add exercises. Please try again.");
+      return { success: false, error: error.message };
     }
   };
 
   // Handle errors
+  const error = fetchError?.message;
   useEffect(() => {
     if (error) {
       alert(`Error: ${error}`);
@@ -132,6 +204,10 @@ export default function WorkoutSessionPage() {
     );
   }
 
+  // Get current exercise and progress
+  const currentExercise = getCurrentExercise(exercises);
+  const progressPercentage = getProgressPercentage(exercises.length);
+
   // Main workout session UI
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -141,8 +217,11 @@ export default function WorkoutSessionPage() {
         weekNumber={weekNumber}
         dayNumber={dayNumber}
         workoutId={workoutId}
+        workoutData={workoutData}
         onBack={handleBack}
         onProgressSave={handleProgressSave}
+        isSaving={saveProgressMutation.isLoading}
+        progressPercentage={progressPercentage}
       />
 
       <div className="max-w-6xl mx-auto p-4">
@@ -156,7 +235,10 @@ export default function WorkoutSessionPage() {
             <RestTimer />
 
             {/* Current Exercise */}
-            <CurrentExercise />
+            <CurrentExercise 
+              currentExercise={currentExercise}
+              exercises={exercises}
+            />
 
             {/* Controls */}
             <WorkoutControls
@@ -164,13 +246,19 @@ export default function WorkoutSessionPage() {
               weekNumber={weekNumber}
               dayNumber={dayNumber}
               workoutId={workoutId}
+              exercises={exercises}
               onWorkoutComplete={handleWorkoutComplete}
               onProgressSave={handleProgressSave}
+              isCompleting={completeWorkoutMutation.isLoading}
+              isSaving={saveProgressMutation.isLoading}
             />
           </div>
 
           {/* Exercise List Sidebar */}
-          <ExerciseListSidebar onAddExercise={handleAddExercise} />
+          <ExerciseListSidebar 
+            exercises={exercises}
+            onAddExercise={handleAddExercise}
+          />
         </div>
       </div>
 
@@ -179,6 +267,11 @@ export default function WorkoutSessionPage() {
         <AddExerciseModal
           onClose={() => toggleAddExerciseModal()}
           onAdd={handleAddExercisesFromModal}
+          planId={planId}
+          weekNumber={weekNumber}
+          dayNumber={dayNumber}
+          workoutId={workoutId}
+          isLoading={addExercisesMutation.isLoading}
         />
       )}
     </div>

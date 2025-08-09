@@ -61,7 +61,6 @@ const ChatHistoryLoading = () => (
 
 // Simple QuickStats component - removed Zustand dependency to avoid infinite loops
 const QuickStats = React.memo(({ userProfile }) => {
-  // For now, show a simple static component to avoid infinite loops
   // You can replace this with actual stats once the store is fixed
   return (
     <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">

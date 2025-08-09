@@ -13,8 +13,8 @@
     "cleanup:chats:check": "curl -X GET http://localhost:3000/api/chat-cleanup"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.84.1",
-    "@tanstack/react-query-devtools": "^5.84.1",
+    "@tanstack/react-query": "^5.84.2",
+    "@tanstack/react-query-devtools": "^5.84.2",
     "@vercel/analytics": "^1.5.0",
     "@vercel/speed-insights": "^1.2.0",
     "axios": "^1.10.0",
