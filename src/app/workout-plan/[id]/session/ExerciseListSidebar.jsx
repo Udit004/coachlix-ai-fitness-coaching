@@ -9,10 +9,12 @@ const ExerciseListSidebar = ({ onAddExercise }) => {
     completedExercises,
     exerciseData,
     setCurrentExerciseIndex,
-    getExercises,
+  getCurrentExercise,
   } = useWorkoutSessionStore();
 
-  const exercises = getExercises();
+  // Get exercises from workoutData (assume it's available in the store or via props/context)
+  const workoutData = useWorkoutSessionStore.getState().workoutData || {};
+  const exercises = workoutData.exercises || [];
 
   const handleExerciseClick = (index) => {
     setCurrentExerciseIndex(index);

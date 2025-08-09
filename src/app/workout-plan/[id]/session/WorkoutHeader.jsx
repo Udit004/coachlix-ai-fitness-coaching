@@ -19,12 +19,11 @@ const WorkoutHeader = ({
     saving,
     toggleSound,
     saveProgress,
-    getExercises,
-    getProgressPercentage,
+  getProgressPercentage,
   } = useWorkoutSessionStore();
 
-  const exercises = getExercises();
-  const progressPercentage = getProgressPercentage();
+  const exercises = workoutData?.exercises || [];
+  const progressPercentage = getProgressPercentage(exercises.length);
 
   const handleSaveProgress = async () => {
     const result = await saveProgress(planId, weekNumber, dayNumber, workoutId);
@@ -81,8 +80,7 @@ const WorkoutHeader = ({
         <div className="mt-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Progress: {completedExercises.length} of {exercises.length}{" "}
-              exercises
+              Progress: {completedExercises.length} of {exercises.length} exercises
             </span>
             <span className="text-sm text-gray-600 dark:text-gray-400">
               {Math.round(progressPercentage)}%

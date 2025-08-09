@@ -1,8 +1,8 @@
 // app/layout.js
 
 import "./globals.css";
-import { SpeedInsights } from "@vercel/speed-insights/next"
-import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 import { Inter } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import ConditionalFooter from "@/components/ConditionalFooter";
@@ -13,8 +13,8 @@ import QueryProvider from "@/providers/QueryProvider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const viewport = {
-  themeColor: 'black',
-}
+  themeColor: "black",
+};
 
 export const metadata = {
   title: "Coachlix – Your AI Fitness Coach",
@@ -66,12 +66,15 @@ export default function RootLayout({ children }) {
       <body className={`${inter.className} antialiased`}>
         <CustomThemeProvider>
           <AuthProvider>
-            <Navbar />
-            <QueryProvider></QueryProvider>
-            {children}
-            <ConditionalFooter />
+            <QueryProvider>
+              <Navbar />
+              {children}
+              <ConditionalFooter />
+            </QueryProvider>
           </AuthProvider>
         </CustomThemeProvider>
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );

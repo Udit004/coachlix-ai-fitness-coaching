@@ -205,27 +205,92 @@ export async function POST(request, { params }) {
       return equipment.map(equip => equipmentMap[equip] || 'Bodyweight').filter((value, index, self) => self.indexOf(value) === index);
     };
 
+    // NEW: Mapping function to handle difficulty values
+    const mapDifficulty = (difficulty) => {
+      // Valid difficulty enum values: ['Beginner', 'Intermediate', 'Advanced']
+      const difficultyString = String(difficulty || 'Beginner').toLowerCase().trim();
+      
+      // Handle compound difficulty values like "Beginner/Intermediate/Advanced"
+      if (difficultyString.includes('/') || difficultyString.includes(',')) {
+        // For compound values, return the first valid difficulty mentioned
+        const parts = difficultyString.split(/[\/,\-\s]+/);
+        for (const part of parts) {
+          const cleanPart = part.trim();
+          if (cleanPart.includes('beginner')) return 'Beginner';
+          if (cleanPart.includes('intermediate')) return 'Intermediate';
+          if (cleanPart.includes('advanced')) return 'Advanced';
+        }
+        // If no recognizable difficulty found, default to Intermediate
+        return 'Intermediate';
+      }
+      
+      // Handle single difficulty values
+      if (difficultyString.includes('beginner') || difficultyString.includes('novice') || difficultyString.includes('starter')) {
+        return 'Beginner';
+      }
+      if (difficultyString.includes('intermediate') || difficultyString.includes('medium') || difficultyString.includes('moderate')) {
+        return 'Intermediate';
+      }
+      if (difficultyString.includes('advanced') || difficultyString.includes('expert') || difficultyString.includes('hard')) {
+        return 'Advanced';
+      }
+      
+      // Default fallback
+      return 'Beginner';
+    };
+
+    // NEW: Mapping function to handle category values
+    const mapCategory = (category) => {
+      // Valid category enum values: ['Strength', 'Cardio', 'Flexibility', 'Sports', 'Functional']
+      const categoryString = String(category || 'Strength').toLowerCase().trim();
+      
+      if (categoryString.includes('strength') || categoryString.includes('weight') || categoryString.includes('resistance')) {
+        return 'Strength';
+      }
+      if (categoryString.includes('cardio') || categoryString.includes('aerobic') || categoryString.includes('running') || categoryString.includes('cycling')) {
+        return 'Cardio';
+      }
+      if (categoryString.includes('flexibility') || categoryString.includes('stretch') || categoryString.includes('yoga') || categoryString.includes('mobility')) {
+        return 'Flexibility';
+      }
+      if (categoryString.includes('sport') || categoryString.includes('athletic') || categoryString.includes('game')) {
+        return 'Sports';
+      }
+      if (categoryString.includes('functional') || categoryString.includes('movement') || categoryString.includes('compound')) {
+        return 'Functional';
+      }
+      
+      // Default fallback
+      return 'Strength';
+    };
+
     // Add each exercise to the workout
     for (const exerciseData of exercisesToAdd) {
       console.log(
         `➕ Adding exercise: ${exerciseData.exerciseName || exerciseData.name}`
       );
 
-      // Get muscle groups and equipment
+      // Get muscle groups, equipment, difficulty, and category
       const rawMuscleGroups = exerciseData.primaryMuscleGroups || exerciseData.muscleGroups || [];
       const rawEquipment = exerciseData.equipment || ["Bodyweight"];
+      const rawDifficulty = exerciseData.difficulty;
+      const rawCategory = exerciseData.category;
 
       // Map to valid enum values
       const mappedMuscleGroups = mapMuscleGroups(rawMuscleGroups);
       const mappedEquipment = mapEquipment(rawEquipment);
+      const mappedDifficulty = mapDifficulty(rawDifficulty);
+      const mappedCategory = mapCategory(rawCategory);
 
       console.log(`🔄 Mapped muscle groups: ${rawMuscleGroups} -> ${mappedMuscleGroups}`);
       console.log(`🔄 Mapped equipment: ${rawEquipment} -> ${mappedEquipment}`);
+      console.log(`🔄 Mapped difficulty: ${rawDifficulty} -> ${mappedDifficulty}`);
+      console.log(`🔄 Mapped category: ${rawCategory} -> ${mappedCategory}`);
 
       // Create exercise object based on the WorkoutPlan ExerciseSchema
       const newExercise = {
         name: exerciseData.exerciseName || exerciseData.name,
-        category: exerciseData.category || "Strength",
+        category: mappedCategory,
         muscleGroups: mappedMuscleGroups.length > 0 ? mappedMuscleGroups : ['Full Body'],
         equipment: mappedEquipment.length > 0 ? mappedEquipment : ['Bodyweight'],
         sets: [], // Empty sets array, will be populated during workout
@@ -235,7 +300,7 @@ export async function POST(request, { params }) {
         instructions:
           exerciseData.instructions || exerciseData.description || "",
         videoUrl: exerciseData.videoUrl || "",
-        difficulty: exerciseData.difficulty || "Beginner",
+        difficulty: mappedDifficulty,
         isCompleted: false,
         personalRecord: {
           weight: 0,

@@ -24,10 +24,13 @@ const WorkoutControls = ({
     setNotes,
     completeWorkout,
     saveProgress,
-    getExercises,
+  getCurrentExercise,
   } = useWorkoutSessionStore();
 
-  const exercises = getExercises();
+  // Get exercises from workoutData (assume it's available in the store or via props/context)
+  const workoutData = useWorkoutSessionStore.getState().workoutData || {};
+  const exercises = workoutData.exercises || [];
+  const currentExercise = getCurrentExercise(exercises);
 
   const handleStartPause = () => {
     togglePlayback();

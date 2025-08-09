@@ -9,12 +9,13 @@ const CurrentExercise = () => {
     exerciseData,
     addCompletedSet,
     updateExerciseNotes,
-    getCurrentExercise,
-    getExercises,
+  getCurrentExercise,
   } = useWorkoutSessionStore();
 
-  const currentExercise = getCurrentExercise();
-  const exercises = getExercises();
+  // Get exercises from workoutData (assume it's available in the store or via props/context)
+  const workoutData = useWorkoutSessionStore.getState().workoutData || {};
+  const exercises = workoutData.exercises || [];
+  const currentExercise = getCurrentExercise(exercises);
 
   const handleSetComplete = () => {
     const repsInput = document.getElementById(`reps-${currentExerciseIndex}`);

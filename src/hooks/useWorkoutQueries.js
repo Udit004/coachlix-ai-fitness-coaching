@@ -1,28 +1,31 @@
 // hooks/useWorkoutQueries.js - React Query hooks for workout data
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import workoutPlanService from '@/service/workoutPlanService';
+import { useAuth } from '@/hooks/useAuth';
 
 // Query Keys
 export const workoutKeys = {
-  all: ['workouts'] as const,
-  lists: () => [...workoutKeys.all, 'list'] as const,
-  list: (filters: string) => [...workoutKeys.lists(), { filters }] as const,
-  details: () => [...workoutKeys.all, 'detail'] as const,
-  detail: (id: string) => [...workoutKeys.details(), id] as const,
-  sessions: () => [...workoutKeys.all, 'sessions'] as const,
-  session: (planId: string, weekNumber: number, dayNumber: number, workoutId: string) => [
+  all: ['workouts'],
+  lists: () => [...workoutKeys.all, 'list'],
+  list: (filters) => [...workoutKeys.lists(), { filters }],
+  details: () => [...workoutKeys.all, 'detail'],
+  detail: (id) => [...workoutKeys.details(), id],
+  sessions: () => [...workoutKeys.all, 'sessions'],
+  session: (planId, weekNumber, dayNumber, workoutId) => [
     ...workoutKeys.sessions(), 
     { planId, weekNumber, dayNumber, workoutId }
-  ] as const,
-  progress: () => [...workoutKeys.all, 'progress'] as const,
-  stats: (planId: string) => [...workoutKeys.all, 'stats', planId] as const,
+  ],
+  progress: () => [...workoutKeys.all, 'progress'],
+  stats: (planId) => [...workoutKeys.all, 'stats', planId],
 };
 
 // Get all workout plans
 export const useWorkoutPlans = (options = {}) => {
+  const { user, loading } = useAuth();
   return useQuery({
     queryKey: workoutKeys.list(JSON.stringify(options)),
-    queryFn: () => workoutPlanService.getWorkoutPlans(options),
+    queryFn: () => user ? workoutPlanService.getWorkoutPlans(options) : Promise.resolve([]),
+    enabled: !!user && !loading,
     staleTime: 5 * 60 * 1000, // 5 minutes
     cacheTime: 10 * 60 * 1000, // 10 minutes
   });
