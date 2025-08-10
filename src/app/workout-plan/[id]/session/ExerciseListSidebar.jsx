@@ -1,20 +1,42 @@
-// components/workout-session/ExerciseListSidebar.jsx
-import React from 'react';
-import { CheckCircle, Circle, Plus } from 'lucide-react';
-import useWorkoutSessionStore from '@/stores/workoutSessionStore';
+// ExerciseListSidebar.jsx - Fix null reference error
+import React from "react";
+import { CheckCircle, Circle, Plus } from "lucide-react";
+import useWorkoutSessionStore from "@/stores/workoutSessionStore";
 
 const ExerciseListSidebar = ({ onAddExercise }) => {
   const {
     currentExerciseIndex,
     completedExercises,
     exerciseData,
+    workoutData, // Get from store instead of getState()
     setCurrentExerciseIndex,
-  getCurrentExercise,
   } = useWorkoutSessionStore();
 
-  // Get exercises from workoutData (assume it's available in the store or via props/context)
-  const workoutData = useWorkoutSessionStore.getState().workoutData || {};
-  const exercises = workoutData.exercises || [];
+  // FIXED: Add null check for workoutData
+  const exercises = workoutData?.exercises || [];
+
+  // FIXED: Early return if no exercises available
+  if (!workoutData || exercises.length === 0) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm h-fit sticky top-24">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-900 dark:text-white">
+            Exercise List
+          </h3>
+          <button
+            onClick={onAddExercise}
+            className="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
+            title="Add Exercise"
+          >
+            <Plus className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="text-center text-gray-500 dark:text-gray-400">
+          {workoutData ? "No exercises added yet" : "Loading exercises..."}
+        </div>
+      </div>
+    );
+  }
 
   const handleExerciseClick = (index) => {
     setCurrentExerciseIndex(index);

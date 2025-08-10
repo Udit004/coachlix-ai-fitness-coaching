@@ -1,40 +1,165 @@
-// stores/workoutSessionStore.js - Updated with React Query integration
-import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
+import { create } from "zustand";
+import { devtools } from "zustand/middleware";
 
 const useWorkoutSessionStore = create(
   devtools(
     (set, get) => ({
-      // UI State - Keep in Zustand
+      // UI State
+      showAddExerciseModal: false,
       currentExerciseIndex: 0,
       isPlaying: false,
+      isEditing: false,
+      soundEnabled: true,
+
+      // Timer State
       timer: 0,
       exerciseTimer: 0,
-      currentSet: 1,
-      completedExercises: [],
-      exerciseData: {},
+      isTimerRunning: false,
       restTimer: 0,
       isResting: false,
-      notes: '',
-      soundEnabled: true,
-      isEditing: false,
-      showAddExerciseModal: false,
+      currentSet: 1,
 
-      // Timer actions
-      incrementTimer: () => set((state) => ({ timer: state.timer + 1 })),
-      incrementExerciseTimer: () => set((state) => ({ exerciseTimer: state.exerciseTimer + 1 })),
-      resetExerciseTimer: () => set({ exerciseTimer: 0 }),
-      
-      // Playback controls
-      togglePlayback: () => set((state) => ({ isPlaying: !state.isPlaying })),
-      
+      // Exercise Data - key is exercise index
+      exerciseData: {},
+
+      workoutData: null,
+      planData: null,
+
+      // Session Data
+      completedExercises: [],
+      notes: "",
+
+      // Set workout data
+      setWorkoutData: (workoutData, planData) => {
+        console.log("🔄 [STORE] Setting workout data:", workoutData?.name);
+        set({
+          workoutData,
+          planData,
+        });
+      },
+
+      // Actions
+      toggleAddExerciseModal: () =>
+        set((state) => ({
+          showAddExerciseModal: !state.showAddExerciseModal,
+        })),
+
+      // Initialize exercise data
+      initializeExerciseData: (workoutData) => {
+        console.log(
+          "🚀 [STORE] Initializing exercise data for workout:",
+          workoutData?.name
+        );
+
+        if (
+          !workoutData ||
+          !workoutData.exercises ||
+          workoutData.exercises.length === 0
+        ) {
+          console.warn("⚠️ [STORE] No exercises found in workout data:", {
+            hasWorkoutData: !!workoutData,
+            hasExercises: !!workoutData?.exercises,
+            exerciseCount: workoutData?.exercises?.length || 0,
+          });
+          set({ exerciseData: {} });
+          return;
+        }
+
+        const exercises = workoutData.exercises;
+        console.log(
+          "📝 [STORE] Found exercises:",
+          exercises.length,
+          exercises.map((e) => e.name)
+        );
+
+        const exerciseData = {};
+
+        exercises.forEach((exercise, index) => {
+          exerciseData[index] = {
+            completed: exercise.isCompleted || false,
+            sets: exercise.completedSets || exercise.sets || [],
+            notes: exercise.notes || "",
+            personalRecord: exercise.personalRecord || {
+              weight: 0,
+              reps: 0,
+              date: null,
+            },
+          };
+        });
+
+        // Set completed exercises
+        const completed = exercises
+          .map((ex, idx) => (ex.isCompleted ? idx : null))
+          .filter((idx) => idx !== null);
+
+        console.log("✅ [STORE] Initialized exercise data:", {
+          exerciseDataKeys: Object.keys(exerciseData),
+          completedExercises: completed,
+          firstExercise: exerciseData[0],
+        });
+
+        set({
+          exerciseData,
+          completedExercises: completed,
+          currentExerciseIndex: 0,
+          currentSet: 1,
+        });
+      },
+
+      // Update exercise data
+      updateExerciseData: (exerciseIndex, data) =>
+        set((state) => ({
+          exerciseData: {
+            ...state.exerciseData,
+            [exerciseIndex]: {
+              ...state.exerciseData[exerciseIndex],
+              ...data,
+            },
+          },
+        })),
+
+      // Get current exercise
+      getCurrentExercise: (exercises) => {
+        const { currentExerciseIndex } = get();
+        if (!exercises || !exercises.length) {
+          console.warn(
+            "⚠️ [STORE] No exercises provided to getCurrentExercise"
+          );
+          return null;
+        }
+        const current = exercises[currentExerciseIndex] || exercises[0];
+        console.log(
+          "🎯 [STORE] Current exercise:",
+          current?.name,
+          "at index:",
+          currentExerciseIndex
+        );
+        return current;
+      },
+
+      // Get progress percentage
+      getProgressPercentage: (totalExercises) => {
+        const { completedExercises } = get();
+        if (!totalExercises) return 0;
+        const percentage = Math.round(
+          (completedExercises.length / totalExercises) * 100
+        );
+        console.log(
+          "📊 [STORE] Progress:",
+          `${completedExercises.length}/${totalExercises} = ${percentage}%`
+        );
+        return percentage;
+      },
+
+      // Set current exercise
+      setCurrentExerciseIndex: (index) =>
+        set({
+          currentExerciseIndex: index,
+          exerciseTimer: 0,
+          currentSet: 1,
+        }),
+
       // Exercise navigation
-      setCurrentExerciseIndex: (index) => set({ 
-        currentExerciseIndex: index,
-        exerciseTimer: 0,
-        currentSet: 1 
-      }),
-      
       nextExercise: (totalExercises) => {
         const { currentExerciseIndex } = get();
         const maxIndex = totalExercises - 1;
@@ -42,46 +167,40 @@ const useWorkoutSessionStore = create(
           set({
             currentExerciseIndex: currentExerciseIndex + 1,
             exerciseTimer: 0,
-            currentSet: 1
+            currentSet: 1,
           });
         }
       },
-      
+
       previousExercise: () => {
         const { currentExerciseIndex } = get();
         if (currentExerciseIndex > 0) {
           set({
             currentExerciseIndex: currentExerciseIndex - 1,
             exerciseTimer: 0,
-            currentSet: 1
+            currentSet: 1,
           });
         }
       },
 
-      // Set management
-      incrementCurrentSet: () => set((state) => ({ currentSet: state.currentSet + 1 })),
-      
-      // Exercise completion
-      completeExercise: (exerciseIndex, totalExercises, restTime = 60) => {
-        const { completedExercises, exerciseData, currentExerciseIndex } = get();
-        
-        set({
-          completedExercises: [...completedExercises, exerciseIndex],
-          exerciseData: {
-            ...exerciseData,
-            [exerciseIndex]: {
-              ...exerciseData[exerciseIndex],
-              completed: true,
-            }
-          }
-        });
+      // Timer actions
+      togglePlayback: () => set((state) => ({ isPlaying: !state.isPlaying })),
+      incrementTimer: () => set((state) => ({ timer: state.timer + 1 })),
+      incrementExerciseTimer: () =>
+        set((state) => ({ exerciseTimer: state.exerciseTimer + 1 })),
+      resetExerciseTimer: () => set({ exerciseTimer: 0 }),
+      startTimer: () => set({ isTimerRunning: true, isPlaying: true }),
+      pauseTimer: () => set({ isTimerRunning: false, isPlaying: false }),
+      resetTimer: () =>
+        set({ timer: 0, isTimerRunning: false, isPlaying: false }),
+      updateTimer: () =>
+        set((state) => ({
+          timer: state.isTimerRunning ? state.timer + 1 : state.timer,
+        })),
 
-        // Start rest timer if not last exercise
-        if (currentExerciseIndex < totalExercises - 1) {
-          set({ restTimer: restTime, isResting: true });
-          get().nextExercise(totalExercises);
-        }
-      },
+      // Set management
+      incrementCurrentSet: () =>
+        set((state) => ({ currentSet: state.currentSet + 1 })),
 
       // Set completion
       addCompletedSet: (exerciseIndex, setData) => {
@@ -97,26 +216,69 @@ const useWorkoutSessionStore = create(
             ...exerciseData,
             [exerciseIndex]: {
               ...exerciseData[exerciseIndex],
-              sets: [...(exerciseData[exerciseIndex]?.sets || []), completeSetData],
-            }
+              sets: [
+                ...(exerciseData[exerciseIndex]?.sets || []),
+                completeSetData,
+              ],
+            },
           },
-          currentSet: currentSet + 1
+          currentSet: currentSet + 1,
         });
       },
 
-      // Rest timer
-      setRestTimer: (time) => set({ restTimer: time }),
+      setRestTimer: (time) => set({ restTimer: time, isResting: true }),
       decrementRestTimer: () => {
         const { restTimer } = get();
         if (restTimer > 1) {
           set({ restTimer: restTimer - 1 });
+          return false;
         } else {
           set({ restTimer: 0, isResting: false });
           return true; // Indicates rest is complete
         }
-        return false;
       },
       stopRest: () => set({ isResting: false, restTimer: 0 }),
+      startRestTimer: (duration = 60) =>
+        set({
+          restTimer: duration,
+          isResting: true,
+        }),
+      pauseRestTimer: () => set({ isResting: false }),
+      resetRestTimer: () => set({ restTimer: 0, isResting: false }),
+      updateRestTimer: () =>
+        set((state) => ({
+          restTimer:
+            state.isResting && state.restTimer > 0
+              ? state.restTimer - 1
+              : state.restTimer,
+        })),
+
+      // Exercise completion
+      completeExercise: (exerciseIndex, totalExercises, restTime = 60) => {
+        const { completedExercises, exerciseData, currentExerciseIndex } =
+          get();
+
+        console.log("✅ [STORE] Completing exercise:", exerciseIndex);
+
+        set({
+          completedExercises: [
+            ...new Set([...completedExercises, exerciseIndex]),
+          ],
+          exerciseData: {
+            ...exerciseData,
+            [exerciseIndex]: {
+              ...exerciseData[exerciseIndex],
+              completed: true,
+            },
+          },
+        });
+
+        // Start rest timer if not last exercise
+        if (currentExerciseIndex < totalExercises - 1) {
+          set({ restTimer: restTime, isResting: true });
+          get().nextExercise(totalExercises);
+        }
+      },
 
       // Notes
       setNotes: (notes) => set({ notes }),
@@ -128,70 +290,41 @@ const useWorkoutSessionStore = create(
             [exerciseIndex]: {
               ...exerciseData[exerciseIndex],
               notes,
-            }
-          }
+            },
+          },
         });
       },
 
       // Settings
-      toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
+      toggleSound: () =>
+        set((state) => ({ soundEnabled: !state.soundEnabled })),
       toggleEditing: () => set((state) => ({ isEditing: !state.isEditing })),
-      toggleAddExerciseModal: () => set((state) => ({ showAddExerciseModal: !state.showAddExerciseModal })),
 
-      // Initialize exercise data from workout (called when React Query data changes)
-      initializeExerciseData: (workout) => {
-        const initialData = {};
-        if (workout?.exercises && workout.exercises.length > 0) {
-          workout.exercises.forEach((exercise, index) => {
-            initialData[index] = {
-              completed: exercise.isCompleted || false,
-              sets: exercise.completedSets || [],
-              notes: exercise.notes || "",
-            };
-          });
-
-          // Set completed exercises
-          const completed = workout.exercises
-            .map((ex, idx) => (ex.isCompleted ? idx : null))
-            .filter((idx) => idx !== null);
-          
-          set({ 
-            exerciseData: initialData,
-            completedExercises: completed 
-          });
-        }
-      },
-
-      // Reset store
-      reset: () => set({
-        currentExerciseIndex: 0,
-        isPlaying: false,
-        timer: 0,
-        exerciseTimer: 0,
-        currentSet: 1,
-        completedExercises: [],
-        exerciseData: {},
-        restTimer: 0,
-        isResting: false,
-        notes: '',
-        soundEnabled: true,
-        isEditing: false,
-        showAddExerciseModal: false,
-      }),
-
-      // Computed getters (now need workout data passed in)
-      getCurrentExercise: (exercises) => {
-        const { currentExerciseIndex } = get();
-        return exercises?.[currentExerciseIndex];
-      },
-
-      getProgressPercentage: (totalExercises) => {
-        const { completedExercises } = get();
-        return totalExercises > 0 ? (completedExercises.length / totalExercises) * 100 : 0;
+      // Reset all state
+      reset: () => {
+        console.log("🧹 [STORE] Resetting all state");
+        set({
+          showAddExerciseModal: false,
+          currentExerciseIndex: 0,
+          isPlaying: false,
+          isEditing: false,
+          soundEnabled: true,
+          timer: 0,
+          exerciseTimer: 0,
+          isTimerRunning: false,
+          restTimer: 0,
+          isResting: false,
+          currentSet: 1,
+          exerciseData: {},
+          completedExercises: [],
+          notes: "",
+          workoutData: null,
+          planData: null,
+        });
       },
     }),
     {
-      name: 'workout-session-store',
+      name: "workout-session-store",
     }
   )
 );

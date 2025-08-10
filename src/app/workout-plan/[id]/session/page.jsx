@@ -1,13 +1,13 @@
 "use client";
 import React, { useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "../../../../hooks/useAuth";
+import { useAuthContext } from "@/auth/AuthContext"; // FIXED: Use correct auth context
 import useWorkoutSessionStore from "@/stores/workoutSessionStore";
-import { 
-  useWorkoutSession, 
-  useSaveWorkoutProgress, 
-  useCompleteWorkoutSession, 
-  useAddExercisesToWorkout 
+import {
+  useWorkoutSession,
+  useSaveWorkoutProgress,
+  useCompleteWorkoutSession,
+  useAddExercisesToWorkout,
 } from "../../../../hooks/useWorkoutQueries";
 import AddExerciseModal from "../AddExerciseModal";
 
@@ -25,7 +25,7 @@ export default function WorkoutSessionPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user } = useAuthContext(); // FIXED: Use correct auth context
 
   // URL parameters
   const planId = params.id;
@@ -33,12 +33,19 @@ export default function WorkoutSessionPage() {
   const dayNumber = parseInt(searchParams.get("day")) || 1;
   const workoutId = searchParams.get("workout");
 
+  console.log("🎯 Page params:", { planId, weekNumber, dayNumber, workoutId });
+
   // React Query hooks
-  const { 
-    data: sessionData, 
-    isLoading: loading, 
-    error: fetchError 
+  const {
+    data: sessionData,
+    isLoading: loading,
+    error: fetchError,
+    refetch,
   } = useWorkoutSession(planId, weekNumber, dayNumber, workoutId);
+
+  console.log("📊 Session data:", sessionData);
+  console.log("⏳ Loading:", loading);
+  console.log("🚨 Error:", fetchError);
 
   const saveProgressMutation = useSaveWorkoutProgress();
   const completeWorkoutMutation = useCompleteWorkoutSession();
@@ -63,12 +70,33 @@ export default function WorkoutSessionPage() {
   const workoutData = sessionData?.workout;
   const exercises = workoutData?.exercises || [];
 
-  // Initialize exercise data when workout data changes
+  console.log("🏋️ Extracted data:", {
+    plan: !!plan,
+    workoutData: !!workoutData,
+    workoutName: workoutData?.name,
+    exercisesCount: exercises.length,
+    exerciseNames: exercises.map((e) => e.name),
+  });
+
+  // FIXED: Initialize exercise data when workout data changes
   useEffect(() => {
-    if (workoutData) {
-      initializeExerciseData(workoutData);
+    if (sessionData?.workout && sessionData?.plan) {
+      console.log("🔄 Setting workout data in store...");
+
+      // Set the workout data in store first
+      useWorkoutSessionStore
+        .getState()
+        .setWorkoutData(sessionData.workout, sessionData.plan);
+
+      // Then initialize exercise data
+      initializeExerciseData(sessionData.workout);
     }
-  }, [workoutData, initializeExerciseData]);
+  }, [sessionData, initializeExerciseData]);
+
+  // Debug exercise data updates
+  useEffect(() => {
+    console.log("📈 Exercise data updated:", exerciseData);
+  }, [exerciseData]);
 
   // Prefetch return route
   useEffect(() => {
@@ -78,6 +106,7 @@ export default function WorkoutSessionPage() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      console.log("🧹 Cleaning up workout session...");
       reset();
     };
   }, [reset]);
@@ -87,72 +116,11 @@ export default function WorkoutSessionPage() {
     router.push(`/workout-plan/${planId}`);
   };
 
-  // Handle progress save with user feedback
-  const handleProgressSave = async () => {
-    try {
-      await saveProgressMutation.mutateAsync({
-        planId,
-        weekNumber,
-        dayNumber,
-        workoutId,
-        exerciseData,
-      });
-      
-      alert("Progress saved successfully!");
-      return { success: true };
-    } catch (error) {
-      console.error("Error saving progress:", error);
-      alert("Failed to save progress. Please try again.");
-      return { success: false, error: error.message };
-    }
-  };
-
-  // Handle workout completion with navigation
-  const handleWorkoutComplete = async () => {
-    try {
-      const sessionDataToSave = {
-        duration: Math.floor(timer / 60),
-        totalExercises: exercises.length,
-        completedExercises: completedExercises.length,
-        totalSets: Object.values(exerciseData).reduce(
-          (total, ex) => total + (ex.sets?.length || 0),
-          0
-        ),
-        exercises: Object.keys(exerciseData).map((index) => ({
-          exerciseIndex: parseInt(index),
-          completed: exerciseData[index].completed,
-          actualSets: exerciseData[index].sets,
-          notes: exerciseData[index].notes,
-        })),
-        notes: notes,
-        averageIntensity: workoutData?.intensity || "Moderate",
-      };
-
-      await completeWorkoutMutation.mutateAsync({
-        planId,
-        weekNumber,
-        dayNumber,
-        workoutId,
-        sessionData: sessionDataToSave,
-      });
-
-      alert("Workout completed successfully!");
-      router.push(`/workout-plan/${planId}`);
-      return { success: true };
-    } catch (error) {
-      console.error("Error completing workout:", error);
-      alert("Failed to complete workout. Please try again.");
-      return { success: false, error: error.message };
-    }
-  };
-
-  // Handle adding exercises
-  const handleAddExercise = () => {
-    toggleAddExerciseModal();
-  };
-
+  // FIXED: Handle adding exercises with immediate refetch
   const handleAddExercisesFromModal = async (selectedExercises) => {
     try {
+      console.log("➕ Adding exercises:", selectedExercises);
+
       await addExercisesMutation.mutateAsync({
         planId,
         weekNumber,
@@ -162,15 +130,20 @@ export default function WorkoutSessionPage() {
       });
 
       const exerciseCount = selectedExercises.length;
+      console.log(`✅ Added ${exerciseCount} exercises successfully`);
+
+      // Immediately refetch the session data to show new exercises
+      await refetch();
+
       alert(
         `${exerciseCount} exercise${
           exerciseCount !== 1 ? "s" : ""
         } added successfully!`
       );
-      
+
       return { success: true, count: exerciseCount };
     } catch (error) {
-      console.error("Error adding exercises:", error);
+      console.error("❌ Error adding exercises:", error);
       alert("Failed to add exercises. Please try again.");
       return { success: false, error: error.message };
     }
@@ -180,18 +153,66 @@ export default function WorkoutSessionPage() {
   const error = fetchError?.message;
   useEffect(() => {
     if (error) {
+      console.error("🚨 Session page error:", error);
       alert(`Error: ${error}`);
-      router.back();
+      // Don't auto-navigate back for debugging
+      // router.back();
     }
-  }, [error, router]);
+  }, [error]);
 
-  // Loading state
+  // FIXED: Better loading state
   if (loading) {
+    console.log("⏳ Showing loading state...");
     return <LoadingState />;
   }
 
-  // Empty state - no exercises
-  if (!workoutData || exercises.length === 0) {
+  // FIXED: Better error handling
+  if (error) {
+    console.log("🚨 Showing error state...");
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">
+            Error Loading Workout
+          </h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <div className="space-x-4">
+            <button
+              onClick={() => refetch()}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Retry
+            </button>
+            <button
+              onClick={handleBack}
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            >
+              Go Back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // FIXED: Better empty state handling
+  if (!workoutData) {
+    console.log("🚫 No workout data found");
+    return (
+      <EmptyState
+        planId={planId}
+        weekNumber={weekNumber}
+        dayNumber={dayNumber}
+        workoutData={null}
+        onBack={handleBack}
+        onAddExercise={() => toggleAddExerciseModal()}
+        message="Workout not found"
+      />
+    );
+  }
+
+  if (exercises.length === 0) {
+    console.log("📝 No exercises found, showing empty state");
     return (
       <EmptyState
         planId={planId}
@@ -199,7 +220,8 @@ export default function WorkoutSessionPage() {
         dayNumber={dayNumber}
         workoutData={workoutData}
         onBack={handleBack}
-        onAddExercise={handleAddExercise}
+        onAddExercise={() => toggleAddExerciseModal()}
+        message="No exercises in this workout yet"
       />
     );
   }
@@ -208,20 +230,39 @@ export default function WorkoutSessionPage() {
   const currentExercise = getCurrentExercise(exercises);
   const progressPercentage = getProgressPercentage(exercises.length);
 
+  console.log("🎯 Rendering main UI:", {
+    currentExercise: currentExercise?.name,
+    progressPercentage,
+    exerciseCount: exercises.length,
+  });
+
   // Main workout session UI
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Debug info in development */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="bg-yellow-100 p-2 text-xs">
+          <strong>Debug:</strong> Plan: {plan?.name} | Workout:{" "}
+          {workoutData?.name} | Exercises: {exercises.length} | Current:{" "}
+          {currentExercise?.name}
+        </div>
+      )}
+
       {/* Header */}
       <WorkoutHeader
         planId={planId}
         weekNumber={weekNumber}
         dayNumber={dayNumber}
         workoutId={workoutId}
-        workoutData={workoutData}
         onBack={handleBack}
-        onProgressSave={handleProgressSave}
-        isSaving={saveProgressMutation.isLoading}
-        progressPercentage={progressPercentage}
+        onProgressSave={(result) => {
+          console.log("Progress save result:", result);
+          if (result.success) {
+            alert("Progress saved successfully!");
+          } else {
+            alert(`Failed to save progress: ${result.error}`);
+          }
+        }}
       />
 
       <div className="max-w-6xl mx-auto p-4">
@@ -235,7 +276,7 @@ export default function WorkoutSessionPage() {
             <RestTimer />
 
             {/* Current Exercise */}
-            <CurrentExercise 
+            <CurrentExercise
               currentExercise={currentExercise}
               exercises={exercises}
             />
@@ -247,17 +288,19 @@ export default function WorkoutSessionPage() {
               dayNumber={dayNumber}
               workoutId={workoutId}
               exercises={exercises}
-              onWorkoutComplete={handleWorkoutComplete}
-              onProgressSave={handleProgressSave}
+              onWorkoutComplete={() =>
+                console.log("Workout complete requested")
+              }
+              onProgressSave={() => console.log("Progress save requested")}
               isCompleting={completeWorkoutMutation.isLoading}
               isSaving={saveProgressMutation.isLoading}
             />
           </div>
 
           {/* Exercise List Sidebar */}
-          <ExerciseListSidebar 
+          <ExerciseListSidebar
             exercises={exercises}
-            onAddExercise={handleAddExercise}
+            onAddExercise={() => toggleAddExerciseModal()}
           />
         </div>
       </div>

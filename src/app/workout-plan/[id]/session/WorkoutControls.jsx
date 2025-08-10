@@ -1,35 +1,38 @@
 // components/workout-session/WorkoutControls.jsx
-import React from 'react';
-import { Play, Pause, SkipForward, SkipBack } from 'lucide-react';
-import useWorkoutSessionStore from '@/stores/workoutSessionStore';
+import React from "react";
+import { Play, Pause, SkipForward, SkipBack } from "lucide-react";
+import useWorkoutSessionStore from "@/stores/workoutSessionStore";
+import { useSaveWorkoutProgress, useCompleteWorkoutSession } from '@/hooks/useWorkoutQueries';
 
-const WorkoutControls = ({ 
-  planId, 
-  weekNumber, 
-  dayNumber, 
-  workoutId, 
+const WorkoutControls = ({
+  planId,
+  weekNumber,
+  dayNumber,
+  workoutId,
+  exercises, // Add exercises as prop
   onWorkoutComplete,
-  onProgressSave 
+  onProgressSave,
+  isCompleting, // Add these props from parent
+  isSaving,
 }) => {
   const {
     currentExerciseIndex,
     isPlaying,
     completedExercises,
     notes,
-    saving,
+    exerciseData,
     togglePlayback,
     nextExercise,
     previousExercise,
     completeExercise,
     setNotes,
-    completeWorkout,
-    saveProgress,
-  getCurrentExercise,
+    getCurrentExercise,
   } = useWorkoutSessionStore();
 
-  // Get exercises from workoutData (assume it's available in the store or via props/context)
-  const workoutData = useWorkoutSessionStore.getState().workoutData || {};
-  const exercises = workoutData.exercises || [];
+  // Import the mutation hooks here
+  const saveProgressMutation = useSaveWorkoutProgress();
+  const completeWorkoutMutation = useCompleteWorkoutSession();
+
   const currentExercise = getCurrentExercise(exercises);
 
   const handleStartPause = () => {
@@ -37,7 +40,7 @@ const WorkoutControls = ({
   };
 
   const handleNextExercise = () => {
-    nextExercise();
+    nextExercise(exercises.length);
   };
 
   const handlePreviousExercise = () => {
@@ -45,20 +48,53 @@ const WorkoutControls = ({
   };
 
   const handleCompleteExercise = () => {
-    completeExercise(currentExerciseIndex);
+    completeExercise(currentExerciseIndex, exercises.length);
   };
 
   const handleSaveProgress = async () => {
-    const result = await saveProgress(planId, weekNumber, dayNumber, workoutId);
-    if (onProgressSave) {
-      onProgressSave(result);
+    try {
+      await saveProgressMutation.mutateAsync({
+        planId,
+        weekNumber,
+        dayNumber,
+        workoutId,
+        exerciseData,
+      });
+
+      if (onProgressSave) {
+        onProgressSave({ success: true });
+      }
+    } catch (error) {
+      console.error("Failed to save progress:", error);
+      if (onProgressSave) {
+        onProgressSave({ success: false, error: error.message });
+      }
     }
   };
 
   const handleCompleteWorkout = async () => {
-    const result = await completeWorkout(planId, weekNumber, dayNumber, workoutId);
-    if (onWorkoutComplete) {
-      onWorkoutComplete(result);
+    try {
+      await completeWorkoutMutation.mutateAsync({
+        planId,
+        weekNumber,
+        dayNumber,
+        workoutId,
+        sessionData: {
+          exerciseData,
+          notes,
+          totalTime: useWorkoutSessionStore.getState().timer,
+          completedAt: new Date().toISOString(),
+        },
+      });
+
+      if (onWorkoutComplete) {
+        onWorkoutComplete({ success: true });
+      }
+    } catch (error) {
+      console.error("Failed to complete workout:", error);
+      if (onWorkoutComplete) {
+        onWorkoutComplete({ success: false, error: error.message });
+      }
     }
   };
 
@@ -100,10 +136,10 @@ const WorkoutControls = ({
         <div className="flex space-x-3">
           <button
             onClick={handleSaveProgress}
-            disabled={saving}
+            disabled={saveProgressMutation.isLoading || isSaving}
             className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 transition-colors font-medium"
           >
-            {saving ? "Saving..." : "Save Progress"}
+            {saveProgressMutation.isLoading || isSaving ? "Saving..." : "Save Progress"}
           </button>
 
           <button
@@ -116,10 +152,10 @@ const WorkoutControls = ({
 
           <button
             onClick={handleCompleteWorkout}
-            disabled={saving}
+            disabled={completeWorkoutMutation.isLoading || isCompleting}
             className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-purple-400 transition-colors font-medium"
           >
-            {saving ? "Finishing..." : "Finish Workout"}
+            {completeWorkoutMutation.isLoading || isCompleting ? "Finishing..." : "Finish Workout"}
           </button>
         </div>
       </div>

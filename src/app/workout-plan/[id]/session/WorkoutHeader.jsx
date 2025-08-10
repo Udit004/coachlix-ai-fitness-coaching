@@ -2,6 +2,7 @@
 import React from 'react';
 import { ArrowLeft, Volume2, VolumeX, Save } from 'lucide-react';
 import useWorkoutSessionStore from '@/stores/workoutSessionStore';
+import { useSaveWorkoutProgress } from '@/hooks/useWorkoutQueries';
 
 const WorkoutHeader = ({ 
   planId, 
@@ -9,26 +10,44 @@ const WorkoutHeader = ({
   dayNumber, 
   workoutId,
   onBack, 
-  onProgressSave 
+  onProgressSave,
 }) => {
   const {
     workoutData,
     planData,
     completedExercises,
     soundEnabled,
-    saving,
+    exerciseData,
+    notes,
     toggleSound,
-    saveProgress,
-  getProgressPercentage,
+    getProgressPercentage,
   } = useWorkoutSessionStore();
 
+  // Import the mutation hook here
+  const saveProgressMutation = useSaveWorkoutProgress();
+
+  // Get exercises and progress from store data
   const exercises = workoutData?.exercises || [];
   const progressPercentage = getProgressPercentage(exercises.length);
 
   const handleSaveProgress = async () => {
-    const result = await saveProgress(planId, weekNumber, dayNumber, workoutId);
-    if (onProgressSave) {
-      onProgressSave(result);
+    try {
+      await saveProgressMutation.mutateAsync({
+        planId,
+        weekNumber,
+        dayNumber,
+        workoutId,
+        exerciseData,
+      });
+
+      if (onProgressSave) {
+        onProgressSave({ success: true });
+      }
+    } catch (error) {
+      console.error("Failed to save progress:", error);
+      if (onProgressSave) {
+        onProgressSave({ success: false, error: error.message });
+      }
     }
   };
 
@@ -67,11 +86,11 @@ const WorkoutHeader = ({
 
             <button
               onClick={handleSaveProgress}
-              disabled={saving}
+              disabled={saveProgressMutation.isLoading}
               className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg transition-colors"
             >
               <Save className="h-4 w-4" />
-              <span>{saving ? "Saving..." : "Save Progress"}</span>
+              <span>{saveProgressMutation.isLoading ? "Saving..." : "Save Progress"}</span>
             </button>
           </div>
         </div>

@@ -2,20 +2,14 @@
 import React from 'react';
 import useWorkoutSessionStore from '@/stores/workoutSessionStore';
 
-const CurrentExercise = () => {
+const CurrentExercise = ({ currentExercise, exercises }) => {
   const {
     currentExerciseIndex,
     currentSet,
     exerciseData,
     addCompletedSet,
     updateExerciseNotes,
-  getCurrentExercise,
   } = useWorkoutSessionStore();
-
-  // Get exercises from workoutData (assume it's available in the store or via props/context)
-  const workoutData = useWorkoutSessionStore.getState().workoutData || {};
-  const exercises = workoutData.exercises || [];
-  const currentExercise = getCurrentExercise(exercises);
 
   const handleSetComplete = () => {
     const repsInput = document.getElementById(`reps-${currentExerciseIndex}`);
@@ -40,7 +34,20 @@ const CurrentExercise = () => {
     updateExerciseNotes(currentExerciseIndex, e.target.value);
   };
 
-  if (!currentExercise) return null;
+  // Use the props instead of trying to get from store
+  if (!currentExercise || !exercises) {
+    console.log('⚠️ [CurrentExercise] Missing data:', { 
+      hasCurrentExercise: !!currentExercise, 
+      hasExercises: !!exercises 
+    });
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
+        <p className="text-center text-gray-500">No exercise data available</p>
+      </div>
+    );
+  }
+
+  console.log('🎯 [CurrentExercise] Rendering exercise:', currentExercise.name);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
@@ -66,7 +73,7 @@ const CurrentExercise = () => {
             Target Sets
           </p>
           <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-            {currentExercise.targetSets || 3}
+            {currentExercise.targetSets || currentExercise.sets || 3}
           </p>
         </div>
         <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
@@ -74,7 +81,7 @@ const CurrentExercise = () => {
             Target Reps
           </p>
           <p className="text-2xl font-bold text-green-900 dark:text-green-100">
-            {currentExercise.targetReps || "8-12"}
+            {currentExercise.targetReps || currentExercise.reps || "8-12"}
           </p>
         </div>
         <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
@@ -82,8 +89,8 @@ const CurrentExercise = () => {
             Weight
           </p>
           <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-            {currentExercise.targetWeight
-              ? `${currentExercise.targetWeight}kg`
+            {currentExercise.targetWeight || currentExercise.weight
+              ? `${currentExercise.targetWeight || currentExercise.weight}kg`
               : "Body weight"}
           </p>
         </div>

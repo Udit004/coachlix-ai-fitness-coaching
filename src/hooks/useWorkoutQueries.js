@@ -1,9 +1,9 @@
-// hooks/useWorkoutQueries.js - React Query hooks for workout data
+//- Better error handling and data structure
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import workoutPlanService from '@/service/workoutPlanService';
 import { useAuth } from '@/hooks/useAuth';
 
-// Query Keys
+// Query Keys (same as before)
 export const workoutKeys = {
   all: ['workouts'],
   lists: () => [...workoutKeys.all, 'list'],
@@ -42,35 +42,90 @@ export const useWorkoutPlan = (planId) => {
   });
 };
 
-// Get specific workout session data
+// FIXED: Get specific workout session data with better debugging
 export const useWorkoutSession = (planId, weekNumber, dayNumber, workoutId) => {
   return useQuery({
     queryKey: workoutKeys.session(planId, weekNumber, dayNumber, workoutId),
     queryFn: async () => {
+      console.log('🔍 Fetching workout session:', { planId, weekNumber, dayNumber, workoutId });
+      
       // Get the full plan first
       const response = await workoutPlanService.getWorkoutPlan(planId);
-      const plan = response.plan || response;
+      console.log('📦 Full plan response:', response);
       
-      // Find the specific workout
-      const week = plan.weeks?.find((w) => w.weekNumber === weekNumber);
-      const day = week?.days?.find((d) => d.dayNumber === dayNumber);
-      const workout = day?.workouts?.find(
-        (w, index) =>
-          w._id === workoutId ||
-          w.id === workoutId ||
-          index.toString() === workoutId ||
-          index === parseInt(workoutId)
-      );
+      const plan = response.plan || response;
+      console.log('📋 Plan data:', plan);
+      
+      if (!plan || !plan.weeks) {
+        console.error('❌ Invalid plan structure:', plan);
+        throw new Error("Invalid plan structure");
+      }
+
+      // Find the specific week
+      const week = plan.weeks?.find((w) => w.weekNumber === parseInt(weekNumber));
+      console.log('📅 Found week:', week, 'Looking for weekNumber:', weekNumber);
+      
+      if (!week) {
+        console.error('❌ Week not found:', { weekNumber, availableWeeks: plan.weeks?.map(w => w.weekNumber) });
+        throw new Error(`Week ${weekNumber} not found`);
+      }
+
+      // Find the specific day
+      const day = week.days?.find((d) => d.dayNumber === parseInt(dayNumber));
+      console.log('📆 Found day:', day, 'Looking for dayNumber:', dayNumber);
+      
+      if (!day) {
+        console.error('❌ Day not found:', { dayNumber, availableDays: week.days?.map(d => d.dayNumber) });
+        throw new Error(`Day ${dayNumber} not found`);
+      }
+
+      // Find the specific workout with multiple matching strategies
+      let workout;
+      const numericWorkoutId = parseInt(workoutId);
+      
+      console.log('🏋️ Looking for workout:', { workoutId, numericWorkoutId, availableWorkouts: day.workouts?.length });
+      
+      if (!isNaN(numericWorkoutId)) {
+        // Try index-based lookup first
+        workout = day.workouts?.[numericWorkoutId];
+        console.log('🔢 Workout by index:', workout);
+      }
+      
+      if (!workout) {
+        // Try ID-based lookup
+        workout = day.workouts?.find(
+          (w, index) =>
+            w._id?.toString() === workoutId ||
+            w.id?.toString() === workoutId ||
+            index.toString() === workoutId
+        );
+        console.log('🆔 Workout by ID:', workout);
+      }
 
       if (!workout) {
-        throw new Error("Workout not found");
+        console.error('❌ Workout not found:', { 
+          workoutId, 
+          numericWorkoutId, 
+          availableWorkouts: day.workouts?.map((w, i) => ({ index: i, _id: w._id, id: w.id, name: w.name })) 
+        });
+        throw new Error(`Workout not found: ${workoutId}`);
       }
+
+      console.log('✅ Found workout:', {
+        name: workout.name,
+        exerciseCount: workout.exercises?.length || 0,
+        exercises: workout.exercises?.map(e => ({ name: e.name, _id: e._id }))
+      });
 
       return { plan, workout };
     },
-    enabled: !!(planId && weekNumber && dayNumber && workoutId),
+    enabled: !!(planId && weekNumber !== undefined && dayNumber !== undefined && workoutId !== undefined),
     staleTime: 1 * 60 * 1000, // 1 minute
     cacheTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1, // Reduce retries for faster debugging
+    onError: (error) => {
+      console.error('🚨 useWorkoutSession error:', error);
+    }
   });
 };
 
