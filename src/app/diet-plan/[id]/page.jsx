@@ -1,6 +1,6 @@
 // pages/diet-plans/[id]/page.jsx
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -11,68 +11,80 @@ import {
   Edit,
   Trash2,
   Copy,
+  AlertCircle,
 } from "lucide-react";
 
 import DietDayCard from "./DietDayCard";
-import MealCard from "./MealCard";
-import dietPlanService from "@/service/dietPlanService";
 import useDietPlanStore from "@/stores/useDietPlanStore";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  useDietPlan,
+  useDeleteDietPlan,
+  useCloneDietPlan,
+  useAddDay,
+  useNutritionSummary,
+} from "@/hooks/useDietPlanQueries";
 
 export default function SingleDietPlanPage() {
   const { id } = useParams();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
+  // UI state from Zustand
   const {
-    currentPlan: dietPlan,
-    loading,
-    error,
-    fetchDietPlan,
-    deleteDietPlan,
-    cloneDietPlan,
-    addDay,
-    clearError,
-    clearCurrentPlan,
+    activeDay,
+    setActiveDay,
+    selectedPlanId,
+    setSelectedPlanId,
   } = useDietPlanStore();
-  const [activeDay, setActiveDay] = useState(1);
 
-  const loadDietPlan = useCallback(async () => {
-    try {
-      clearError();
-      await fetchDietPlan(id);
-    } catch (err) {
-      console.error("Error fetching diet plan:", err);
-      // Error is handled by the store
-    }
-  }, [id, fetchDietPlan, clearError]);
+  // React Query hooks
+  const {
+    data: dietPlan,
+    isLoading,
+    error,
+    refetch,
+  } = useDietPlan(id);
 
-  // Fixed useEffect - only run when user is available and not in auth loading state
+  const {
+    data: nutritionSummary,
+    isLoading: nutritionLoading,
+  } = useNutritionSummary(id);
+
+  const deletePlanMutation = useDeleteDietPlan();
+  const clonePlanMutation = useCloneDietPlan();
+  const addDayMutation = useAddDay();
+
+  // Set selected plan ID when component mounts or ID changes
   useEffect(() => {
-
     router.prefetch(`/diet-plan/`);
-
-    if (!authLoading && user && id) {
-      loadDietPlan();
-    } else if (!authLoading && !user) {
-      clearCurrentPlan();
+    
+    if (id && id !== selectedPlanId) {
+      setSelectedPlanId(id);
     }
 
-    // Cleanup when component unmounts or ID changes
-    return () => {
-      if (!id) {
-        clearCurrentPlan();
+    // Reset active day when switching plans
+    if (id !== selectedPlanId) {
+      setActiveDay(1);
+    }
+  }, [id, selectedPlanId, setSelectedPlanId, setActiveDay, router]);
+
+  // Reset active day when diet plan changes (in case the current activeDay doesn't exist)
+  useEffect(() => {
+    if (dietPlan?.days?.length > 0) {
+      const dayExists = dietPlan.days.some(day => day.dayNumber === activeDay);
+      if (!dayExists) {
+        setActiveDay(1);
       }
-    };
-  }, [authLoading, user, id, loadDietPlan, clearCurrentPlan]);
+    }
+  }, [dietPlan, activeDay, setActiveDay]);
 
   const handleDeletePlan = async () => {
     if (!confirm("Are you sure you want to delete this entire diet plan?"))
       return;
 
     try {
-      clearError();
-      await deleteDietPlan(id);
+      await deletePlanMutation.mutateAsync(id);
       router.push("/diet-plans");
     } catch (err) {
       console.error("Error deleting plan:", err);
@@ -81,6 +93,8 @@ export default function SingleDietPlanPage() {
   };
 
   const handleClonePlan = async () => {
+    if (!dietPlan) return;
+    
     const newName = prompt(
       "Enter a name for the cloned plan:",
       `${dietPlan.name} (Copy)`
@@ -88,8 +102,10 @@ export default function SingleDietPlanPage() {
     if (!newName) return;
 
     try {
-      clearError();
-      const clonedPlan = await cloneDietPlan(id, newName);
+      const clonedPlan = await clonePlanMutation.mutateAsync({ 
+        planId: id, 
+        newName 
+      });
       router.push(`/diet-plans/${clonedPlan._id}`);
     } catch (err) {
       console.error("Error cloning plan:", err);
@@ -97,10 +113,10 @@ export default function SingleDietPlanPage() {
     }
   };
 
-  // 7. Replace the handleAddDay function - REPLACE with:
   const handleAddDay = async () => {
+    if (!dietPlan) return;
+    
     try {
-      clearError();
       const newDayNumber = dietPlan.days.length + 1;
       const dayData = {
         dayNumber: newDayNumber,
@@ -112,7 +128,10 @@ export default function SingleDietPlanPage() {
         ],
       };
 
-      await addDay(id, dayData);
+      await addDayMutation.mutateAsync({ planId: id, dayData });
+      
+      // Set the newly created day as active
+      setActiveDay(newDayNumber);
     } catch (err) {
       console.error("Error adding day:", err);
       alert("Failed to add day. Please try again.");
@@ -120,7 +139,7 @@ export default function SingleDietPlanPage() {
   };
 
   // Show loading while auth is loading OR while fetching diet plan
-  if (authLoading || loading) {
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
         <div className="max-w-6xl mx-auto">
@@ -143,19 +162,47 @@ export default function SingleDietPlanPage() {
     );
   }
 
+  // Show login prompt if user is not authenticated
+  if (!authLoading && !user) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center py-12">
+            <div className="max-w-sm mx-auto">
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-full h-20 w-20 flex items-center justify-center mx-auto mb-4">
+                <Calendar className="h-10 w-10 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                Authentication Required
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                Please log in to access your diet plans
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center py-12">
             <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-800 rounded-xl p-6">
+              <div className="flex items-center justify-center mb-4">
+                <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
+              </div>
               <h3 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">
                 Error Loading Diet Plan
               </h3>
-              <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
+              <p className="text-red-600 dark:text-red-400 mb-4">
+                {error?.message || "Failed to load diet plan"}
+              </p>
               <div className="space-x-4">
                 <button
-                  onClick={loadDietPlan}
+                  onClick={() => refetch()}
                   className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
                 >
                   Try Again
@@ -199,12 +246,12 @@ export default function SingleDietPlanPage() {
   }
 
   const averageCalories =
-    dietPlan.days.length > 0
+    dietPlan.days?.length > 0
       ? Math.round(
-          dietPlan.days.reduce((sum, day) => sum + day.totalCalories, 0) /
+          dietPlan.days.reduce((sum, day) => sum + (day.totalCalories || 0), 0) /
             dietPlan.days.length
         )
-      : dietPlan.targetCalories;
+      : dietPlan.targetCalories || 0;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
@@ -233,10 +280,11 @@ export default function SingleDietPlanPage() {
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
               onClick={handleClonePlan}
-              className="flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+              disabled={clonePlanMutation.isPending}
+              className="flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors text-sm"
             >
               <Copy className="h-4 w-4" />
-              <span>Clone</span>
+              <span>{clonePlanMutation.isPending ? "Cloning..." : "Clone"}</span>
             </button>
             <button
               onClick={() => router.push(`/diet-plan/${id}/edit`)}
@@ -247,10 +295,11 @@ export default function SingleDietPlanPage() {
             </button>
             <button
               onClick={handleDeletePlan}
-              className="flex items-center justify-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm"
+              disabled={deletePlanMutation.isPending}
+              className="flex items-center justify-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-lg transition-colors text-sm"
             >
               <Trash2 className="h-4 w-4" />
-              <span>Delete</span>
+              <span>{deletePlanMutation.isPending ? "Deleting..." : "Delete"}</span>
             </button>
           </div>
         </div>
@@ -288,7 +337,7 @@ export default function SingleDietPlanPage() {
                 <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 dark:text-purple-400" />
               </div>
               <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
-                {dietPlan.days.length}
+                {dietPlan.days?.length || 0}
               </p>
               <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
                 Days Planned
@@ -321,7 +370,7 @@ export default function SingleDietPlanPage() {
                   </span>
                 </div>
                 <p className="text-base sm:text-lg font-semibold text-red-700 dark:text-red-300">
-                  {dietPlan.targetProtein}g
+                  {dietPlan.targetProtein || 0}g
                 </p>
                 <p className="text-red-600 dark:text-red-400 text-xs sm:text-sm">
                   Protein
@@ -335,7 +384,7 @@ export default function SingleDietPlanPage() {
                   </span>
                 </div>
                 <p className="text-base sm:text-lg font-semibold text-yellow-700 dark:text-yellow-300">
-                  {dietPlan.targetCarbs}g
+                  {dietPlan.targetCarbs || 0}g
                 </p>
                 <p className="text-yellow-600 dark:text-yellow-400 text-xs sm:text-sm">
                   Carbs
@@ -349,7 +398,7 @@ export default function SingleDietPlanPage() {
                   </span>
                 </div>
                 <p className="text-base sm:text-lg font-semibold text-blue-700 dark:text-blue-300">
-                  {dietPlan.targetFats}g
+                  {dietPlan.targetFats || 0}g
                 </p>
                 <p className="text-blue-600 dark:text-blue-400 text-xs sm:text-sm">
                   Fats
@@ -360,7 +409,7 @@ export default function SingleDietPlanPage() {
         </div>
 
         {/* Day Navigation */}
-        {dietPlan.days.length > 0 && (
+        {dietPlan.days?.length > 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm mb-8">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -368,10 +417,11 @@ export default function SingleDietPlanPage() {
               </h3>
               <button
                 onClick={handleAddDay}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                disabled={addDayMutation.isPending}
+                className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg transition-colors"
               >
                 <Plus className="h-4 w-4" />
-                <span>Add Day</span>
+                <span>{addDayMutation.isPending ? "Adding..." : "Add Day"}</span>
               </button>
             </div>
 
@@ -394,7 +444,7 @@ export default function SingleDietPlanPage() {
         )}
 
         {/* Day Content */}
-        {dietPlan.days.length > 0 ? (
+        {dietPlan.days?.length > 0 ? (
           <div>
             {dietPlan.days
               .filter((day) => day.dayNumber === activeDay)
@@ -403,7 +453,7 @@ export default function SingleDietPlanPage() {
                   key={day.dayNumber}
                   day={day}
                   planId={dietPlan._id}
-                  onUpdate={loadDietPlan} // Changed from fetchDietPlan to loadDietPlan
+                  onUpdate={() => refetch()} // Use refetch from React Query
                 />
               ))}
           </div>
@@ -422,10 +472,11 @@ export default function SingleDietPlanPage() {
                 </p>
                 <button
                   onClick={handleAddDay}
-                  className="inline-flex items-center space-x-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors"
+                  disabled={addDayMutation.isPending}
+                  className="inline-flex items-center space-x-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-xl transition-colors"
                 >
                   <Plus className="h-5 w-5" />
-                  <span>Add First Day</span>
+                  <span>{addDayMutation.isPending ? "Adding..." : "Add First Day"}</span>
                 </button>
               </div>
             </div>
