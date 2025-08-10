@@ -15,12 +15,14 @@ export const DIET_PLAN_KEYS = {
 
 // Hook to fetch all diet plans
 export const useDietPlans = (options = {}) => {
-  const { user } = useAuth();
+  const authResult = useAuth();
+  const user = authResult?.user || null;
+  const authLoading = authResult?.loading || false;
   
   return useQuery({
     queryKey: DIET_PLAN_KEYS.list(options),
     queryFn: () => dietPlanService.getDietPlans(options),
-    enabled: !!user,
+    enabled: !!user && !authLoading,
     staleTime: 5 * 60 * 1000, // 5 minutes
     select: (data) => {
       // Normalize the response structure
@@ -32,24 +34,28 @@ export const useDietPlans = (options = {}) => {
 
 // Hook to fetch single diet plan
 export const useDietPlan = (planId) => {
-  const { user } = useAuth();
+  const authResult = useAuth();
+  const user = authResult?.user || null;
+  const authLoading = authResult?.loading || false;
   
   return useQuery({
     queryKey: DIET_PLAN_KEYS.detail(planId),
     queryFn: () => dietPlanService.getDietPlan(planId),
-    enabled: !!user && !!planId,
+    enabled: !!user && !!planId && !authLoading,
     staleTime: 3 * 60 * 1000, // 3 minutes
   });
 };
 
 // Hook to fetch nutrition summary
 export const useNutritionSummary = (planId) => {
-  const { user } = useAuth();
+  const authResult = useAuth();
+  const user = authResult?.user || null;
+  const authLoading = authResult?.loading || false;
   
   return useQuery({
     queryKey: DIET_PLAN_KEYS.nutrition(planId),
     queryFn: () => dietPlanService.getNutritionSummary(planId),
-    enabled: !!user && !!planId,
+    enabled: !!user && !!planId && !authLoading,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 };

@@ -28,7 +28,9 @@ import {
 export default function SingleDietPlanPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const authResult = useAuth();
+  const user = authResult?.user || null;
+  const authLoading = authResult?.loading || false;
 
   // UI state from Zustand
   const {
