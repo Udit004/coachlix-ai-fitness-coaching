@@ -256,6 +256,4 @@ export async function populateVectorDatabase() {
 }
 
 // Export the schema
-const FitnessEmbedding = mongoose.models.FitnessEmbedding || mongoose.model('FitnessEmbedding', FitnessEmbeddingSchema);
-
 export default FitnessEmbedding;
