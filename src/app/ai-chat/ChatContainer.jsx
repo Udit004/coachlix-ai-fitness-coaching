@@ -1,14 +1,14 @@
-import React, { useRef, useEffect } from 'react';
-import ChatMessage from './ChatMessage';
-import TypingIndicator from './TypingIndicator';
-import ChatInput from './ChatInput';
+import React, { useRef, useEffect } from "react";
+import ChatMessage from "./ChatMessage";
+import TypingIndicator from "./TypingIndicator";
+import ChatInput from "./ChatInput";
 
-const ChatContainer = ({ 
-  messages, 
-  isTyping, 
-  inputValue, 
-  setInputValue, 
-  handleSendMessage, 
+const ChatContainer = ({
+  messages,
+  isTyping,
+  inputValue,
+  setInputValue,
+  handleSendMessage,
   handleSuggestionClick,
   handleKeyPress,
   isRecording,
@@ -17,7 +17,7 @@ const ChatContainer = ({
   textareaRef,
   messagesEndRef,
   formatTime,
-  copyToClipboard
+  copyToClipboard,
 }) => {
   useEffect(() => {
     scrollToBottom();
@@ -31,9 +31,9 @@ const ChatContainer = ({
     <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 flex flex-col h-full">
       {/* Chat Messages - Scrollable Area */}
       <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4">
-        {messages.map((message) => (
+        {messages.map((message, index) => (
           <ChatMessage
-            key={message.id}
+            key={message.id ?? `message-${index}`} // fallback to index if no id
             message={message}
             handleSuggestionClick={handleSuggestionClick}
             userProfile={userProfile}
@@ -41,12 +41,10 @@ const ChatContainer = ({
             copyToClipboard={copyToClipboard}
           />
         ))}
-        
+
         {/* Typing Indicator */}
-        {isTyping && (
-          <TypingIndicator userProfile={userProfile} />
-        )}
-        
+        {isTyping && <TypingIndicator userProfile={userProfile} />}
+
         <div ref={messagesEndRef} />
       </div>
 

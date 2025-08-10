@@ -1,12 +1,141 @@
+// app/api/chat/route.js - Enhanced LangChain Integration with Error Handling
 import { NextResponse } from "next/server";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { HumanMessage, SystemMessage, AIMessage } from "@langchain/core/messages";
+import { createChatMemory, getRecentChatHistory, addToHistory, formatChatHistoryForContext } from "@/lib/memory";
+import { searchFitnessContent, formatSearchResultsForContext } from "@/lib/vectorSearch";
+import { getFitnessTools } from "@/lib/tools";
+import { AgentExecutor, createToolCallingAgent } from "langchain/agents";
+import { ChatPromptTemplate } from "@langchain/core/prompts";
 
 export async function POST(request) {
   try {
-    const { message, plan, conversationHistory, profile } = await request.json();
+    const { message, plan, conversationHistory, profile, userId } = await request.json();
 
-    // Enhanced system prompts with more personality and conversation skills
+    // Validate required fields
+    if (!message || !userId) {
+      return NextResponse.json({
+        success: false,
+        error: "Message and userId are required"
+      }, { status: 400 });
+    }
+
+    // Debug environment variables
+    console.log("Environment check:");
+    console.log("NODE_ENV:", process.env.NODE_ENV);
+    console.log("GEMINI_API_KEY exists:", !!process.env.GEMINI_API_KEY);
+    console.log("GEMINI_API_KEY length:", process.env.GEMINI_API_KEY?.length);
+    console.log("GEMINI_API_KEY first 10 chars:", process.env.GEMINI_API_KEY?.substring(0, 10));
+
+    // Validate API key
+    if (!process.env.GEMINI_API_KEY) {
+      console.error("GEMINI_API_KEY is not set in environment variables");
+      return NextResponse.json({
+        success: false,
+        error: "AI service configuration error. Please check environment variables."
+      }, { status: 500 });
+    }
+
+    if (process.env.GEMINI_API_KEY.length < 10) {
+      console.error("GEMINI_API_KEY appears to be invalid (too short)");
+      return NextResponse.json({
+        success: false,
+        error: "Invalid API key format."
+      }, { status: 500 });
+    }
+
+    // Initialize LangChain components with correct configuration for v0.2.16
+    let llm;
+    try {
+      // Additional validation
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
+        throw new Error("GEMINI_API_KEY is not properly configured");
+      }
+
+      console.log("Attempting ChatGoogleGenerativeAI initialization...");
+
+      // For @langchain/google-genai@0.2.16, use the correct model names and config
+      try {
+        llm = new ChatGoogleGenerativeAI({
+          apiKey: apiKey.trim(),
+          model: "gemini-1.5-flash", // Use 'model' instead of 'modelName' for newer versions
+          temperature: 0.8,
+          maxOutputTokens: 1500,
+        });
+        console.log("✓ ChatGoogleGenerativeAI initialized with 'model' parameter");
+      } catch (error1) {
+        console.log("❌ 'model' parameter failed, trying 'modelName'...");
+        
+        // Fallback to modelName parameter
+        try {
+          llm = new ChatGoogleGenerativeAI({
+            apiKey: apiKey.trim(),
+            modelName: "gemini-1.5-flash", // Remove '-latest' suffix
+            temperature: 0.8,
+            maxOutputTokens: 1500,
+          });
+          console.log("✓ ChatGoogleGenerativeAI initialized with 'modelName' parameter");
+        } catch (error2) {
+          console.log("❌ gemini-1.5-flash failed, trying gemini-pro...");
+          
+          // Try the stable gemini-pro model
+          try {
+            llm = new ChatGoogleGenerativeAI({
+              apiKey: apiKey.trim(),
+              modelName: "gemini-pro",
+              temperature: 0.8,
+            });
+            console.log("✓ ChatGoogleGenerativeAI initialized with gemini-pro");
+          } catch (error3) {
+            console.log("❌ All model variations failed, trying minimal config...");
+            
+            // Try absolutely minimal configuration
+            try {
+              llm = new ChatGoogleGenerativeAI({
+                apiKey: apiKey.trim(),
+              });
+              console.log("✓ ChatGoogleGenerativeAI initialized with minimal config");
+            } catch (error4) {
+              console.log("❌ All ChatGoogleGenerativeAI approaches failed");
+              console.error("All errors:", { 
+                error1: error1.message, 
+                error2: error2.message, 
+                error3: error3.message,
+                error4: error4.message 
+              });
+              throw new Error(`Failed to initialize ChatGoogleGenerativeAI after all attempts: ${error4.message}`);
+            }
+          }
+        }
+      }
+      
+    } catch (error) {
+      console.error("Error initializing ChatGoogleGenerativeAI:", error);
+      
+      return NextResponse.json({
+        success: false,
+        error: "Failed to initialize AI model. This appears to be a LangChain configuration issue.",
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        suggestion: "Try: npm install @langchain/google-genai@0.2.15 or switch to Google's direct SDK"
+      }, { status: 500 });
+    }
+
+    // Get available tools
+    let tools;
+    try {
+      tools = getFitnessTools();
+    } catch (error) {
+      console.error("Error getting fitness tools:", error);
+      return NextResponse.json({
+        success: false,
+        error: "Failed to load fitness tools."
+      }, { status: 500 });
+    }
+
+    // Enhanced system prompts with memory and tool awareness
     const systemPrompts = {
-      general: `You are Alex, a friendly and enthusiastic personal fitness coach with 10+ years of experience. You're like a supportive friend who happens to be a fitness expert. 
+      general: `You are Alex, a friendly and enthusiastic personal fitness coach with 10+ years of experience. You're like a supportive friend who happens to be a fitness expert.
 
 Your personality:
 - Warm, encouraging, and genuinely excited about helping people reach their goals
@@ -24,11 +153,18 @@ Your expertise covers:
 - Injury prevention and recovery
 - Mental health and fitness relationship
 
+Available tools you can use:
+- nutrition_lookup: Look up nutritional information for foods
+- update_workout_plan: Create or update workout plans in the database
+- calculate_health_metrics: Calculate BMI, BMR, and calorie needs
+- track_progress: Record user's fitness progress
+
 Always:
 - Address the person by name when you know it
 - Remember their goals, preferences, and previous conversations
 - Provide actionable, specific advice
 - Explain the "why" behind your recommendations
+- Use tools when you need specific data or want to save information
 - Adjust your communication style to match their energy level
 - Be encouraging but realistic about timelines and expectations`,
 
@@ -47,6 +183,12 @@ Your coaching style:
 - Adapt training based on player's current level and goals
 - Use analogies and visual descriptions to explain movements
 - Encourage consistent practice over perfection
+
+Available tools:
+- nutrition_lookup: Help with sports nutrition
+- update_workout_plan: Create badminton-specific training plans
+- calculate_health_metrics: Assess fitness for badminton performance
+- track_progress: Monitor improvement in skills and fitness
 
 Remember to:
 - Ask about their current playing level and specific challenges
@@ -72,11 +214,17 @@ Your approach:
 - Celebrate non-scale victories (energy, sleep, mood, etc.)
 - Help them build healthy habits gradually
 
+Available tools:
+- nutrition_lookup: Provide accurate calorie and macro information
+- calculate_health_metrics: Determine healthy calorie targets
+- track_progress: Monitor weight loss and other metrics
+- update_workout_plan: Create weight-loss focused exercise plans
+
 Always:
 - Be compassionate about their struggles
 - Avoid restrictive language or shame
 - Focus on addition (adding healthy foods) rather than elimination
-- Provide practical meal ideas and prep strategies
+- Use tools to provide accurate nutritional data
 - Encourage them to listen to their body
 - Remind them that setbacks are normal and part of the process`,
 
@@ -95,24 +243,30 @@ Your training philosophy:
 - Nutrition fuels performance and growth
 - Mental game is just as important as physical training
 
+Available tools:
+- calculate_health_metrics: Determine calorie surplus needs
+- nutrition_lookup: Help optimize protein and macro intake
+- update_workout_plan: Create and modify strength training programs
+- track_progress: Monitor strength gains and muscle growth
+
 Your personality:
 - Encouraging and motivational without being pushy
 - Geek out about the science behind muscle building
 - Share practical tips from years of experience
 - Help them understand their body's signals
+- Use tools to provide data-driven recommendations
 - Build confidence in the gym environment
 
 Focus on:
-- Creating progressive workout plans
-- Explaining proper form and technique
-- Optimizing nutrition for muscle growth
+- Creating progressive workout plans using the update_workout_plan tool
+- Optimizing nutrition for muscle growth with accurate data
 - Managing recovery and preventing burnout
 - Building sustainable habits for long-term success`
     };
 
     let systemPrompt = systemPrompts[plan] || systemPrompts.general;
 
-    // Enhanced personalization with conversation context
+    // Enhanced personalization with profile context
     let personalContext = '';
     if (profile && profile.name) {
       personalContext += `\nUser's name: ${profile.name}`;
@@ -137,125 +291,167 @@ Focus on:
       }
     }
 
-    // Add conversation context for continuity
-    if (conversationHistory.length > 1) {
-      personalContext += `\nConversation Context: This is an ongoing conversation. Remember previous topics and build upon them naturally. Reference past discussions when relevant.`;
+    // Get persistent chat history from MongoDB with error handling
+    let chatHistoryContext = '';
+    try {
+      const recentHistory = await getRecentChatHistory(userId, 5); // Last 5 exchanges
+      chatHistoryContext = formatChatHistoryForContext(recentHistory, 1500);
+    } catch (error) {
+      console.error("Error loading chat history:", error);
+      // Continue without history if there's an error
     }
 
-    if (personalContext) {
-      systemPrompt = `${systemPrompt}${personalContext}`;
+    // Search for relevant fitness content using vector search with error handling
+    let vectorSearchContext = '';
+    try {
+      const searchResults = await searchFitnessContent(message, 3);
+      vectorSearchContext = formatSearchResultsForContext(searchResults, 1000);
+    } catch (error) {
+      console.error("Error performing vector search:", error);
+      // Continue without vector search if there's an error
     }
 
-    // Get API key from environment variables (more secure)
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    if (!geminiApiKey) {
-      throw new Error("Gemini API key not found in environment variables.");
+    // Combine all context
+    const fullSystemPrompt = `${systemPrompt}${personalContext}${chatHistoryContext}${vectorSearchContext}
+
+Current conversation context: The user is asking about fitness/health and you should provide helpful, personalized advice. Use the available tools when you need specific data or want to save information for the user.`;
+
+    // Create prompt template for tool-calling agent
+    let prompt;
+    try {
+      prompt = ChatPromptTemplate.fromMessages([
+        ["system", fullSystemPrompt],
+        ["placeholder", "{chat_history}"],
+        ["human", "{input}"],
+        ["placeholder", "{agent_scratchpad}"],
+      ]);
+    } catch (error) {
+      console.error("Error creating prompt template:", error);
+      return NextResponse.json({
+        success: false,
+        error: "Failed to create conversation template."
+      }, { status: 500 });
     }
 
-    // Prepare conversation history for Gemini
-    const contents = [];
-    
-    // Add system prompt as first user message
-    contents.push({
-      role: "user",
-      parts: [{ text: systemPrompt }]
-    });
-    
-    // Add a model response to acknowledge the system prompt
-    contents.push({
-      role: "model",
-      parts: [{ text: "I understand. I'll respond as the fitness coach you've described." }]
-    });
-
-    // Add conversation history (last 10 exchanges to avoid token limits)
-    const recentHistory = conversationHistory.slice(-10);
-    for (const msg of recentHistory) {
-      contents.push({
-        role: msg.type === "user" ? "user" : "model",
-        parts: [{ text: msg.content }]
+    // Create tool-calling agent with error handling
+    let agent;
+    try {
+      agent = await createToolCallingAgent({
+        llm,
+        tools,
+        prompt,
       });
+    } catch (error) {
+      console.error("Error creating tool-calling agent:", error);
+      return NextResponse.json({
+        success: false,
+        error: "Failed to initialize AI agent."
+      }, { status: 500 });
     }
 
-    // Add current user message
-    contents.push({
-      role: "user",
-      parts: [{ text: message }]
-    });
+    // Create agent executor
+    let agentExecutor;
+    try {
+      agentExecutor = new AgentExecutor({
+        agent,
+        tools,
+        verbose: process.env.NODE_ENV === 'development', // Enable verbose logging in development
+        maxIterations: 3, // Limit iterations to prevent infinite loops
+      });
+    } catch (error) {
+      console.error("Error creating agent executor:", error);
+      return NextResponse.json({
+        success: false,
+        error: "Failed to initialize AI executor."
+      }, { status: 500 });
+    }
 
-    // Correct Gemini API payload structure
-    const geminiPayload = {
-      contents: contents,
-      generationConfig: {
-        temperature: 0.8,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 1500,
-        stopSequences: []
-      },
-      safetySettings: [
-        {
-          category: "HARM_CATEGORY_HARASSMENT",
-          threshold: "BLOCK_MEDIUM_AND_ABOVE"
-        },
-        {
-          category: "HARM_CATEGORY_HATE_SPEECH",
-          threshold: "BLOCK_MEDIUM_AND_ABOVE"
-        },
-        {
-          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-          threshold: "BLOCK_MEDIUM_AND_ABOVE"
-        },
-        {
-          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+    // Prepare messages for the agent
+    const chatHistory = [];
+    
+    // Add recent conversation history if available
+    if (conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+      // Take last 6 messages to avoid token limits
+      const recentMessages = conversationHistory.slice(-6);
+      for (const msg of recentMessages) {
+        try {
+          if (msg.role === 'user' && msg.content) {
+            chatHistory.push(new HumanMessage(msg.content));
+          } else if (msg.role === 'ai' && msg.content) {
+            chatHistory.push(new AIMessage(msg.content));
+          }
+        } catch (error) {
+          console.error("Error processing chat history message:", error);
+          // Skip this message and continue
         }
-      ]
-    };
-
-    // Correct API endpoint for Gemini Pro
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`;
-
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(geminiPayload)
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error('Gemini API error response:', errorBody);
-      
-      // Handle specific error cases
-      if (response.status === 403) {
-        throw new Error("API key is invalid or has insufficient permissions");
-      } else if (response.status === 404) {
-        throw new Error("Invalid API endpoint or model not found");
-      } else if (response.status === 429) {
-        throw new Error("Rate limit exceeded. Please try again later");
-      } else {
-        throw new Error(`Gemini API request failed: ${response.status} ${response.statusText}`);
       }
     }
 
-    const data = await response.json();
-    
-    // Check if response contains error
-    if (data.error) {
-      console.error('Gemini API error:', data.error);
-      throw new Error(data.error.message || "Unknown API error");
+    // Execute the agent with the user's message
+    let result;
+    try {
+      result = await agentExecutor.invoke({
+        input: message,
+        chat_history: chatHistory,
+      });
+    } catch (error) {
+      console.error("Error executing agent:", error);
+      
+      // If agent execution fails, try a simple LLM call as fallback
+      try {
+        console.log("Attempting fallback: direct LLM call...");
+        const fallbackResponse = await llm.invoke([
+          new SystemMessage(fullSystemPrompt),
+          new HumanMessage(message)
+        ]);
+        
+        result = { output: fallbackResponse.content };
+        console.log("Fallback successful");
+        
+      } catch (fallbackError) {
+        console.error("Fallback also failed:", fallbackError);
+        
+        // Handle specific Gemini API errors
+        if (error.message?.includes("API key") || fallbackError.message?.includes("API key")) {
+          return NextResponse.json({
+            success: false,
+            error: "Invalid API key. Please check your Gemini API configuration."
+          }, { status: 401 });
+        } else if (error.message?.includes("quota") || error.message?.includes("rate limit")) {
+          return NextResponse.json({
+            success: false,
+            error: "API quota exceeded. Please try again later."
+          }, { status: 429 });
+        } else if (error.message?.includes("safety")) {
+          return NextResponse.json({
+            success: false,
+            error: "Content blocked by safety filters. Please rephrase your message."
+          }, { status: 400 });
+        } else {
+          return NextResponse.json({
+            success: false,
+            error: "AI processing error. Please try again.",
+            details: process.env.NODE_ENV === 'development' ? (error.message + " | " + fallbackError.message) : undefined
+          }, { status: 500 });
+        }
+      }
     }
 
-    // Extract response from Gemini's response format
-    const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response. Please try again.";
+    // Extract the final response
+    const aiResponse = result?.output || "I apologize, but I'm having trouble responding right now. Please try again.";
 
-    // Check if response was blocked by safety filters
-    if (data.candidates?.[0]?.finishReason === "SAFETY") {
-      throw new Error("Response was blocked by safety filters. Please rephrase your message.");
+    // Save conversation to persistent memory with error handling
+    try {
+      await addToHistory(userId, [
+        { role: 'user', content: message },
+        { role: 'ai', content: aiResponse }
+      ]);
+    } catch (error) {
+      console.error("Error saving to chat history:", error);
+      // Continue even if saving fails - don't break the response
     }
 
-    // Generate contextual suggestions
+    // Generate contextual suggestions based on the response
     const suggestions = generateContextualSuggestions(aiResponse, plan, message, profile);
 
     return NextResponse.json({
@@ -266,24 +462,47 @@ Focus on:
 
   } catch (error) {
     console.error("Chat API Error:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: "I'm having trouble connecting right now. Let me try again!",
-        message: error.message,
-      },
-      { status: 500 }
-    );
+    
+    // Handle specific LangChain/Gemini errors
+    let errorMessage = "I'm having trouble connecting right now. Let me try again!";
+    let statusCode = 500;
+    
+    if (error.message?.includes("API key") || error.message?.includes("GEMINI_API_KEY")) {
+      errorMessage = "There's an issue with the AI service configuration. Please check your API key.";
+      statusCode = 401;
+    } else if (error.message?.includes("rate limit") || error.message?.includes("quota")) {
+      errorMessage = "I'm getting too many requests right now. Please wait a moment and try again.";
+      statusCode = 429;
+    } else if (error.message?.includes("safety") || error.message?.includes("blocked")) {
+      errorMessage = "I can't provide a response to that message. Please try rephrasing your question.";
+      statusCode = 400;
+    } else if (error.message?.includes("network") || error.message?.includes("timeout")) {
+      errorMessage = "Network connection issue. Please try again.";
+      statusCode = 503;
+    }
+
+    return NextResponse.json({
+      success: false,
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    }, { status: statusCode });
   }
 }
 
+/**
+ * Enhanced suggestion generation with better context awareness
+ */
 function generateContextualSuggestions(response, plan, userMessage, profile) {
-  // More intelligent suggestion generation based on response content
   const suggestions = [];
+  
+  // Validate inputs
+  if (!response || typeof response !== 'string') {
+    return getDefaultSuggestions(plan);
+  }
   
   // Analyze the response content for better suggestions
   const responseLower = response.toLowerCase();
-  const messageLower = userMessage.toLowerCase();
+  const messageLower = (userMessage || '').toLowerCase();
   
   // Plan-specific intelligent suggestions
   if (plan === 'badminton') {
@@ -301,29 +520,42 @@ function generateContextualSuggestions(response, plan, userMessage, profile) {
     }
   } else if (plan === 'weight-loss') {
     if (responseLower.includes('meal') || responseLower.includes('food')) {
-      suggestions.push("Give me meal prep ideas");
+      suggestions.push("Look up calories for [food name]");
     }
     if (responseLower.includes('calorie') || responseLower.includes('deficit')) {
-      suggestions.push("How do I calculate my calories?");
+      suggestions.push("Calculate my daily calorie needs");
     }
     if (responseLower.includes('exercise') || responseLower.includes('workout')) {
-      suggestions.push("What's the best cardio for me?");
+      suggestions.push("Create a weight loss workout plan");
     }
-    if (responseLower.includes('motivation') || responseLower.includes('struggling')) {
-      suggestions.push("I'm struggling with motivation");
+    if (responseLower.includes('progress') || responseLower.includes('track')) {
+      suggestions.push("Track my weight progress");
     }
   } else if (plan === 'muscle-gain') {
     if (responseLower.includes('protein') || responseLower.includes('nutrition')) {
-      suggestions.push("What protein sources are best?");
+      suggestions.push("Look up protein in [food name]");
     }
     if (responseLower.includes('workout') || responseLower.includes('training')) {
-      suggestions.push("Create my workout split");
+      suggestions.push("Update my workout plan");
     }
-    if (responseLower.includes('recovery') || responseLower.includes('rest')) {
-      suggestions.push("How important is rest for gains?");
+    if (responseLower.includes('calorie') || responseLower.includes('surplus')) {
+      suggestions.push("Calculate my bulking calories");
     }
-    if (responseLower.includes('supplement')) {
-      suggestions.push("Do I need supplements?");
+    if (responseLower.includes('progress')) {
+      suggestions.push("Track my strength progress");
+    }
+  } else if (plan === 'strength') {
+    if (responseLower.includes('workout') || responseLower.includes('training')) {
+      suggestions.push("Create my strength training plan");
+    }
+    if (responseLower.includes('form') || responseLower.includes('technique')) {
+      suggestions.push("How do I improve my form?");
+    }
+    if (responseLower.includes('progress')) {
+      suggestions.push("Track my lifting progress");
+    }
+    if (responseLower.includes('recovery')) {
+      suggestions.push("How important is rest?");
     }
   } else {
     // General fitness suggestions
@@ -334,16 +566,29 @@ function generateContextualSuggestions(response, plan, userMessage, profile) {
       suggestions.push("Help me with meal planning");
     }
     if (responseLower.includes('goal') || responseLower.includes('target')) {
-      suggestions.push("How do I track my progress?");
+      suggestions.push("Calculate my health metrics");
     }
   }
   
-  // Add some universal helpful suggestions
+  // Context-aware suggestions based on response content
+  if (responseLower.includes('tool') || responseLower.includes('calculate')) {
+    suggestions.push("What else can you help me track?");
+  }
+  if (responseLower.includes('plan') || responseLower.includes('routine')) {
+    suggestions.push("Save this plan for me");
+  }
+  if (responseLower.includes('progress') || responseLower.includes('track')) {
+    suggestions.push("How do I measure progress?");
+  }
+  
+  // Add some universal helpful suggestions if we don't have enough
   const universalSuggestions = [
     "Tell me more about this",
     "What's the next step?",
     "How long will this take?",
-    "Any tips for staying consistent?"
+    "Any tips for staying consistent?",
+    "What should I focus on first?",
+    "How do I stay motivated?"
   ];
   
   // Fill remaining slots with universal suggestions
@@ -355,14 +600,48 @@ function generateContextualSuggestions(response, plan, userMessage, profile) {
   }
   
   // If we have profile info, add personalized suggestions
-  if (profile) {
-    if (profile.fitnessGoal && suggestions.length < 4) {
+  if (profile && suggestions.length < 4) {
+    if (profile.fitnessGoal && !suggestions.some(s => s.includes(profile.fitnessGoal))) {
       suggestions.push(`Help me achieve my ${profile.fitnessGoal} goal`);
     }
-    if (profile.experience === 'beginner' && suggestions.length < 4) {
+    if (profile.experience === 'beginner') {
       suggestions.push("What should beginners focus on?");
     }
   }
   
   return suggestions.slice(0, 4); // Return max 4 suggestions
+}
+
+/**
+ * Get default suggestions when response analysis fails
+ */
+function getDefaultSuggestions(plan) {
+  const defaultSuggestions = {
+    'badminton': [
+      "Show me basic badminton drills",
+      "How do I improve my footwork?",
+      "Help with my serve technique",
+      "What's a good training routine?"
+    ],
+    'weight-loss': [
+      "Calculate my daily calorie needs",
+      "Create a weight loss meal plan",
+      "What exercises burn the most calories?",
+      "How do I stay motivated?"
+    ],
+    'muscle-gain': [
+      "Calculate my bulking calories",
+      "Create a muscle building workout",
+      "How much protein do I need?",
+      "Track my strength progress"
+    ],
+    'general': [
+      "Help me set fitness goals",
+      "Create a workout plan",
+      "Calculate my health metrics",
+      "What should I focus on first?"
+    ]
+  };
+  
+  return defaultSuggestions[plan] || defaultSuggestions.general;
 }

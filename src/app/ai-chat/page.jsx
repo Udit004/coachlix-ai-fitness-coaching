@@ -17,7 +17,7 @@ import {
   Calendar,
   Plus,
   History,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 import { useAuthContext } from "../../auth/AuthContext";
 
@@ -28,10 +28,10 @@ const ChatContainer = lazy(() => import("./ChatContainer"));
 const ErrorBanner = lazy(() => import("./ErrorBanner"));
 
 // Enhanced loading components
-import EnhancedLoading, { 
-  ProfileLoading, 
-  ChatLoading, 
-  InitializingLoading 
+import EnhancedLoading, {
+  ProfileLoading,
+  ChatLoading,
+  InitializingLoading,
 } from "./EnhancedLoading";
 
 // Loading fallbacks for lazy components
@@ -43,24 +43,20 @@ const ComponentLoading = ({ type = "default" }) => (
     {type === "sidebar" && (
       <div className="w-80 h-full bg-gray-200 rounded-lg"></div>
     )}
-    {type === "chat" && (
-      <div className="flex-1 bg-gray-200 rounded-lg"></div>
-    )}
-    {type === "default" && (
-      <div className="h-32 bg-gray-200 rounded-lg"></div>
-    )}
+    {type === "chat" && <div className="flex-1 bg-gray-200 rounded-lg"></div>}
+    {type === "default" && <div className="h-32 bg-gray-200 rounded-lg"></div>}
   </div>
 );
 
 const AIChatPage = () => {
   const { user: authUser, loading: authLoading } = useAuthContext();
-  
+
   // Local loading states for better UX
   const [initializingStage, setInitializingStage] = useState("initial");
   const [componentLoaded, setComponentLoaded] = useState({
     header: false,
     sidebar: false,
-    chat: false
+    chat: false,
   });
 
   // Zustand stores
@@ -89,7 +85,7 @@ const AIChatPage = () => {
     clearError,
     startNewChat,
     loadChat,
-    generateChatTitle
+    generateChatTitle,
   } = useChatStore();
 
   // User profile state
@@ -106,7 +102,7 @@ const AIChatPage = () => {
   const {
     saveChat: saveHistoryChat,
     updateChat: updateHistoryChat,
-    fetchChats
+    fetchChats,
   } = useChatHistoryStore();
 
   // Refs
@@ -199,7 +195,7 @@ const AIChatPage = () => {
       try {
         // Stage 1: Initial setup
         setInitializingStage("initializing");
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise((resolve) => setTimeout(resolve, 800));
 
         if (!authUser) {
           console.log("No authenticated user found");
@@ -208,7 +204,7 @@ const AIChatPage = () => {
 
         // Stage 2: Profile loading
         setInitializingStage("profile");
-        
+
         if (profileError) {
           clearProfileError();
         }
@@ -221,15 +217,16 @@ const AIChatPage = () => {
 
         // Stage 3: Chat preparation
         setInitializingStage("chat");
-        await new Promise(resolve => setTimeout(resolve, 600));
+        await new Promise((resolve) => setTimeout(resolve, 600));
 
         // Stage 4: Finalization
         setInitializingStage("ready");
-        await new Promise(resolve => setTimeout(resolve, 400));
-
+        await new Promise((resolve) => setTimeout(resolve, 400));
       } catch (error) {
         console.error("Failed to initialize app:", error);
-        setError("Failed to load your profile. Some features may not work properly.");
+        setError(
+          "Failed to load your profile. Some features may not work properly."
+        );
         setInitializingStage("error");
       }
     };
@@ -242,14 +239,14 @@ const AIChatPage = () => {
     hasValidProfile,
     profileError,
     clearProfileError,
-    setError
+    setError,
   ]);
 
   // Component loading handlers
   const handleComponentLoad = (componentName) => {
-    setComponentLoaded(prev => ({
+    setComponentLoaded((prev) => ({
       ...prev,
-      [componentName]: true
+      [componentName]: true,
     }));
   };
 
@@ -279,6 +276,7 @@ const AIChatPage = () => {
         plan: selectedPlan,
         conversationHistory: messages,
         profile: userProfile,
+        userId: authUser?.uid,
       });
 
       const data = response.data;
@@ -300,11 +298,16 @@ const AIChatPage = () => {
       // Auto-save chat using the enhanced store
       if (authUser?.uid) {
         const updatedMessages = [...messages, userMessage, aiResponse];
-        
+
         if (isNewChat && updatedMessages.length >= 2) {
           // Save new chat after first exchange
           const title = generateChatTitle(updatedMessages);
-          const chatId = await saveHistoryChat(authUser.uid, title, selectedPlan, updatedMessages);
+          const chatId = await saveHistoryChat(
+            authUser.uid,
+            title,
+            selectedPlan,
+            updatedMessages
+          );
           if (chatId) {
             setCurrentChatId(chatId);
             setIsNewChat(false);
@@ -314,20 +317,26 @@ const AIChatPage = () => {
           await updateHistoryChat(currentChatId, updatedMessages);
         }
       }
-
     } catch (error) {
       console.error("Error sending message:", error);
-      setError(error.message);
-      
-      const errorMessage = {
+
+      // Enhanced error handling for LangChain-specific errors
+      let errorMessage = error.message;
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+
+      setError(errorMessage);
+
+      const errorResponse = {
         id: Date.now() + 1,
         role: "ai",
-        content: "I apologize, but I'm having trouble responding right now. Please try again in a moment.",
+        content: `I apologize, but I'm having trouble responding right now. ${errorMessage}`,
         timestamp: new Date(),
         suggestions: ["Try again", "Check connection", "Refresh page"],
         isError: true,
       };
-      addMessage(errorMessage);
+      addMessage(errorResponse);
     } finally {
       setIsTyping(false);
     }
@@ -342,7 +351,7 @@ const AIChatPage = () => {
   // Handle starting new chat
   const handleNewChat = () => {
     startNewChat();
-    
+
     // Initialize with welcome message after profile loads
     if (userProfile && !profileLoading) {
       const welcomeMessage = {
@@ -481,7 +490,8 @@ const AIChatPage = () => {
                 Oops! Something went wrong
               </h3>
               <p className="text-gray-600 mb-4">
-                We're having trouble loading your AI trainer. Please try refreshing the page.
+                We're having trouble loading your AI trainer. Please try
+                refreshing the page.
               </p>
               <button
                 onClick={() => window.location.reload()}
@@ -511,7 +521,7 @@ const AIChatPage = () => {
           },
         }}
       />
-      
+
       {/* Error Banner with Suspense */}
       {combinedError && (
         <Suspense fallback={<ComponentLoading type="default" />}>
@@ -524,7 +534,7 @@ const AIChatPage = () => {
           />
         </Suspense>
       )}
-      
+
       {/* Chat Header with Suspense */}
       <Suspense fallback={<ComponentLoading type="header" />}>
         <ChatHeader
@@ -539,15 +549,14 @@ const AIChatPage = () => {
           onToggleHistory={() => setShowHistory(!showHistory)}
           showHistory={showHistory}
           isNewChat={isNewChat}
-          onLoad={() => handleComponentLoad('header')}
+          onLoad={() => handleComponentLoad("header")}
         />
       </Suspense>
-      
+
       {/* Main Chat Layout with Enhanced Loading */}
       <div className="flex-1 overflow-hidden">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2 sm:py-6 h-full">
           <div className="flex gap-2 sm:gap-6 h-full">
-            
             {/* Enhanced Sidebar with Suspense */}
             <div
               className={`${
@@ -564,7 +573,7 @@ const AIChatPage = () => {
                   handleSuggestionClick={handleSuggestionClick}
                   userProfile={userProfile}
                   quickActions={quickActions}
-                  onLoad={() => handleComponentLoad('sidebar')}
+                  onLoad={() => handleComponentLoad("sidebar")}
                 />
               </Suspense>
             </div>
@@ -589,14 +598,14 @@ const AIChatPage = () => {
                   copyToClipboard={copyToClipboard}
                   currentChatId={currentChatId}
                   isNewChat={isNewChat}
-                  onLoad={() => handleComponentLoad('chat')}
+                  onLoad={() => handleComponentLoad("chat")}
                 />
               </Suspense>
             </div>
           </div>
         </div>
       </div>
-      
+
       {/* Mobile Sidebar Backdrop */}
       {sidebarOpen && (
         <div
