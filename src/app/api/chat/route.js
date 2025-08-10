@@ -1,4 +1,4 @@
-// app/api/chat/route.js - Enhanced LangChain Integration with Error Handling
+// app/api/chat/route.js - Enhanced with User Context Retrieval
 import { NextResponse } from "next/server";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { HumanMessage, SystemMessage, AIMessage } from "@langchain/core/messages";
@@ -7,6 +7,9 @@ import { searchFitnessContent, formatSearchResultsForContext } from "@/lib/vecto
 import { getFitnessTools } from "@/lib/tools";
 import { AgentExecutor, createToolCallingAgent } from "langchain/agents";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
+
+// Import the new context retrieval system
+import { getRelevantContext, formatContextForPrompt } from "@/lib/contextRetrieval";
 
 export async function POST(request) {
   try {
@@ -24,8 +27,6 @@ export async function POST(request) {
     console.log("Environment check:");
     console.log("NODE_ENV:", process.env.NODE_ENV);
     console.log("GEMINI_API_KEY exists:", !!process.env.GEMINI_API_KEY);
-    console.log("GEMINI_API_KEY length:", process.env.GEMINI_API_KEY?.length);
-    console.log("GEMINI_API_KEY first 10 chars:", process.env.GEMINI_API_KEY?.substring(0, 10));
 
     // Validate API key
     if (!process.env.GEMINI_API_KEY) {
@@ -44,10 +45,9 @@ export async function POST(request) {
       }, { status: 500 });
     }
 
-    // Initialize LangChain components with correct configuration for v0.2.16
+    // Initialize LangChain components
     let llm;
     try {
-      // Additional validation
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
         throw new Error("GEMINI_API_KEY is not properly configured");
@@ -55,11 +55,10 @@ export async function POST(request) {
 
       console.log("Attempting ChatGoogleGenerativeAI initialization...");
 
-      // For @langchain/google-genai@0.2.16, use the correct model names and config
       try {
         llm = new ChatGoogleGenerativeAI({
           apiKey: apiKey.trim(),
-          model: "gemini-1.5-flash", // Use 'model' instead of 'modelName' for newer versions
+          model: "gemini-1.5-flash",
           temperature: 0.8,
           maxOutputTokens: 1500,
         });
@@ -67,11 +66,10 @@ export async function POST(request) {
       } catch (error1) {
         console.log("❌ 'model' parameter failed, trying 'modelName'...");
         
-        // Fallback to modelName parameter
         try {
           llm = new ChatGoogleGenerativeAI({
             apiKey: apiKey.trim(),
-            modelName: "gemini-1.5-flash", // Remove '-latest' suffix
+            modelName: "gemini-1.5-flash",
             temperature: 0.8,
             maxOutputTokens: 1500,
           });
@@ -79,7 +77,6 @@ export async function POST(request) {
         } catch (error2) {
           console.log("❌ gemini-1.5-flash failed, trying gemini-pro...");
           
-          // Try the stable gemini-pro model
           try {
             llm = new ChatGoogleGenerativeAI({
               apiKey: apiKey.trim(),
@@ -90,7 +87,6 @@ export async function POST(request) {
           } catch (error3) {
             console.log("❌ All model variations failed, trying minimal config...");
             
-            // Try absolutely minimal configuration
             try {
               llm = new ChatGoogleGenerativeAI({
                 apiKey: apiKey.trim(),
@@ -131,6 +127,22 @@ export async function POST(request) {
         success: false,
         error: "Failed to load fitness tools."
       }, { status: 500 });
+    }
+
+    // **NEW: Retrieve relevant context from user's data**
+    console.log("🔍 Retrieving user context...");
+    let userContext;
+    try {
+      userContext = await getRelevantContext(userId, message, 1500);
+      console.log("✅ User context retrieved successfully");
+    } catch (error) {
+      console.error("❌ Error retrieving user context:", error);
+      userContext = {
+        profile: "Error loading profile",
+        diet: "Error loading diet plans", 
+        workout: "Error loading workout plans",
+        combined: "Could not load personalized context"
+      };
     }
 
     // Enhanced system prompts with memory and tool awareness
@@ -295,26 +307,31 @@ Focus on:
     let chatHistoryContext = '';
     try {
       const recentHistory = await getRecentChatHistory(userId, 5); // Last 5 exchanges
-      chatHistoryContext = formatChatHistoryForContext(recentHistory, 1500);
+      chatHistoryContext = formatChatHistoryForContext(recentHistory, 1000);
     } catch (error) {
       console.error("Error loading chat history:", error);
       // Continue without history if there's an error
     }
 
+    // **NEW: Get relevant context from user's personal data**
+    const personalizedContext = formatContextForPrompt(userContext);
+
     // Search for relevant fitness content using vector search with error handling
     let vectorSearchContext = '';
     try {
       const searchResults = await searchFitnessContent(message, 3);
-      vectorSearchContext = formatSearchResultsForContext(searchResults, 1000);
+      vectorSearchContext = formatSearchResultsForContext(searchResults, 800); // Reduced to make room for personal context
     } catch (error) {
       console.error("Error performing vector search:", error);
       // Continue without vector search if there's an error
     }
 
-    // Combine all context
-    const fullSystemPrompt = `${systemPrompt}${personalContext}${chatHistoryContext}${vectorSearchContext}
+    // **ENHANCED: Combine all context with prioritized personal data**
+    const fullSystemPrompt = `${systemPrompt}${personalContext}${personalizedContext}${chatHistoryContext}${vectorSearchContext}
 
-Current conversation context: The user is asking about fitness/health and you should provide helpful, personalized advice. Use the available tools when you need specific data or want to save information for the user.`;
+Current conversation context: The user is asking about fitness/health and you should provide helpful, personalized advice based on their specific profile, current diet plans, and workout plans shown in the context above. Use the available tools when you need specific data or want to save information for the user.
+
+CRITICAL: Always reference the user's specific context when relevant - their current plans, goals, progress, and preferences. Make your advice truly personalized based on their data.`;
 
     // Create prompt template for tool-calling agent
     let prompt;
@@ -355,8 +372,8 @@ Current conversation context: The user is asking about fitness/health and you sh
       agentExecutor = new AgentExecutor({
         agent,
         tools,
-        verbose: process.env.NODE_ENV === 'development', // Enable verbose logging in development
-        maxIterations: 3, // Limit iterations to prevent infinite loops
+        verbose: process.env.NODE_ENV === 'development',
+        maxIterations: 3,
       });
     } catch (error) {
       console.error("Error creating agent executor:", error);
@@ -390,6 +407,7 @@ Current conversation context: The user is asking about fitness/health and you sh
     // Execute the agent with the user's message
     let result;
     try {
+      console.log("🤖 Executing agent with enhanced context...");
       result = await agentExecutor.invoke({
         input: message,
         chat_history: chatHistory,
@@ -451,14 +469,29 @@ Current conversation context: The user is asking about fitness/health and you sh
       // Continue even if saving fails - don't break the response
     }
 
-    // Generate contextual suggestions based on the response
-    const suggestions = generateContextualSuggestions(aiResponse, plan, message, profile);
+    // **ENHANCED: Generate contextual suggestions based on user's actual data**
+    const suggestions = generateEnhancedSuggestions(aiResponse, plan, message, profile, userContext);
 
-    return NextResponse.json({
+    // **NEW: Return context information for debugging (optional)**
+    const responseData = {
       success: true,
       response: aiResponse,
       suggestions: suggestions,
-    });
+    };
+
+    // Add context info for development debugging
+    if (process.env.NODE_ENV === 'development') {
+      responseData.debug = {
+        contextUsed: {
+          profileLoaded: userContext.profile !== "No user profile found",
+          dietPlansFound: !userContext.diet.includes("No active diet plans"),
+          workoutPlansFound: !userContext.workout.includes("No active workout plans"),
+          contextLength: userContext.totalLength
+        }
+      };
+    }
+
+    return NextResponse.json(responseData);
 
   } catch (error) {
     console.error("Chat API Error:", error);
@@ -490,20 +523,43 @@ Current conversation context: The user is asking about fitness/health and you sh
 }
 
 /**
- * Enhanced suggestion generation with better context awareness
+ * Enhanced suggestion generation with user context awareness
  */
-function generateContextualSuggestions(response, plan, userMessage, profile) {
+function generateEnhancedSuggestions(response, plan, userMessage, profile, userContext) {
   const suggestions = [];
   
   // Validate inputs
   if (!response || typeof response !== 'string') {
     return getDefaultSuggestions(plan);
   }
-  
-  // Analyze the response content for better suggestions
+
+  // Analyze the response content and user context for better suggestions
   const responseLower = response.toLowerCase();
   const messageLower = (userMessage || '').toLowerCase();
-  
+  const hasActiveDiet = userContext?.diet && !userContext.diet.includes("No active diet plans");
+  const hasActiveWorkout = userContext?.workout && !userContext.workout.includes("No active workout plans");
+
+  // Context-aware suggestions based on user's actual data
+  if (hasActiveDiet && (responseLower.includes('meal') || responseLower.includes('diet'))) {
+    suggestions.push("Show me today's meal plan");
+    suggestions.push("Track my meal calories");
+  }
+
+  if (hasActiveWorkout && (responseLower.includes('workout') || responseLower.includes('exercise'))) {
+    suggestions.push("Show me my current workout");
+    suggestions.push("Track my workout progress");
+  }
+
+  // Profile-aware suggestions
+  if (profile?.fitnessGoal) {
+    if (profile.fitnessGoal.includes('Weight Loss') && suggestions.length < 3) {
+      suggestions.push("Calculate my weight loss calories");
+    }
+    if (profile.fitnessGoal.includes('Muscle Gain') && suggestions.length < 3) {
+      suggestions.push("Show me my protein targets");
+    }
+  }
+
   // Plan-specific intelligent suggestions
   if (plan === 'badminton') {
     if (responseLower.includes('drill') || responseLower.includes('practice')) {
@@ -515,8 +571,8 @@ function generateContextualSuggestions(response, plan, userMessage, profile) {
     if (responseLower.includes('footwork')) {
       suggestions.push("Footwork improvement tips");
     }
-    if (responseLower.includes('serve') || responseLower.includes('smash')) {
-      suggestions.push("Help me with my serve technique");
+    if (suggestions.length < 4) {
+      suggestions.push("Create a badminton training plan");
     }
   } else if (plan === 'weight-loss') {
     if (responseLower.includes('meal') || responseLower.includes('food')) {
@@ -525,11 +581,8 @@ function generateContextualSuggestions(response, plan, userMessage, profile) {
     if (responseLower.includes('calorie') || responseLower.includes('deficit')) {
       suggestions.push("Calculate my daily calorie needs");
     }
-    if (responseLower.includes('exercise') || responseLower.includes('workout')) {
-      suggestions.push("Create a weight loss workout plan");
-    }
-    if (responseLower.includes('progress') || responseLower.includes('track')) {
-      suggestions.push("Track my weight progress");
+    if (suggestions.length < 4) {
+      suggestions.push("Update my weight loss plan");
     }
   } else if (plan === 'muscle-gain') {
     if (responseLower.includes('protein') || responseLower.includes('nutrition')) {
@@ -538,77 +591,37 @@ function generateContextualSuggestions(response, plan, userMessage, profile) {
     if (responseLower.includes('workout') || responseLower.includes('training')) {
       suggestions.push("Update my workout plan");
     }
-    if (responseLower.includes('calorie') || responseLower.includes('surplus')) {
-      suggestions.push("Calculate my bulking calories");
-    }
-    if (responseLower.includes('progress')) {
+    if (suggestions.length < 4) {
       suggestions.push("Track my strength progress");
     }
-  } else if (plan === 'strength') {
-    if (responseLower.includes('workout') || responseLower.includes('training')) {
-      suggestions.push("Create my strength training plan");
-    }
-    if (responseLower.includes('form') || responseLower.includes('technique')) {
-      suggestions.push("How do I improve my form?");
-    }
-    if (responseLower.includes('progress')) {
-      suggestions.push("Track my lifting progress");
-    }
-    if (responseLower.includes('recovery')) {
-      suggestions.push("How important is rest?");
-    }
-  } else {
-    // General fitness suggestions
-    if (responseLower.includes('workout') || responseLower.includes('exercise')) {
-      suggestions.push("Design my workout routine");
-    }
-    if (responseLower.includes('diet') || responseLower.includes('nutrition')) {
-      suggestions.push("Help me with meal planning");
-    }
-    if (responseLower.includes('goal') || responseLower.includes('target')) {
-      suggestions.push("Calculate my health metrics");
-    }
   }
-  
-  // Context-aware suggestions based on response content
+
+  // Universal context-aware suggestions
   if (responseLower.includes('tool') || responseLower.includes('calculate')) {
     suggestions.push("What else can you help me track?");
   }
   if (responseLower.includes('plan') || responseLower.includes('routine')) {
     suggestions.push("Save this plan for me");
   }
-  if (responseLower.includes('progress') || responseLower.includes('track')) {
-    suggestions.push("How do I measure progress?");
-  }
-  
-  // Add some universal helpful suggestions if we don't have enough
-  const universalSuggestions = [
-    "Tell me more about this",
-    "What's the next step?",
-    "How long will this take?",
-    "Any tips for staying consistent?",
-    "What should I focus on first?",
-    "How do I stay motivated?"
+
+  // Fill remaining slots with contextual suggestions
+  const contextualSuggestions = [
+    hasActiveDiet ? "Review my diet plan" : "Create a diet plan for me",
+    hasActiveWorkout ? "Show my workout schedule" : "Design my workout routine", 
+    profile?.fitnessGoal ? `Help me achieve my ${profile.fitnessGoal} goal` : "Set my fitness goals",
+    "Calculate my health metrics",
+    "Track my progress",
+    "What should I focus on next?"
   ];
-  
-  // Fill remaining slots with universal suggestions
-  while (suggestions.length < 4) {
-    const randomSuggestion = universalSuggestions[Math.floor(Math.random() * universalSuggestions.length)];
-    if (!suggestions.includes(randomSuggestion)) {
-      suggestions.push(randomSuggestion);
+
+  // Add contextual suggestions to fill remaining slots
+  for (const suggestion of contextualSuggestions) {
+    if (suggestions.length >= 4) break;
+    if (!suggestions.includes(suggestion) && !suggestions.some(s => s.includes(suggestion.split(' ')[0]))) {
+      suggestions.push(suggestion);
     }
   }
-  
-  // If we have profile info, add personalized suggestions
-  if (profile && suggestions.length < 4) {
-    if (profile.fitnessGoal && !suggestions.some(s => s.includes(profile.fitnessGoal))) {
-      suggestions.push(`Help me achieve my ${profile.fitnessGoal} goal`);
-    }
-    if (profile.experience === 'beginner') {
-      suggestions.push("What should beginners focus on?");
-    }
-  }
-  
+
   return suggestions.slice(0, 4); // Return max 4 suggestions
 }
 
@@ -619,15 +632,15 @@ function getDefaultSuggestions(plan) {
   const defaultSuggestions = {
     'badminton': [
       "Show me basic badminton drills",
-      "How do I improve my footwork?",
+      "How do I improve my footwork?", 
       "Help with my serve technique",
-      "What's a good training routine?"
+      "Create a training routine"
     ],
     'weight-loss': [
       "Calculate my daily calorie needs",
       "Create a weight loss meal plan",
       "What exercises burn the most calories?",
-      "How do I stay motivated?"
+      "Track my weight progress"
     ],
     'muscle-gain': [
       "Calculate my bulking calories",
@@ -637,7 +650,7 @@ function getDefaultSuggestions(plan) {
     ],
     'general': [
       "Help me set fitness goals",
-      "Create a workout plan",
+      "Create a workout plan", 
       "Calculate my health metrics",
       "What should I focus on first?"
     ]
