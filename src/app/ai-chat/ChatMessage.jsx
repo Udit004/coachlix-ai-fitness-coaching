@@ -170,7 +170,7 @@ const ChatMessage = ({ message, handleSuggestionClick, userProfile }) => {
   };
 
   const getPersonalizedAvatar = () => {
-    if (message.type === "user") {
+    if (message.role === "user") {
       if (userProfile?.name) {
         return (
           <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg text-white font-bold ring-2 ring-white">
@@ -208,7 +208,7 @@ const ChatMessage = ({ message, handleSuggestionClick, userProfile }) => {
     // Add personalized suggestions based on user profile
     let suggestions = [...message.suggestions];
 
-    if (userProfile?.fitnessGoal === "weight-loss" && message.type === "ai") {
+    if (userProfile?.fitnessGoal === "weight-loss" && message.role === "ai") {
       suggestions = suggestions.map((suggestion) => {
         if (suggestion.includes("workout")) {
           return "Best fat-burning workouts for me";
@@ -220,7 +220,7 @@ const ChatMessage = ({ message, handleSuggestionClick, userProfile }) => {
       });
     } else if (
       userProfile?.fitnessGoal === "muscle-gain" &&
-      message.type === "ai"
+      message.role === "ai"
     ) {
       suggestions = suggestions.map((suggestion) => {
         if (suggestion.includes("workout")) {
@@ -242,30 +242,30 @@ const ChatMessage = ({ message, handleSuggestionClick, userProfile }) => {
   return (
     <div
       className={`flex ${
-        message.type === "user" ? "justify-end" : "justify-start"
+        message.role === "user" ? "justify-end" : "justify-start"
       } group`}
     >
       <div
         className={`max-w-[85%] ${
-          message.type === "user" ? "order-2" : "order-1"
+          message.role === "user" ? "order-2" : "order-1"
         }`}
       >
         <div
           className={`flex items-start space-x-4 ${
-            message.type === "user" ? "flex-row-reverse space-x-reverse" : ""
+            message.role === "user" ? "flex-row-reverse space-x-reverse" : ""
           }`}
         >
           {getPersonalizedAvatar()}
 
           <div
             className={`flex-1 ${
-              message.type === "user" ? "text-right" : "text-left"
+              message.role === "user" ? "text-right" : "text-left"
             }`}
           >
             {/* Message Content */}
             <div
               className={`inline-block p-5 rounded-2xl shadow-sm ${
-                message.type === "user"
+                message.role === "user"
                   ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
                   : message.isError
                   ? "bg-red-50 text-red-900 border border-red-200"
@@ -274,7 +274,7 @@ const ChatMessage = ({ message, handleSuggestionClick, userProfile }) => {
             >
               <div
                 className={`prose prose-sm max-w-none ${
-                  message.type === "user" ? "prose-invert" : "prose-gray"
+                  message.role === "user" ? "prose-invert" : "prose-gray"
                 }`}
               >
                 <div
@@ -292,7 +292,7 @@ const ChatMessage = ({ message, handleSuggestionClick, userProfile }) => {
               </div>
 
               {/* AI Enhancement Indicator */}
-              {message.type === "ai" && !message.isError && (
+              {message.role === "ai" && !message.isError && (
                 <div className="flex items-center mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
                   <div className="flex items-center space-x-2">
                     <Sparkles className="h-3 w-3 text-blue-500 animate-pulse" />
@@ -312,14 +312,14 @@ const ChatMessage = ({ message, handleSuggestionClick, userProfile }) => {
             {/* Message Actions */}
             <div
               className={`flex items-center mt-3 space-x-2 text-xs text-gray-400 ${
-                message.type === "user" ? "justify-end" : "justify-start"
+                message.role === "user" ? "justify-end" : "justify-start"
               }`}
             >
               <Clock className="h-3 w-3" />
               <span className="font-medium">
                 {formatTime(message.timestamp)}
               </span>
-              {message.type === "ai" && !message.isError && (
+              {message.role === "ai" && !message.isError && (
                 <div className="flex items-center space-x-1 ml-3">
                   <button
                     className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors duration-200"
@@ -345,7 +345,7 @@ const ChatMessage = ({ message, handleSuggestionClick, userProfile }) => {
             </div>
 
             {/* Personalized AI Suggestions */}
-            {message.type === "ai" &&
+            {message.role === "ai" &&
               getPersonalizedSuggestions().length > 0 && (
                 <div className="mt-5 space-y-3">
                   <div className="flex items-center space-x-2 text-xs text-gray-500">
