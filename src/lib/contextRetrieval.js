@@ -1,4 +1,4 @@
-// lib/contextRetrieval.js - Enhanced Context Retrieval for Fitness Chatbot
+// lib/enhancedContextRetrieval.js - Comprehensive User Data Retrieval
 import { connectDB } from "./db";
 import User from "../models/userProfileModel";
 import DietPlan from "../models/DietPlan";
@@ -6,141 +6,173 @@ import WorkoutPlan from "../models/WorkoutPlan";
 import FitnessEmbedding from "../models/FitnessEmbedding";
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 
-// Initialize embeddings for semantic search
 const embeddings = new GoogleGenerativeAIEmbeddings({
   apiKey: process.env.GEMINI_API_KEY,
   modelName: "embedding-001",
 });
 
 /**
- * Main function to retrieve all relevant context for user query
+ * Enhanced context retrieval with detailed user data
  * @param {string} userId - Firebase UID
  * @param {string} userQuery - User's message/question
  * @param {number} maxLength - Maximum context length
- * @returns {Object} Combined context from all sources
+ * @returns {Object} Comprehensive context from all sources
  */
-export async function getRelevantContext(userId, userQuery, maxLength = 2000) {
+export async function getEnhancedUserContext(userId, userQuery, maxLength = 3000) {
   try {
     await connectDB();
     
-    // Get context from all three sources in parallel
-    const [profileContext, dietContext, workoutContext] = await Promise.all([
-      getUserProfileContext(userId, userQuery),
-      getDietPlanContext(userId, userQuery),
-      getWorkoutPlanContext(userId, userQuery)
+    // Get all context in parallel with enhanced detail
+    const [profileContext, dietContext, workoutContext, progressContext, vectorContext] = await Promise.all([
+      getDetailedUserProfile(userId, userQuery),
+      getDetailedDietContext(userId, userQuery),
+      getDetailedWorkoutContext(userId, userQuery),
+      getUserProgressContext(userId),
+      getRelevantVectorContent(userQuery, userId)
     ]);
 
-    // Combine contexts with length management
-    const combinedContext = combineContexts({
+    // Combine all contexts intelligently
+    const combinedContext = combineEnhancedContexts({
       profile: profileContext,
       diet: dietContext,
-      workout: workoutContext
+      workout: workoutContext,
+      progress: progressContext,
+      vector: vectorContext
     }, maxLength);
 
     return combinedContext;
     
   } catch (error) {
-    console.error("Error retrieving context:", error);
+    console.error("Error retrieving enhanced context:", error);
     return {
       profile: "Error loading profile context",
-      diet: "Error loading diet context", 
+      diet: "Error loading diet context",
       workout: "Error loading workout context",
-      combined: "Error loading user context"
+      progress: "Error loading progress context",
+      combined: "Error loading comprehensive user context"
     };
   }
 }
 
 /**
- * Get relevant user profile context
- * @param {string} userId - Firebase UID
- * @param {string} query - User query for relevance matching
- * @returns {string} Formatted profile context
+ * Get detailed user profile with all relevant information
  */
-async function getUserProfileContext(userId, query) {
+async function getDetailedUserProfile(userId, query) {
   try {
-    const user = await User.findOne({ firebaseUid: userId }).lean();
+    const user = await User.findOne({ firebaseUid: userId })
+      .populate('achievements')
+      .lean();
     
-    if (!user) {
-      return "No user profile found";
-    }
+    if (!user) return "No user profile found";
 
-    // Extract relevant profile information based on query
     const queryLower = query.toLowerCase();
-    let context = `User Profile - ${user.name || 'User'}:\n`;
+    let context = `=== USER PROFILE ===\n`;
+    context += `Name: ${user.name || 'User'}\n`;
     
-    // Always include basic info
+    // Basic Info
     if (user.age || user.birthDate) {
       const age = user.age || calculateAge(user.birthDate);
-      context += `• Age: ${age}\n`;
+      context += `Age: ${age} years\n`;
     }
-    if (user.height) context += `• Height: ${user.height}\n`;
-    if (user.weight) context += `• Current Weight: ${user.weight}\n`;
-    if (user.targetWeight) context += `• Target Weight: ${user.targetWeight}\n`;
-    if (user.fitnessGoal) context += `• Primary Goal: ${user.fitnessGoal}\n`;
-    if (user.experience) context += `• Experience Level: ${user.experience}\n`;
-
-    // Query-specific context
-    if (queryLower.includes('goal') || queryLower.includes('target')) {
-      if (user.fitnessGoal) context += `• Fitness Goal: ${user.fitnessGoal}\n`;
-      if (user.targetWeight) context += `• Weight Target: ${user.targetWeight}\n`;
+    if (user.gender) context += `Gender: ${user.gender}\n`;
+    if (user.height) context += `Height: ${user.height}\n`;
+    if (user.weight) context += `Current Weight: ${user.weight}\n`;
+    if (user.targetWeight) context += `Target Weight: ${user.targetWeight}\n`;
+    
+    // Goals and Preferences
+    if (user.fitnessGoal) context += `Primary Fitness Goal: ${user.fitnessGoal}\n`;
+    if (user.experience) context += `Experience Level: ${user.experience}\n`;
+    if (user.dietaryPreference) context += `Dietary Preference: ${user.dietaryPreference}\n`;
+    if (user.allergies && user.allergies.length > 0) {
+      context += `Allergies: ${user.allergies.join(', ')}\n`;
     }
-
-    if (queryLower.includes('achievement') || queryLower.includes('progress') || queryLower.includes('stats')) {
-      if (user.stats) {
-        context += `• Workouts Completed: ${user.stats.workoutsCompleted || 0}\n`;
-        context += `• Current Streak: ${user.stats.daysStreak || 0} days\n`;
-        context += `• Total Calories Burned: ${user.stats.caloriesBurned || 0}\n`;
+    if (user.medicalConditions && user.medicalConditions.length > 0) {
+      context += `Medical Conditions: ${user.medicalConditions.join(', ')}\n`;
+    }
+    
+    // Equipment and Preferences
+    if (user.availableEquipment && user.availableEquipment.length > 0) {
+      context += `Available Equipment: ${user.availableEquipment.join(', ')}\n`;
+    }
+    if (user.workoutPreferences) {
+      context += `Workout Preferences:\n`;
+      if (user.workoutPreferences.preferredTime) {
+        context += `  - Preferred Time: ${user.workoutPreferences.preferredTime}\n`;
       }
-      
-      // Include recent achievements
-      if (user.achievements && user.achievements.length > 0) {
-        const recentAchievements = user.achievements
-          .filter(a => a.earned)
-          .slice(-3)
-          .map(a => a.title)
-          .join(', ');
-        if (recentAchievements) {
-          context += `• Recent Achievements: ${recentAchievements}\n`;
-        }
+      if (user.workoutPreferences.duration) {
+        context += `  - Preferred Duration: ${user.workoutPreferences.duration}\n`;
+      }
+      if (user.workoutPreferences.intensity) {
+        context += `  - Preferred Intensity: ${user.workoutPreferences.intensity}\n`;
       }
     }
-
-    if (queryLower.includes('activity') || queryLower.includes('recent')) {
-      if (user.recentActivities && user.recentActivities.length > 0) {
-        const recentActivity = user.recentActivities.slice(0, 3);
-        context += `• Recent Activities:\n`;
-        recentActivity.forEach(activity => {
-          context += `  - ${activity.title} (${activity.type})\n`;
+    
+    // Stats and Achievements
+    if (user.stats) {
+      context += `Current Stats:\n`;
+      context += `  - Workouts Completed: ${user.stats.workoutsCompleted || 0}\n`;
+      context += `  - Current Streak: ${user.stats.daysStreak || 0} days\n`;
+      context += `  - Total Calories Burned: ${user.stats.caloriesBurned || 0}\n`;
+      context += `  - Total Exercise Time: ${user.stats.totalExerciseTime || 0} minutes\n`;
+      context += `  - Average Workout Duration: ${user.stats.averageWorkoutDuration || 0} minutes\n`;
+    }
+    
+    // Recent Achievements (query-specific)
+    if (user.achievements && user.achievements.length > 0) {
+      const earnedAchievements = user.achievements.filter(a => a.earned);
+      if (earnedAchievements.length > 0) {
+        context += `Recent Achievements:\n`;
+        earnedAchievements.slice(-5).forEach(achievement => {
+          context += `  - ${achievement.title}: ${achievement.description}\n`;
         });
       }
     }
-
-    if (user.bio && (queryLower.includes('about') || queryLower.includes('info'))) {
-      context += `• Additional Info: ${user.bio}\n`;
+    
+    // Recent Activities (last 7 days)
+    if (user.recentActivities && user.recentActivities.length > 0) {
+      const recentActivities = user.recentActivities
+        .filter(activity => {
+          const activityDate = new Date(activity.date);
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          return activityDate > weekAgo;
+        })
+        .slice(0, 10);
+      
+      if (recentActivities.length > 0) {
+        context += `Recent Activities (Last 7 Days):\n`;
+        recentActivities.forEach(activity => {
+          const date = new Date(activity.date).toLocaleDateString();
+          context += `  - [${date}] ${activity.title} (${activity.type})\n`;
+          if (activity.description) {
+            context += `    ${activity.description}\n`;
+          }
+        });
+      }
     }
-
+    
+    if (user.bio) context += `Personal Notes: ${user.bio}\n`;
+    
     return context;
     
   } catch (error) {
-    console.error("Error getting user profile context:", error);
-    return "Error loading user profile";
+    console.error("Error getting detailed user profile:", error);
+    return "Error loading detailed user profile";
   }
 }
 
 /**
- * Get relevant diet plan context
- * @param {string} userId - Firebase UID
- * @param {string} query - User query for relevance matching
- * @returns {string} Formatted diet context
+ * Get comprehensive diet plan context with meal details
  */
-async function getDietPlanContext(userId, query) {
+async function getDetailedDietContext(userId, query) {
   try {
     const dietPlans = await DietPlan.find({ 
       userId, 
       isActive: true 
     })
+    .populate('days.meals.items')
     .sort({ createdAt: -1 })
-    .limit(3) // Get recent active plans
+    .limit(2) // Get 2 most recent active plans
     .lean();
 
     if (!dietPlans || dietPlans.length === 0) {
@@ -148,58 +180,99 @@ async function getDietPlanContext(userId, query) {
     }
 
     const queryLower = query.toLowerCase();
-    let context = "Diet Plans:\n";
+    let context = `\n=== DIET PLANS ===\n`;
 
     for (const plan of dietPlans) {
-      context += `\n${plan.name} (${plan.goal}):\n`;
-      context += `• Target: ${plan.targetCalories} calories, ${plan.targetProtein}g protein\n`;
+      context += `\n📋 Diet Plan: "${plan.name}"\n`;
+      context += `Goal: ${plan.goal}\n`;
+      context += `Duration: ${plan.duration} days\n`;
+      context += `Current Day: ${plan.currentDay || 1}/${plan.duration}\n`;
+      context += `Status: ${plan.isActive ? 'Active' : 'Inactive'}\n`;
       
-      // Query-specific diet information
-      if (queryLower.includes('meal') || queryLower.includes('food') || queryLower.includes('eat')) {
-        // Get recent meals from the plan
-        if (plan.days && plan.days.length > 0) {
-          const recentDay = plan.days[0];
-          if (recentDay.meals && recentDay.meals.length > 0) {
-            context += `• Recent Meals:\n`;
-            recentDay.meals.slice(0, 2).forEach(meal => {
-              context += `  - ${meal.type}: ${meal.totalCalories} cal, ${meal.totalProtein}g protein\n`;
-            });
-          }
+      // Macro targets
+      context += `Daily Targets:\n`;
+      context += `  - Calories: ${plan.targetCalories} kcal\n`;
+      context += `  - Protein: ${plan.targetProtein}g\n`;
+      context += `  - Carbs: ${plan.targetCarbs}g\n`;
+      context += `  - Fats: ${plan.targetFats}g\n`;
+      
+      // Current/recent day meals with full details
+      if (plan.days && plan.days.length > 0) {
+        const currentDayIndex = (plan.currentDay || 1) - 1;
+        const currentDay = plan.days[currentDayIndex] || plan.days[0];
+        
+        if (currentDay && currentDay.meals && currentDay.meals.length > 0) {
+          context += `\nToday's Meal Plan (Day ${currentDay.dayNumber || 1}):\n`;
+          
+          currentDay.meals.forEach(meal => {
+            context += `\n🍽️ ${meal.type} (${meal.totalCalories || 0} cal, ${meal.totalProtein || 0}g protein):\n`;
+            
+            if (meal.items && meal.items.length > 0) {
+              meal.items.forEach(item => {
+                context += `  - ${item.name}: ${item.quantity}${item.unit || ''}\n`;
+                context += `    └ ${item.calories || 0} cal, ${item.protein || 0}g protein, ${item.carbs || 0}g carbs, ${item.fats || 0}g fats\n`;
+                if (item.notes) {
+                  context += `    └ Notes: ${item.notes}\n`;
+                }
+              });
+            }
+            
+            if (meal.instructions) {
+              context += `  Instructions: ${meal.instructions}\n`;
+            }
+          });
+          
+          // Day totals
+          const dayTotals = currentDay.totals || calculateDayTotals(currentDay.meals);
+          context += `\nDay Totals:\n`;
+          context += `  - Total Calories: ${dayTotals.calories || 0} / ${plan.targetCalories}\n`;
+          context += `  - Total Protein: ${dayTotals.protein || 0}g / ${plan.targetProtein}g\n`;
+          context += `  - Total Carbs: ${dayTotals.carbs || 0}g / ${plan.targetCarbs}g\n`;
+          context += `  - Total Fats: ${dayTotals.fats || 0}g / ${plan.targetFats}g\n`;
         }
       }
-
-      if (queryLower.includes('calorie') || queryLower.includes('macro')) {
-        context += `• Macros: ${plan.targetProtein}g protein, ${plan.targetCarbs}g carbs, ${plan.targetFats}g fats\n`;
+      
+      // Weekly averages if available
+      if (plan.weeklyAverages) {
+        context += `\nWeekly Progress:\n`;
+        context += `  - Average Daily Calories: ${plan.weeklyAverages.calories || 0}\n`;
+        context += `  - Average Protein: ${plan.weeklyAverages.protein || 0}g\n`;
+        context += `  - Adherence Rate: ${plan.weeklyAverages.adherence || 0}%\n`;
       }
-
-      if (queryLower.includes('progress') || queryLower.includes('average')) {
-        const avgCalories = plan.getAverageCalories ? plan.getAverageCalories() : 'N/A';
-        context += `• Average Daily Calories: ${avgCalories}\n`;
+      
+      // Recent food log if query is about specific foods
+      if (queryLower.includes('food') || queryLower.includes('eat') || queryLower.includes('meal')) {
+        const recentFoodLogs = await getRecentFoodLogs(userId, 7);
+        if (recentFoodLogs.length > 0) {
+          context += `\nRecent Food Intake (Last 7 days):\n`;
+          recentFoodLogs.slice(0, 10).forEach(log => {
+            const date = new Date(log.date).toLocaleDateString();
+            context += `  - [${date}] ${log.foodName}: ${log.calories} cal, ${log.protein}g protein\n`;
+          });
+        }
       }
     }
 
     return context;
     
   } catch (error) {
-    console.error("Error getting diet plan context:", error);
-    return "Error loading diet plan context";
+    console.error("Error getting detailed diet context:", error);
+    return "Error loading detailed diet context";
   }
 }
 
 /**
- * Get relevant workout plan context
- * @param {string} userId - Firebase UID  
- * @param {string} query - User query for relevance matching
- * @returns {string} Formatted workout context
+ * Get comprehensive workout plan context with exercise details
  */
-async function getWorkoutPlanContext(userId, query) {
+async function getDetailedWorkoutContext(userId, query) {
   try {
     const workoutPlans = await WorkoutPlan.find({ 
       userId, 
       isActive: true 
     })
+    .populate('weeks.days.workouts.exercises')
     .sort({ createdAt: -1 })
-    .limit(3) // Get recent active plans
+    .limit(2) // Get 2 most recent active plans
     .lean();
 
     if (!workoutPlans || workoutPlans.length === 0) {
@@ -207,301 +280,266 @@ async function getWorkoutPlanContext(userId, query) {
     }
 
     const queryLower = query.toLowerCase();
-    let context = "Workout Plans:\n";
+    let context = `\n=== WORKOUT PLANS ===\n`;
 
     for (const plan of workoutPlans) {
-      context += `\n${plan.name} (${plan.goal}):\n`;
-      context += `• Difficulty: ${plan.difficulty}, Frequency: ${plan.workoutFrequency}x/week\n`;
-      context += `• Duration: ${plan.duration} weeks, Current Week: ${plan.currentWeek}\n`;
+      context += `\n💪 Workout Plan: "${plan.name}"\n`;
+      context += `Goal: ${plan.goal}\n`;
+      context += `Difficulty: ${plan.difficulty}\n`;
+      context += `Duration: ${plan.duration} weeks\n`;
+      context += `Current Week: ${plan.currentWeek || 1}/${plan.duration}\n`;
+      context += `Frequency: ${plan.workoutFrequency}x per week\n`;
+      context += `Status: ${plan.isActive ? 'Active' : 'Inactive'}\n`;
       
-      // Query-specific workout information
-      if (queryLower.includes('exercise') || queryLower.includes('workout') || queryLower.includes('train')) {
-        // Get current week's workouts
-        const currentWeek = plan.weeks?.find(w => w.weekNumber === plan.currentWeek);
+      if (plan.targetMuscleGroups && plan.targetMuscleGroups.length > 0) {
+        context += `Target Muscle Groups: ${plan.targetMuscleGroups.join(', ')}\n`;
+      }
+      
+      if (plan.equipment && plan.equipment.length > 0) {
+        context += `Required Equipment: ${plan.equipment.join(', ')}\n`;
+      }
+      
+      // Current week details
+      if (plan.weeks && plan.weeks.length > 0) {
+        const currentWeekIndex = (plan.currentWeek || 1) - 1;
+        const currentWeek = plan.weeks[currentWeekIndex] || plan.weeks[0];
+        
         if (currentWeek && currentWeek.days) {
-          const upcomingWorkouts = currentWeek.days
-            .filter(day => !day.isRestDay && day.workouts.length > 0)
-            .slice(0, 2);
+          context += `\n📅 Current Week (Week ${currentWeek.weekNumber || 1}) Schedule:\n`;
           
-          if (upcomingWorkouts.length > 0) {
-            context += `• Upcoming Workouts:\n`;
-            upcomingWorkouts.forEach(day => {
+          currentWeek.days.forEach((day, dayIndex) => {
+            const dayName = getDayName(dayIndex);
+            
+            if (day.isRestDay) {
+              context += `${dayName}: 🛌 Rest Day\n`;
+              if (day.notes) {
+                context += `  Notes: ${day.notes}\n`;
+              }
+            } else if (day.workouts && day.workouts.length > 0) {
+              context += `${dayName}: 🏋️ Workout Day\n`;
+              
               day.workouts.forEach(workout => {
-                context += `  - ${workout.name} (${workout.type}, ${workout.estimatedDuration}min)\n`;
+                context += `  Workout: ${workout.name} (${workout.type})\n`;
+                context += `  Duration: ${workout.estimatedDuration || 'N/A'} minutes\n`;
+                
+                if (workout.exercises && workout.exercises.length > 0) {
+                  context += `  Exercises:\n`;
+                  workout.exercises.forEach(exercise => {
+                    context += `    - ${exercise.name}\n`;
+                    context += `      └ Target: ${exercise.targetMuscle || 'N/A'}\n`;
+                    
+                    if (exercise.sets && exercise.sets.length > 0) {
+                      context += `      └ Sets: `;
+                      exercise.sets.forEach((set, setIndex) => {
+                        if (setIndex > 0) context += ', ';
+                        context += `${set.reps || 'N/A'}`;
+                        if (set.weight) context += ` @ ${set.weight}`;
+                        if (set.duration) context += ` for ${set.duration}s`;
+                      });
+                      context += `\n`;
+                    } else if (exercise.defaultSets) {
+                      context += `      └ Sets: ${exercise.defaultSets} x ${exercise.defaultReps || 'N/A'}\n`;
+                    }
+                    
+                    if (exercise.restTime) {
+                      context += `      └ Rest: ${exercise.restTime}s between sets\n`;
+                    }
+                    if (exercise.instructions) {
+                      context += `      └ Instructions: ${exercise.instructions}\n`;
+                    }
+                  });
+                }
+                
+                if (workout.notes) {
+                  context += `  Notes: ${workout.notes}\n`;
+                }
               });
-            });
+            }
+          });
+        }
+      }
+      
+      // Progress stats
+      if (plan.stats) {
+        context += `\nProgress Statistics:\n`;
+        context += `  - Total Workouts Completed: ${plan.stats.totalWorkouts || 0}\n`;
+        context += `  - Completion Rate: ${plan.stats.completionRate || 0}%\n`;
+        context += `  - Average Workout Duration: ${plan.stats.averageWorkoutDuration || 0} minutes\n`;
+        context += `  - Total Calories Burned: ${plan.stats.totalCaloriesBurned || 0}\n`;
+        context += `  - Consistency Score: ${plan.stats.consistencyScore || 0}%\n`;
+      }
+      
+      // Recent workout logs
+      const recentWorkoutLogs = await getRecentWorkoutLogs(userId, 14);
+      if (recentWorkoutLogs.length > 0) {
+        context += `\nRecent Workout History (Last 14 days):\n`;
+        recentWorkoutLogs.slice(0, 10).forEach(log => {
+          const date = new Date(log.date).toLocaleDateString();
+          context += `  - [${date}] ${log.workoutName}: ${log.duration} min, ${log.caloriesBurned || 0} cal burned\n`;
+          if (log.notes) {
+            context += `    └ Notes: ${log.notes}\n`;
           }
-        }
-      }
-
-      if (queryLower.includes('progress') || queryLower.includes('stats') || queryLower.includes('completion')) {
-        if (plan.stats) {
-          context += `• Progress: ${plan.stats.totalWorkouts} workouts completed\n`;
-          context += `• Completion Rate: ${plan.stats.completionRate}%\n`;
-          context += `• Average Duration: ${plan.stats.averageWorkoutDuration} min\n`;
-        }
-      }
-
-      if (queryLower.includes('muscle') || queryLower.includes('target')) {
-        if (plan.targetMuscleGroups && plan.targetMuscleGroups.length > 0) {
-          context += `• Target Muscles: ${plan.targetMuscleGroups.join(', ')}\n`;
-        }
-      }
-
-      if (queryLower.includes('equipment')) {
-        if (plan.equipment && plan.equipment.length > 0) {
-          context += `• Equipment: ${plan.equipment.join(', ')}\n`;
-        }
+        });
       }
     }
 
     return context;
     
   } catch (error) {
-    console.error("Error getting workout plan context:", error);
-    return "Error loading workout plan context";
+    console.error("Error getting detailed workout context:", error);
+    return "Error loading detailed workout context";
   }
 }
 
 /**
- * Combine contexts from all sources with length management
- * @param {Object} contexts - Object containing profile, diet, workout contexts
- * @param {number} maxLength - Maximum total context length
- * @returns {Object} Combined and formatted context
+ * Get user progress and trends
  */
-function combineContexts(contexts, maxLength = 2000) {
-  const { profile, diet, workout } = contexts;
-  
-  // Prioritize contexts based on content quality and relevance
-  const prioritizedContexts = [
-    { name: 'profile', content: profile, priority: 1 },
-    { name: 'workout', content: workout, priority: 2 },
-    { name: 'diet', content: diet, priority: 3 }
-  ].filter(ctx => ctx.content && ctx.content.length > 20); // Filter out empty/error contexts
+async function getUserProgressContext(userId) {
+  try {
+    // Get progress data from various sources
+    const [weightLogs, measurementLogs, progressPhotos] = await Promise.all([
+      getRecentWeightLogs(userId, 30),
+      getRecentMeasurementLogs(userId, 30),
+      getRecentProgressPhotos(userId, 5)
+    ]);
 
-  let combinedContext = "\n=== USER CONTEXT ===\n";
+    let context = `\n=== PROGRESS TRACKING ===\n`;
+
+    // Weight progress
+    if (weightLogs.length > 0) {
+      context += `Weight Progress (Last 30 days):\n`;
+      const sortedWeights = weightLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
+      const latestWeight = sortedWeights[0];
+      const oldestWeight = sortedWeights[sortedWeights.length - 1];
+      
+      context += `  - Current Weight: ${latestWeight.weight}${latestWeight.unit || 'kg'}\n`;
+      if (sortedWeights.length > 1) {
+        const weightChange = parseFloat(latestWeight.weight) - parseFloat(oldestWeight.weight);
+        const trend = weightChange > 0 ? 'gained' : weightChange < 0 ? 'lost' : 'maintained';
+        context += `  - Change: ${trend} ${Math.abs(weightChange).toFixed(1)}${latestWeight.unit || 'kg'} in ${sortedWeights.length} entries\n`;
+      }
+      
+      // Recent weight entries
+      context += `  - Recent Entries:\n`;
+      sortedWeights.slice(0, 5).forEach(log => {
+        const date = new Date(log.date).toLocaleDateString();
+        context += `    └ [${date}] ${log.weight}${log.unit || 'kg'}\n`;
+      });
+    }
+
+    // Body measurements
+    if (measurementLogs.length > 0) {
+      context += `\nBody Measurements Progress:\n`;
+      const latestMeasurements = measurementLogs[0];
+      context += `  - Latest measurements (${new Date(latestMeasurements.date).toLocaleDateString()}):\n`;
+      if (latestMeasurements.chest) context += `    └ Chest: ${latestMeasurements.chest}cm\n`;
+      if (latestMeasurements.waist) context += `    └ Waist: ${latestMeasurements.waist}cm\n`;
+      if (latestMeasurements.hips) context += `    └ Hips: ${latestMeasurements.hips}cm\n`;
+      if (latestMeasurements.biceps) context += `    └ Biceps: ${latestMeasurements.biceps}cm\n`;
+      if (latestMeasurements.bodyFat) context += `    └ Body Fat: ${latestMeasurements.bodyFat}%\n`;
+    }
+
+    // Progress photos
+    if (progressPhotos.length > 0) {
+      context += `\nProgress Photos: ${progressPhotos.length} photos available\n`;
+      const latest = progressPhotos[0];
+      context += `  - Latest photo: ${new Date(latest.date).toLocaleDateString()}\n`;
+    }
+
+    return context;
+    
+  } catch (error) {
+    console.error("Error getting progress context:", error);
+    return "Error loading progress context";
+  }
+}
+
+/**
+ * Get relevant content from vector database based on query
+ */
+async function getRelevantVectorContent(query, userId) {
+  try {
+    // Get user preferences to filter vector results
+    const user = await User.findOne({ firebaseUid: userId }).select('fitnessGoal experience equipment').lean();
+    
+    // Search vector database
+    const vectorResults = await FitnessEmbedding.findByMetadata({
+      plan: user?.fitnessGoal?.toLowerCase().includes('weight loss') ? 'weight-loss' :
+            user?.fitnessGoal?.toLowerCase().includes('muscle gain') ? 'muscle-gain' : 'general'
+    });
+
+    let context = `\n=== RELEVANT KNOWLEDGE BASE ===\n`;
+    
+    if (vectorResults.length > 0) {
+      vectorResults.slice(0, 3).forEach(result => {
+        context += `\n📚 ${result.metadata.title}:\n`;
+        context += `${result.content}\n`;
+      });
+    }
+
+    return context;
+    
+  } catch (error) {
+    console.error("Error getting vector content:", error);
+    return "";
+  }
+}
+
+/**
+ * Combine all contexts intelligently with prioritization
+ */
+function combineEnhancedContexts(contexts, maxLength = 3000) {
+  const { profile, diet, workout, progress, vector } = contexts;
+  
+  // Prioritize contexts based on importance and content quality
+  const prioritizedContexts = [
+    { name: 'profile', content: profile, priority: 1, minLength: 300 },
+    { name: 'diet', content: diet, priority: 2, minLength: 500 },
+    { name: 'workout', content: workout, priority: 2, minLength: 500 },
+    { name: 'progress', content: progress, priority: 3, minLength: 200 },
+    { name: 'knowledge', content: vector, priority: 4, minLength: 200 }
+  ].filter(ctx => ctx.content && ctx.content.length > 50);
+
+  let combinedContext = "\n🎯 === COMPREHENSIVE USER CONTEXT ===\n";
   let remainingLength = maxLength - combinedContext.length;
 
-  // Add contexts in priority order
-  for (const ctx of prioritizedContexts) {
-    const sectionHeader = `\n[${ctx.name.toUpperCase()}]\n`;
-    const totalSectionLength = sectionHeader.length + ctx.content.length + 1;
-    
-    if (remainingLength >= totalSectionLength) {
-      combinedContext += sectionHeader + ctx.content + "\n";
-      remainingLength -= totalSectionLength;
-    } else if (remainingLength > sectionHeader.length + 100) {
-      // Truncate content if we have some space left
-      const availableSpace = remainingLength - sectionHeader.length - 20;
-      const truncatedContent = ctx.content.substring(0, availableSpace) + "...";
-      combinedContext += sectionHeader + truncatedContent + "\n";
-      break;
+  // First pass: ensure minimum essential context
+  for (const ctx of prioritizedContexts.filter(c => c.priority <= 2)) {
+    if (remainingLength > ctx.minLength) {
+      combinedContext += ctx.content;
+      remainingLength -= ctx.content.length;
     } else {
-      break; // No more space
+      // Truncate but keep essential info
+      const truncated = ctx.content.substring(0, remainingLength - 50) + "...\n";
+      combinedContext += truncated;
+      remainingLength -= truncated.length;
+      break;
     }
   }
 
-  combinedContext += "=== END CONTEXT ===\n";
+  // Second pass: add remaining context if space available
+  for (const ctx of prioritizedContexts.filter(c => c.priority > 2)) {
+    if (remainingLength > ctx.minLength) {
+      combinedContext += ctx.content;
+      remainingLength -= ctx.content.length;
+    }
+  }
+
+  combinedContext += "\n=== END COMPREHENSIVE CONTEXT ===\n";
 
   return {
     profile: profile,
     diet: diet,
     workout: workout,
+    progress: progress,
+    knowledge: vector,
     combined: combinedContext,
-    totalLength: combinedContext.length
+    totalLength: combinedContext.length,
+    contextSections: prioritizedContexts.length
   };
 }
 
-/**
- * Enhanced semantic search across user's personal data
- * @param {string} userId - Firebase UID
- * @param {string} query - User query
- * @param {number} limit - Number of results per source
- * @returns {Object} Semantic search results
- */
-export async function semanticSearchUserData(userId, query, limit = 2) {
-  try {
-    const queryEmbedding = await embeddings.embedQuery(query);
-    
-    // Search across different data types
-    const [dietResults, workoutResults] = await Promise.all([
-      searchDietPlansSemanticaly(userId, query, queryEmbedding, limit),
-      searchWorkoutPlansSemanticaly(userId, query, queryEmbedding, limit)
-    ]);
-
-    return {
-      diet: dietResults,
-      workout: workoutResults
-    };
-    
-  } catch (error) {
-    console.error("Error in semantic search:", error);
-    return { diet: [], workout: [] };
-  }
-}
-
-/**
- * Semantic search in user's diet plans
- */
-async function searchDietPlansSemanticaly(userId, query, queryEmbedding, limit) {
-  try {
-    const dietPlans = await DietPlan.find({ userId, isActive: true }).lean();
-    const results = [];
-
-    for (const plan of dietPlans) {
-      // Create searchable content from diet plan
-      const searchableContent = createDietSearchContent(plan);
-      
-      // Calculate similarity (simplified - you might want to use vector similarity)
-      const relevanceScore = calculateTextRelevance(query, searchableContent);
-      
-      if (relevanceScore > 0.1) { // Threshold for relevance
-        results.push({
-          content: searchableContent,
-          metadata: {
-            type: 'diet',
-            planName: plan.name,
-            goal: plan.goal,
-            calories: plan.targetCalories
-          },
-          score: relevanceScore
-        });
-      }
-    }
-
-    return results.sort((a, b) => b.score - a.score).slice(0, limit);
-    
-  } catch (error) {
-    console.error("Error in diet semantic search:", error);
-    return [];
-  }
-}
-
-/**
- * Semantic search in user's workout plans
- */
-async function searchWorkoutPlansSemanticaly(userId, query, queryEmbedding, limit) {
-  try {
-    const workoutPlans = await WorkoutPlan.find({ userId, isActive: true }).lean();
-    const results = [];
-
-    for (const plan of workoutPlans) {
-      // Create searchable content from workout plan
-      const searchableContent = createWorkoutSearchContent(plan);
-      
-      // Calculate similarity
-      const relevanceScore = calculateTextRelevance(query, searchableContent);
-      
-      if (relevanceScore > 0.1) {
-        results.push({
-          content: searchableContent,
-          metadata: {
-            type: 'workout',
-            planName: plan.name,
-            goal: plan.goal,
-            difficulty: plan.difficulty
-          },
-          score: relevanceScore
-        });
-      }
-    }
-
-    return results.sort((a, b) => b.score - a.score).slice(0, limit);
-    
-  } catch (error) {
-    console.error("Error in workout semantic search:", error);
-    return [];
-  }
-}
-
-/**
- * Create searchable content from diet plan
- */
-function createDietSearchContent(dietPlan) {
-  let content = `Diet Plan: ${dietPlan.name}. Goal: ${dietPlan.goal}. `;
-  content += `Target: ${dietPlan.targetCalories} calories, ${dietPlan.targetProtein}g protein. `;
-  
-  if (dietPlan.days && dietPlan.days.length > 0) {
-    const recentDay = dietPlan.days[0];
-    if (recentDay.meals) {
-      content += "Meals include: ";
-      recentDay.meals.forEach(meal => {
-        content += `${meal.type}: `;
-        if (meal.items && meal.items.length > 0) {
-          const foodNames = meal.items.map(item => item.name).join(', ');
-          content += `${foodNames}. `;
-        }
-      });
-    }
-  }
-  
-  return content;
-}
-
-/**
- * Create searchable content from workout plan
- */
-function createWorkoutSearchContent(workoutPlan) {
-  let content = `Workout Plan: ${workoutPlan.name}. Goal: ${workoutPlan.goal}. `;
-  content += `Difficulty: ${workoutPlan.difficulty}. Frequency: ${workoutPlan.workoutFrequency}x per week. `;
-  
-  if (workoutPlan.targetMuscleGroups) {
-    content += `Target muscles: ${workoutPlan.targetMuscleGroups.join(', ')}. `;
-  }
-  
-  if (workoutPlan.equipment) {
-    content += `Equipment: ${workoutPlan.equipment.join(', ')}. `;
-  }
-  
-  // Add current week workout details
-  if (workoutPlan.weeks && workoutPlan.weeks.length > 0) {
-    const currentWeek = workoutPlan.weeks.find(w => w.weekNumber === workoutPlan.currentWeek) || workoutPlan.weeks[0];
-    if (currentWeek && currentWeek.days) {
-      content += "Current workouts: ";
-      currentWeek.days.forEach(day => {
-        if (!day.isRestDay && day.workouts) {
-          day.workouts.forEach(workout => {
-            content += `${workout.name} (${workout.type}). `;
-            if (workout.exercises && workout.exercises.length > 0) {
-              const exerciseNames = workout.exercises.map(ex => ex.name).slice(0, 3).join(', ');
-              content += `Exercises: ${exerciseNames}. `;
-            }
-          });
-        }
-      });
-    }
-  }
-  
-  return content;
-}
-
-/**
- * Simple text relevance calculation (can be enhanced with proper vector similarity)
- */
-function calculateTextRelevance(query, content) {
-  const queryWords = query.toLowerCase().split(/\s+/);
-  const contentLower = content.toLowerCase();
-  
-  let matches = 0;
-  let weightedScore = 0;
-  
-  queryWords.forEach(word => {
-    if (word.length > 2) { // Skip very short words
-      const wordCount = (contentLower.match(new RegExp(word, 'g')) || []).length;
-      matches += wordCount;
-      
-      // Weight longer words more heavily
-      weightedScore += wordCount * (word.length / 10);
-    }
-  });
-  
-  // Normalize by content length
-  return weightedScore / Math.max(content.length / 100, 1);
-}
-
-/**
- * Calculate age from birth date
- */
+// Helper functions
 function calculateAge(birthDate) {
   if (!birthDate) return null;
   const today = new Date();
@@ -514,24 +552,45 @@ function calculateAge(birthDate) {
   return age;
 }
 
-/**
- * Format context for LLM prompt injection
- * @param {Object} contextData - Combined context data
- * @returns {string} Formatted context for system prompt
- */
-export function formatContextForPrompt(contextData) {
-  if (!contextData || !contextData.combined) {
-    return "";
-  }
-  
-  return `\n\n=== PERSONALIZED USER CONTEXT ===
-${contextData.combined}
-
-IMPORTANT INSTRUCTIONS:
-- Use this context to provide personalized advice
-- Reference the user's current plans, goals, and progress when relevant
-- If the context shows specific diet/workout plans, refer to them specifically
-- If context is limited, ask clarifying questions to better help the user
-- Always consider the user's experience level and current goals
-=== END PERSONALIZED CONTEXT ===\n`;
+function getDayName(index) {
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  return days[index] || `Day ${index + 1}`;
 }
+
+function calculateDayTotals(meals) {
+  return meals.reduce((totals, meal) => {
+    totals.calories += meal.totalCalories || 0;
+    totals.protein += meal.totalProtein || 0;
+    totals.carbs += meal.totalCarbs || 0;
+    totals.fats += meal.totalFats || 0;
+    return totals;
+  }, { calories: 0, protein: 0, carbs: 0, fats: 0 });
+}
+
+// Database query helper functions (implement based on your schema)
+async function getRecentFoodLogs(userId, days) {
+  // Implement based on your food logging schema
+  // This would query a FoodLog model or similar
+  return [];
+}
+
+async function getRecentWorkoutLogs(userId, days) {
+  // Implement based on your workout logging schema
+  return [];
+}
+
+async function getRecentWeightLogs(userId, days) {
+  // Implement based on your weight tracking schema
+  return [];
+}
+
+async function getRecentMeasurementLogs(userId, days) {
+  // Implement based on your measurements schema
+  return [];
+}
+
+async function getRecentProgressPhotos(userId, count) {
+  // Implement based on your progress photos schema
+  return [];
+}
+

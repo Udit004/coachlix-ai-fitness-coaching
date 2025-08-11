@@ -353,96 +353,261 @@ export const deleteExerciseFromWorkout = async (
 
 // =================== PROGRESS METHODS ===================//
 
-// Add progress entry
+// Enhanced client-side function with debugging
 export const addProgressEntry = async (planId, progressData) => {
+  console.log("📊 addProgressEntry called - FOR BODY MEASUREMENTS ONLY");
+  console.log("📋 Plan ID:", planId);
+  console.log("📊 Progress data:", progressData);
+
+  // Validate that this is actually body progress data
+  if (!progressData || typeof progressData !== 'object') {
+    throw new Error('Progress data must be a valid object');
+  }
+
+  const hasBodyData = progressData.weight || progressData.bodyFat || progressData.measurements || progressData.photos;
+  if (!hasBodyData) {
+    throw new Error('Progress data must contain body measurements (weight, bodyFat, measurements, or photos)');
+  }
+
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/${planId}/progress`, {
-      method: "POST",
-      headers,
+
+    const response = await fetch(`/api/workout-plans/${planId}/progress`, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(progressData),
     });
 
-    return handleResponse(response);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to add progress entry');
+    }
+
+    const data = await response.json();
+    return data;
   } catch (error) {
-    console.error("Error adding progress entry:", error);
+    console.error('Error adding progress entry:', error);
     throw error;
   }
 };
 
-// Get progress history
+// WORKOUT SESSION FUNCTIONS (for workout progress)
+export const saveWorkoutSessionProgress = async (planId, weekNumber, dayNumber, workoutId, sessionData) => {
+  console.log('💾 saveWorkoutSessionProgress called - FOR WORKOUT SESSION DATA');
+  console.log('📦 Session data:', sessionData);
+  
+  try {
+    console.log('📱 Saving to localStorage (API endpoints not implemented yet)...');
+    
+    const sessionKey = `workout_session_${planId}_${weekNumber}_${dayNumber}_${workoutId}`;
+    const sessionProgress = {
+      planId,
+      weekNumber,
+      dayNumber,
+      workoutId,
+      exerciseData: sessionData.exerciseData || {},
+      notes: sessionData.notes || '',
+      completedExercises: sessionData.completedExercises || [],
+      sessionDuration: sessionData.totalTime || 0,
+      timestamp: new Date().toISOString(),
+      lastSaved: Date.now()
+    };
+    
+    localStorage.setItem(sessionKey, JSON.stringify(sessionProgress));
+    console.log('✅ Workout session progress saved to localStorage');
+    
+    return {
+      success: true,
+      message: 'Workout progress saved locally',
+      data: sessionProgress
+    };
+  } catch (error) {
+    console.error('❌ Error saving workout session progress:', error);
+    throw error;
+  }
+};
+
+export const completeWorkoutSession = async (planId, weekNumber, dayNumber, workoutId, sessionData) => {
+  console.log('🏁 completeWorkoutSession called - FOR WORKOUT COMPLETION');
+  console.log('📦 Session data:', sessionData);
+  
+  try {
+    console.log('📱 Saving completion to localStorage (API endpoints not implemented yet)...');
+    
+    const sessionKey = `workout_completed_${planId}_${weekNumber}_${dayNumber}_${workoutId}`;
+    const completionData = {
+      planId,
+      weekNumber,
+      dayNumber,
+      workoutId,
+      exerciseData: sessionData.exerciseData || {},
+      notes: sessionData.notes || '',
+      completedExercises: sessionData.completedExercises || [],
+      totalDuration: sessionData.totalTime || 0,
+      completedAt: sessionData.completedAt || new Date().toISOString(),
+      completed: true,
+      timestamp: Date.now()
+    };
+    
+    localStorage.setItem(sessionKey, JSON.stringify(completionData));
+    console.log('✅ Workout completion saved to localStorage');
+    
+    // Try to add a progress entry for the completion (optional)
+    try {
+      await addProgressEntry(planId, {
+        date: new Date(),
+        notes: `Completed workout - Week ${weekNumber}, Day ${dayNumber}. ${sessionData.notes || ''}`.trim()
+      });
+      console.log('✅ Progress entry added for workout completion');
+    } catch (progressError) {
+      console.warn('⚠️ Could not add progress entry:', progressError);
+      // Don't fail the whole operation if progress entry fails
+    }
+    
+    return {
+      success: true,
+      message: 'Workout completed and saved locally',
+      data: completionData
+    };
+  } catch (error) {
+    console.error('❌ Error completing workout session:', error);
+    throw error;
+  }
+};
+
+// UTILITY FUNCTIONS
+export const getWorkoutSessionProgress = (planId, weekNumber, dayNumber, workoutId) => {
+  try {
+    const sessionKey = `workout_session_${planId}_${weekNumber}_${dayNumber}_${workoutId}`;
+    const saved = localStorage.getItem(sessionKey);
+    return saved ? JSON.parse(saved) : null;
+  } catch (error) {
+    console.error('Error getting workout session progress:', error);
+    return null;
+  }
+};
+
+export const isWorkoutCompleted = (planId, weekNumber, dayNumber, workoutId) => {
+  try {
+    const sessionKey = `workout_completed_${planId}_${weekNumber}_${dayNumber}_${workoutId}`;
+    const completed = localStorage.getItem(sessionKey);
+    return completed ? JSON.parse(completed) : null;
+  } catch (error) {
+    console.error('Error checking workout completion:', error);
+    return null;
+  }
+};
+
+// New function to save workout progress locally (used by mutations)
+export const saveWorkoutProgressLocally = async (planId, weekNumber, dayNumber, workoutId, sessionData) => {
+  console.log('💾 saveWorkoutProgressLocally called');
+  
+  const sessionKey = `workout_session_${planId}_${weekNumber}_${dayNumber}_${workoutId}`;
+  const sessionProgress = {
+    planId,
+    weekNumber,
+    dayNumber,
+    workoutId,
+    exerciseData: sessionData.exerciseData || {},
+    notes: sessionData.notes || '',
+    completedExercises: sessionData.completedExercises || [],
+    sessionDuration: sessionData.totalTime || 0,
+    timestamp: new Date().toISOString(),
+    lastSaved: Date.now(),
+    completed: sessionData.completed || false
+  };
+  
+  localStorage.setItem(sessionKey, JSON.stringify(sessionProgress));
+  console.log('✅ Workout session saved to localStorage');
+  
+  return {
+    success: true,
+    message: 'Workout progress saved locally',
+    data: sessionProgress
+  };
+};
+
+// EXISTING FUNCTIONS (keep these as they are)
+export const updateProgressEntry = async (planId, progressId, updateData) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    const response = await fetch(`/api/workout-plans/${planId}/progress/${progressId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updateData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update progress entry');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error updating progress entry:', error);
+    throw error;
+  }
+};
+
+export const deleteProgressEntry = async (planId, progressId) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    const response = await fetch(`/api/workout-plans/${planId}/progress/${progressId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to delete progress entry');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error deleting progress entry:', error);
+    throw error;
+  }
+};
+
 export const getProgressHistory = async (planId) => {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/${planId}/progress`, {
+    const response = await fetch(`/api/workout-plans/${planId}/progress`, {
       method: "GET",
       headers,
     });
 
-    return handleResponse(response);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to get progress history');
+    }
+
+    return await response.json();
   } catch (error) {
     console.error("Error fetching progress history:", error);
     throw error;
   }
 };
 
-// Update specific progress entry
-export const updateProgressEntry = async (planId, progressId, progressData) => {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetch(
-      `${BASE_URL}/${planId}/progress/${progressId}`,
-      {
-        method: "PUT",
-        headers,
-        body: JSON.stringify(progressData),
-      }
-    );
-
-    return handleResponse(response);
-  } catch (error) {
-    console.error("Error updating progress entry:", error);
-    throw error;
-  }
-};
-
-// Delete specific progress entry
-export const deleteProgressEntry = async (planId, progressId) => {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetch(
-      `${BASE_URL}/${planId}/progress/${progressId}`,
-      {
-        method: "DELETE",
-        headers,
-      }
-    );
-
-    return handleResponse(response);
-  } catch (error) {
-    console.error("Error deleting progress entry:", error);
-    throw error;
-  }
-};
-
-// Get specific progress entry
-export const getProgressEntry = async (planId, progressId) => {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetch(
-      `${BASE_URL}/${planId}/progress/${progressId}`,
-      {
-        method: "GET",
-        headers,
-      }
-    );
-
-    return handleResponse(response);
-  } catch (error) {
-    console.error("Error fetching progress entry:", error);
-    throw error;
-  }
-};
 
 
 
@@ -569,22 +734,6 @@ export const exportProgressData = async (planId, format = 'json') => {
   }
 };
 
-// Batch update multiple progress entries
-export const batchUpdateProgress = async (planId, progressEntries) => {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetch(`${BASE_URL}/${planId}/progress/batch`, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify({ entries: progressEntries }),
-    });
-
-    return handleResponse(response);
-  } catch (error) {
-    console.error("Error batch updating progress:", error);
-    throw error;
-  }
-};
 
 // Clone workout plan
 export const cloneWorkoutPlan = async (planId, newName) => {
@@ -632,36 +781,7 @@ export const startWorkoutSession = async (
   }
 };
 
-// FIXED: Complete workout session - now accepts both index and ObjectId
-export const completeWorkoutSession = async (
-  planId,
-  weekNumber,
-  dayNumber,
-  workoutId,
-  sessionData
-) => {
-  try {
-    const headers = await getAuthHeaders();
 
-    let url;
-    if (typeof workoutId === "number" || /^\d+$/.test(workoutId)) {
-      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/index/${workoutId}/complete`;
-    } else {
-      url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}/complete`;
-    }
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(sessionData),
-    });
-
-    return handleResponse(response);
-  } catch (error) {
-    console.error("Error completing workout session:", error);
-    throw error;
-  }
-};
 
 // FIXED: Log exercise set - now accepts both index and ObjectId
 export const logExerciseSet = async (
@@ -1114,10 +1234,15 @@ const workoutPlanService = {
   deleteExerciseFromWorkout,
 
   addProgressEntry,
+  saveWorkoutSessionProgress,
+  getWorkoutSessionProgress,
+  isWorkoutCompleted,
+  saveWorkoutProgressLocally,
   updateProgressEntry,
   deleteProgressEntry,
-  getProgressEntry,
   getProgressHistory,
+   
+
 
   getWorkoutStats,
   getWeeklyProgress,
@@ -1126,7 +1251,6 @@ const workoutPlanService = {
   getAchievements,
   getPersonalRecords,
   exportProgressData,
-  batchUpdateProgress,
 
 
 

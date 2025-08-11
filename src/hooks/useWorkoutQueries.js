@@ -164,6 +164,7 @@ export const usePopularExercises = (category = null) => {
   return useQuery({
     queryKey: ['exercises', 'popular', category],
     queryFn: () => workoutPlanService.getPopularExercises(category),
+    enabled: true,
     staleTime: 30 * 60 * 1000, // 30 minutes
   });
 };
@@ -270,38 +271,60 @@ export const useAddExercisesToWorkout = () => {
   });
 };
 
-// Save workout progress
-export const useSaveWorkoutProgress = () => {
+
+// FIXED: Complete workout session - simplified approach
+export const useCompleteWorkoutSession = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ planId, weekNumber, dayNumber, workoutId, exerciseData }) => {
-      // Save individual exercise progress
-      const promises = Object.entries(exerciseData).map(([index, data]) => {
-        if (data.sets.length > 0 || data.completed || data.notes) {
-          return workoutPlanService.updateExerciseProgress(
-            planId,
-            weekNumber,
-            dayNumber,
-            index, // Using index as workout index
-            index, // Using index as exercise index
-            {
-              completedSets: data.sets,
-              isCompleted: data.completed,
-              notes: data.notes,
-            }
-          );
-        }
-        return Promise.resolve();
-      });
+    mutationFn: async ({ planId, weekNumber, dayNumber, workoutId, sessionData }) => {
+      console.log('🏁 Completing workout session:', { planId, weekNumber, dayNumber, workoutId });
       
-      return Promise.all(promises);
+      // Use the correct function from the service
+      return await workoutPlanService.completeWorkoutSession(
+        planId, 
+        weekNumber, 
+        dayNumber, 
+        workoutId, 
+        sessionData
+      );
     },
     onSuccess: (data, variables) => {
+      console.log('✅ Workout completed successfully');
       // Invalidate related queries
       queryClient.invalidateQueries({ 
         queryKey: workoutKeys.detail(variables.planId) 
       });
+      queryClient.invalidateQueries({ 
+        queryKey: [...workoutKeys.progress(), variables.planId] 
+      });
+    },
+    onError: (error) => {
+      console.error('❌ Failed to complete workout:', error);
+    }
+  });
+};
+
+// FIXED: Save workout progress
+export const useSaveWorkoutProgress = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ planId, weekNumber, dayNumber, workoutId, sessionData }) => {
+      console.log('💾 Saving workout progress:', { planId, weekNumber, dayNumber, workoutId });
+      
+      // Use the correct function from the service
+      return await workoutPlanService.saveWorkoutSessionProgress(
+        planId, 
+        weekNumber, 
+        dayNumber, 
+        workoutId, 
+        sessionData
+      );
+    },
+    onSuccess: (data, variables) => {
+      console.log('✅ Progress saved successfully');
+      // Optionally invalidate queries to refresh UI
       queryClient.invalidateQueries({ 
         queryKey: workoutKeys.session(
           variables.planId,
@@ -311,32 +334,25 @@ export const useSaveWorkoutProgress = () => {
         ) 
       });
     },
+    onError: (error) => {
+      console.error('❌ Failed to save progress:', error);
+    }
   });
 };
 
-// Complete workout session
-export const useCompleteWorkoutSession = () => {
+// Add progress entry (for body measurements, weight, etc.) - Keep this unchanged
+export const useAddProgressEntry = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ planId, weekNumber, dayNumber, workoutId, sessionData }) =>
-      workoutPlanService.completeWorkoutSession(
-        planId, 
-        weekNumber, 
-        dayNumber, 
-        workoutId, 
-        sessionData
-      ),
+    mutationFn: ({ planId, progressData }) => 
+      workoutPlanService.addProgressEntry(planId, progressData),
     onSuccess: (data, variables) => {
-      // Invalidate all related data
       queryClient.invalidateQueries({ 
-        queryKey: workoutKeys.detail(variables.planId) 
+        queryKey: [...workoutKeys.progress(), variables.planId] 
       });
       queryClient.invalidateQueries({ 
         queryKey: workoutKeys.stats(variables.planId) 
-      });
-      queryClient.invalidateQueries({ 
-        queryKey: workoutKeys.progress() 
       });
     },
   });
@@ -357,6 +373,38 @@ export const useStartWorkoutSession = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ 
         queryKey: workoutKeys.detail(variables.planId) 
+      });
+    },
+  });
+};
+
+
+
+// Update progress entry
+export const useUpdateProgressEntry = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ planId, progressId, updateData }) => 
+      workoutPlanService.updateProgressEntry(planId, progressId, updateData),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ 
+        queryKey: [...workoutKeys.progress(), variables.planId] 
+      });
+    },
+  });
+};
+
+// Delete progress entry
+export const useDeleteProgressEntry = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ planId, progressId }) => 
+      workoutPlanService.deleteProgressEntry(planId, progressId),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ 
+        queryKey: [...workoutKeys.progress(), variables.planId] 
       });
     },
   });

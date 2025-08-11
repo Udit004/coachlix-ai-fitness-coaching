@@ -65,6 +65,18 @@ export default function WorkoutSessionPage() {
     getProgressPercentage,
   } = useWorkoutSessionStore();
 
+  console.log("🏠 Page.jsx - Store State Debug:", {
+    exerciseData,
+    exerciseDataType: typeof exerciseData,
+    exerciseDataKeys: exerciseData ? Object.keys(exerciseData) : "undefined",
+    timer,
+    completedExercises,
+    notes,
+    sessionDataExists: !!sessionData,
+    workoutDataExists: !!sessionData?.workout,
+    exercisesCount: sessionData?.workout?.exercises?.length || 0,
+  });
+
   // Extract data from response
   const plan = sessionData?.plan;
   const workoutData = sessionData?.workout;
@@ -77,6 +89,37 @@ export default function WorkoutSessionPage() {
     exercisesCount: exercises.length,
     exerciseNames: exercises.map((e) => e.name),
   });
+
+  useEffect(() => {
+    if (sessionData?.workout && sessionData?.plan) {
+      console.log("🔄 Setting workout data in store...");
+      console.log("📊 Workout data to initialize:", {
+        workoutName: sessionData.workout.name,
+        exerciseCount: sessionData.workout.exercises?.length || 0,
+        exercises: sessionData.workout.exercises?.map((e) => e.name),
+      });
+
+      try {
+        // Set the workout data in store first
+        useWorkoutSessionStore
+          .getState()
+          .setWorkoutData(sessionData.workout, sessionData.plan);
+
+        // Then initialize exercise data
+        initializeExerciseData(sessionData.workout);
+
+        console.log("✅ Store initialization completed");
+      } catch (initError) {
+        console.error("❌ Error initializing store:", initError);
+      }
+    } else {
+      console.warn("⚠️ Missing session data for store initialization:", {
+        hasSessionData: !!sessionData,
+        hasWorkout: !!sessionData?.workout,
+        hasPlan: !!sessionData?.plan,
+      });
+    }
+  }, [sessionData, initializeExerciseData]);
 
   // FIXED: Initialize exercise data when workout data changes
   useEffect(() => {

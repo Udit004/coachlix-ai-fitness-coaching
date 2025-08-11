@@ -1,15 +1,15 @@
-// app/api/chat/route.js - Enhanced with User Context Retrieval
+// app/api/chat/route.js - Enhanced with User Context Retrieval and Vector Search
 import { NextResponse } from "next/server";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { HumanMessage, SystemMessage, AIMessage } from "@langchain/core/messages";
 import { createChatMemory, getRecentChatHistory, addToHistory, formatChatHistoryForContext } from "@/lib/memory";
-import { searchFitnessContent, formatSearchResultsForContext } from "@/lib/vectorSearch";
+import { personalizedVectorSearch, hybridSearch, createPersonalizedKnowledgeBase } from "@/lib/vectorSearch";
 import { getFitnessTools } from "@/lib/tools";
 import { AgentExecutor, createToolCallingAgent } from "langchain/agents";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 
-// Import the new context retrieval system
-import { getRelevantContext, formatContextForPrompt } from "@/lib/contextRetrieval";
+// Import the enhanced context retrieval system
+import { getEnhancedUserContext } from "@/lib/contextRetrieval";
 
 export async function POST(request) {
   try {
@@ -129,20 +129,42 @@ export async function POST(request) {
       }, { status: 500 });
     }
 
-    // **NEW: Retrieve relevant context from user's data**
-    console.log("🔍 Retrieving user context...");
+    // **ENHANCED: Retrieve comprehensive user context**
+    console.log("🔍 Retrieving enhanced user context...");
     let userContext;
     try {
-      userContext = await getRelevantContext(userId, message, 1500);
-      console.log("✅ User context retrieved successfully");
+      userContext = await getEnhancedUserContext(userId, message, 2000);
+      console.log("✅ Enhanced user context retrieved successfully");
+      console.log(`📊 Context sections: ${userContext.contextSections || 'N/A'}, Length: ${userContext.totalLength || 'N/A'}`);
     } catch (error) {
-      console.error("❌ Error retrieving user context:", error);
+      console.error("❌ Error retrieving enhanced user context:", error);
       userContext = {
-        profile: "Error loading profile",
-        diet: "Error loading diet plans", 
-        workout: "Error loading workout plans",
-        combined: "Could not load personalized context"
+        profile: "Error loading comprehensive profile",
+        diet: "Error loading detailed diet plans", 
+        workout: "Error loading detailed workout plans",
+        progress: "Error loading progress tracking",
+        combined: "Could not load comprehensive personalized context"
       };
+    }
+
+    // **NEW: Perform personalized vector search**
+    console.log("🔍 Performing personalized vector search...");
+    let vectorSearchResults = [];
+    try {
+      // Use hybrid search for better results
+      vectorSearchResults = await hybridSearch(message, userId, 4);
+      console.log(`✅ Vector search completed: ${vectorSearchResults.length} results found`);
+      
+      // Create personalized knowledge base if this is a new user interaction
+      if (vectorSearchResults.length === 0) {
+        console.log("🧠 Creating personalized knowledge base...");
+        await createPersonalizedKnowledgeBase(userId);
+        // Retry search after creating personalized content
+        vectorSearchResults = await personalizedVectorSearch(message, userId, 3);
+      }
+    } catch (error) {
+      console.error("❌ Error in personalized vector search:", error);
+      // Continue without vector search if there's an error
     }
 
     // Enhanced system prompts with memory and tool awareness
@@ -307,31 +329,41 @@ Focus on:
     let chatHistoryContext = '';
     try {
       const recentHistory = await getRecentChatHistory(userId, 5); // Last 5 exchanges
-      chatHistoryContext = formatChatHistoryForContext(recentHistory, 1000);
+      chatHistoryContext = formatChatHistoryForContext(recentHistory, 800);
     } catch (error) {
       console.error("Error loading chat history:", error);
       // Continue without history if there's an error
     }
 
-    // **NEW: Get relevant context from user's personal data**
-    const personalizedContext = formatContextForPrompt(userContext);
-
-    // Search for relevant fitness content using vector search with error handling
-    let vectorSearchContext = '';
+    // **ENHANCED: Format vector search results for context**
+    let vectorContext = '';
     try {
-      const searchResults = await searchFitnessContent(message, 3);
-      vectorSearchContext = formatSearchResultsForContext(searchResults, 800); // Reduced to make room for personal context
+      vectorContext = formatVectorResultsForContext(vectorSearchResults, 800);
     } catch (error) {
-      console.error("Error performing vector search:", error);
-      // Continue without vector search if there's an error
+      console.error("Error formatting vector search results:", error);
     }
 
-    // **ENHANCED: Combine all context with prioritized personal data**
-    const fullSystemPrompt = `${systemPrompt}${personalContext}${personalizedContext}${chatHistoryContext}${vectorSearchContext}
+    // **ENHANCED: Combine all context with intelligent prioritization**
+    const fullSystemPrompt = `${systemPrompt}${personalContext}
 
-Current conversation context: The user is asking about fitness/health and you should provide helpful, personalized advice based on their specific profile, current diet plans, and workout plans shown in the context above. Use the available tools when you need specific data or want to save information for the user.
+${userContext.combined || ''}
 
-CRITICAL: Always reference the user's specific context when relevant - their current plans, goals, progress, and preferences. Make your advice truly personalized based on their data.`;
+${chatHistoryContext}
+
+${vectorContext}
+
+Current conversation context: The user is asking about fitness/health and you should provide helpful, personalized advice based on their comprehensive context shown above. This includes their current diet plans, workout plans, progress tracking, and personalized knowledge base.
+
+CRITICAL INSTRUCTIONS:
+1. Always reference the user's specific context when relevant - their current plans, goals, progress, and preferences
+2. Make your advice truly personalized based on their actual data from diet plans, workout plans, and progress tracking
+3. Use the vector search knowledge base to provide evidence-based recommendations
+4. Use tools when you need specific data or want to save/update information for the user
+5. If their current plans need modification based on their question, suggest using the update tools
+6. Reference their recent progress and activities to keep them motivated
+7. Acknowledge their equipment availability and dietary preferences in recommendations
+
+Remember: You have access to their complete fitness journey context - use it to provide personalized, actionable advice!`;
 
     // Create prompt template for tool-calling agent
     let prompt;
@@ -407,7 +439,7 @@ CRITICAL: Always reference the user's specific context when relevant - their cur
     // Execute the agent with the user's message
     let result;
     try {
-      console.log("🤖 Executing agent with enhanced context...");
+      console.log("🤖 Executing agent with comprehensive context...");
       result = await agentExecutor.invoke({
         input: message,
         chat_history: chatHistory,
@@ -469,24 +501,32 @@ CRITICAL: Always reference the user's specific context when relevant - their cur
       // Continue even if saving fails - don't break the response
     }
 
-    // **ENHANCED: Generate contextual suggestions based on user's actual data**
-    const suggestions = generateEnhancedSuggestions(aiResponse, plan, message, profile, userContext);
+    // **ENHANCED: Generate contextual suggestions based on comprehensive user data**
+    const suggestions = generateComprehensiveSuggestions(aiResponse, plan, message, profile, userContext, vectorSearchResults);
 
-    // **NEW: Return context information for debugging (optional)**
+    // **NEW: Return enhanced response data**
     const responseData = {
       success: true,
       response: aiResponse,
       suggestions: suggestions,
     };
 
-    // Add context info for development debugging
+    // Add comprehensive context info for development debugging
     if (process.env.NODE_ENV === 'development') {
       responseData.debug = {
         contextUsed: {
-          profileLoaded: userContext.profile !== "No user profile found",
-          dietPlansFound: !userContext.diet.includes("No active diet plans"),
-          workoutPlansFound: !userContext.workout.includes("No active workout plans"),
-          contextLength: userContext.totalLength
+          profileLoaded: userContext.profile && !userContext.profile.includes("Error loading"),
+          dietPlansFound: userContext.diet && !userContext.diet.includes("No active diet plans"),
+          workoutPlansFound: userContext.workout && !userContext.workout.includes("No active workout plans"),
+          progressTracking: userContext.progress && !userContext.progress.includes("Error loading"),
+          vectorResultsCount: vectorSearchResults.length,
+          contextTotalLength: userContext.totalLength || 0,
+          contextSections: userContext.contextSections || 0
+        },
+        vectorSearch: {
+          resultsFound: vectorSearchResults.length,
+          topResultTitles: vectorSearchResults.slice(0, 3).map(r => r.metadata?.title || 'Unknown'),
+          searchQuality: vectorSearchResults.filter(r => r.finalRelevanceScore > 0.7).length
         }
       };
     }
@@ -523,9 +563,48 @@ CRITICAL: Always reference the user's specific context when relevant - their cur
 }
 
 /**
- * Enhanced suggestion generation with user context awareness
+ * Format vector search results for LLM context
  */
-function generateEnhancedSuggestions(response, plan, userMessage, profile, userContext) {
+function formatVectorResultsForContext(results, maxLength = 800) {
+  if (!results || results.length === 0) {
+    return '';
+  }
+
+  let context = `\n🧠 === RELEVANT KNOWLEDGE BASE ===\n`;
+  let remainingLength = maxLength - context.length;
+
+  for (const result of results) {
+    if (remainingLength <= 100) break; // Save space for closing
+
+    let resultText = '';
+    if (result.formattedContent) {
+      resultText = result.formattedContent;
+    } else {
+      resultText = `\n📚 ${result.metadata?.title || 'Knowledge'}\n${result.content}`;
+      if (result.finalRelevanceScore && result.finalRelevanceScore > 0.7) {
+        resultText += ` ⭐ (Highly Relevant)`;
+      }
+    }
+
+    if (resultText.length <= remainingLength) {
+      context += resultText + '\n';
+      remainingLength -= resultText.length + 1;
+    } else {
+      // Truncate but keep essential info
+      const truncated = resultText.substring(0, remainingLength - 50) + '...\n';
+      context += truncated;
+      break;
+    }
+  }
+
+  context += `=== END KNOWLEDGE BASE ===\n`;
+  return context;
+}
+
+/**
+ * Enhanced suggestion generation with comprehensive user context awareness
+ */
+function generateComprehensiveSuggestions(response, plan, userMessage, profile, userContext, vectorResults) {
   const suggestions = [];
   
   // Validate inputs
@@ -533,91 +612,139 @@ function generateEnhancedSuggestions(response, plan, userMessage, profile, userC
     return getDefaultSuggestions(plan);
   }
 
-  // Analyze the response content and user context for better suggestions
+  // Analyze the response content and comprehensive user context
   const responseLower = response.toLowerCase();
   const messageLower = (userMessage || '').toLowerCase();
-  const hasActiveDiet = userContext?.diet && !userContext.diet.includes("No active diet plans");
-  const hasActiveWorkout = userContext?.workout && !userContext.workout.includes("No active workout plans");
+  
+  // Check user's actual context
+  const hasActiveDiet = userContext?.diet && !userContext.diet.includes("No active diet plans") && !userContext.diet.includes("Error loading");
+  const hasActiveWorkout = userContext?.workout && !userContext.workout.includes("No active workout plans") && !userContext.workout.includes("Error loading");
+  const hasProgressData = userContext?.progress && !userContext.progress.includes("Error loading progress");
+  const hasVectorResults = vectorResults && vectorResults.length > 0;
 
-  // Context-aware suggestions based on user's actual data
-  if (hasActiveDiet && (responseLower.includes('meal') || responseLower.includes('diet'))) {
-    suggestions.push("Show me today's meal plan");
-    suggestions.push("Track my meal calories");
-  }
-
-  if (hasActiveWorkout && (responseLower.includes('workout') || responseLower.includes('exercise'))) {
-    suggestions.push("Show me my current workout");
-    suggestions.push("Track my workout progress");
-  }
-
-  // Profile-aware suggestions
-  if (profile?.fitnessGoal) {
-    if (profile.fitnessGoal.includes('Weight Loss') && suggestions.length < 3) {
-      suggestions.push("Calculate my weight loss calories");
-    }
-    if (profile.fitnessGoal.includes('Muscle Gain') && suggestions.length < 3) {
-      suggestions.push("Show me my protein targets");
+  // Context-aware suggestions based on user's actual comprehensive data
+  if (hasActiveDiet && (responseLower.includes('meal') || responseLower.includes('diet') || responseLower.includes('nutrition'))) {
+    suggestions.push("Show me today's detailed meal plan");
+    if (userContext.diet.includes('calories') || userContext.diet.includes('protein')) {
+      suggestions.push("Track my current nutrition progress");
     }
   }
 
-  // Plan-specific intelligent suggestions
-  if (plan === 'badminton') {
+  if (hasActiveWorkout && (responseLower.includes('workout') || responseLower.includes('exercise') || responseLower.includes('training'))) {
+    suggestions.push("Show my current workout schedule");
+    if (userContext.workout.includes('Week') || userContext.workout.includes('week')) {
+      suggestions.push("Update my workout intensity");
+    }
+  }
+
+  if (hasProgressData && (responseLower.includes('progress') || responseLower.includes('track'))) {
+    suggestions.push("View my detailed progress report");
+    if (userContext.progress.includes('weight') || userContext.progress.includes('Weight')) {
+      suggestions.push("Log my latest measurements");
+    }
+  }
+
+  // Vector search result-based suggestions
+  if (hasVectorResults && suggestions.length < 3) {
+    const topResult = vectorResults[0];
+    if (topResult?.metadata?.type === 'workout' && !suggestions.some(s => s.includes('workout'))) {
+      suggestions.push("Create a workout based on this knowledge");
+    } else if (topResult?.metadata?.type === 'nutrition' && !suggestions.some(s => s.includes('nutrition'))) {
+      suggestions.push("Get personalized nutrition advice");
+    }
+  }
+
+  // Profile-aware intelligent suggestions
+  if (profile?.fitnessGoal && suggestions.length < 3) {
+    if (profile.fitnessGoal.includes('Weight Loss')) {
+      if (!suggestions.some(s => s.includes('calorie'))) {
+        suggestions.push("Calculate my weight loss calories");
+      }
+      if (hasActiveDiet && !suggestions.some(s => s.includes('deficit'))) {
+        suggestions.push("Check my calorie deficit progress");
+      }
+    } else if (profile.fitnessGoal.includes('Muscle Gain')) {
+      if (!suggestions.some(s => s.includes('protein'))) {
+        suggestions.push("Check my daily protein targets");
+      }
+      if (hasActiveWorkout && !suggestions.some(s => s.includes('strength'))) {
+        suggestions.push("Track my strength improvements");
+      }
+    } else if (profile.fitnessGoal.includes('badminton')) {
+      if (!suggestions.some(s => s.includes('badminton'))) {
+        suggestions.push("Show badminton-specific training");
+      }
+    }
+  }
+
+  // Plan-specific enhanced suggestions
+  if (plan === 'badminton' && suggestions.length < 4) {
     if (responseLower.includes('drill') || responseLower.includes('practice')) {
-      suggestions.push("Show me more drills like this");
+      suggestions.push("Create personalized drill routine");
     }
     if (responseLower.includes('technique') || responseLower.includes('form')) {
-      suggestions.push("How do I fix my form?");
+      suggestions.push("Analyze my technique improvement");
     }
-    if (responseLower.includes('footwork')) {
-      suggestions.push("Footwork improvement tips");
+    if (!suggestions.some(s => s.includes('footwork'))) {
+      suggestions.push("Focus on footwork drills");
     }
-    if (suggestions.length < 4) {
-      suggestions.push("Create a badminton training plan");
-    }
-  } else if (plan === 'weight-loss') {
+  } else if (plan === 'weight-loss' && suggestions.length < 4) {
     if (responseLower.includes('meal') || responseLower.includes('food')) {
-      suggestions.push("Look up calories for [food name]");
+      suggestions.push("Look up calories for specific foods");
     }
-    if (responseLower.includes('calorie') || responseLower.includes('deficit')) {
-      suggestions.push("Calculate my daily calorie needs");
+    if (responseLower.includes('plateau') || responseLower.includes('stuck')) {
+      suggestions.push("Break through weight loss plateau");
     }
-    if (suggestions.length < 4) {
-      suggestions.push("Update my weight loss plan");
+    if (!suggestions.some(s => s.includes('deficit'))) {
+      suggestions.push("Adjust my calorie deficit");
     }
-  } else if (plan === 'muscle-gain') {
+  } else if (plan === 'muscle-gain' && suggestions.length < 4) {
     if (responseLower.includes('protein') || responseLower.includes('nutrition')) {
-      suggestions.push("Look up protein in [food name]");
+      suggestions.push("Optimize my muscle building nutrition");
     }
-    if (responseLower.includes('workout') || responseLower.includes('training')) {
-      suggestions.push("Update my workout plan");
+    if (responseLower.includes('plateau') || responseLower.includes('stuck')) {
+      suggestions.push("Overcome strength plateau");
     }
-    if (suggestions.length < 4) {
-      suggestions.push("Track my strength progress");
+    if (!suggestions.some(s => s.includes('progressive'))) {
+      suggestions.push("Plan progressive overload strategy");
     }
   }
 
-  // Universal context-aware suggestions
+  // Universal context-aware suggestions with comprehensive data awareness
   if (responseLower.includes('tool') || responseLower.includes('calculate')) {
-    suggestions.push("What else can you help me track?");
-  }
-  if (responseLower.includes('plan') || responseLower.includes('routine')) {
-    suggestions.push("Save this plan for me");
+    if (!suggestions.some(s => s.includes('metrics'))) {
+      suggestions.push("Calculate updated health metrics");
+    }
   }
 
-  // Fill remaining slots with contextual suggestions
+  if (responseLower.includes('plan') || responseLower.includes('routine')) {
+    if (!hasActiveDiet && !suggestions.some(s => s.includes('diet'))) {
+      suggestions.push("Create comprehensive diet plan");
+    }
+    if (!hasActiveWorkout && !suggestions.some(s => s.includes('workout'))) {
+      suggestions.push("Design detailed workout routine");
+    }
+  }
+
+  // Fill remaining slots with intelligent contextual suggestions
   const contextualSuggestions = [
-    hasActiveDiet ? "Review my diet plan" : "Create a diet plan for me",
-    hasActiveWorkout ? "Show my workout schedule" : "Design my workout routine", 
-    profile?.fitnessGoal ? `Help me achieve my ${profile.fitnessGoal} goal` : "Set my fitness goals",
-    "Calculate my health metrics",
-    "Track my progress",
-    "What should I focus on next?"
+    hasActiveDiet ? "Review and modify my diet plan" : "Create personalized diet plan",
+    hasActiveWorkout ? "Analyze my workout performance" : "Design custom workout routine", 
+    hasProgressData ? "View comprehensive progress analysis" : "Start tracking my progress",
+    profile?.fitnessGoal ? `Accelerate my ${profile.fitnessGoal} results` : "Define clear fitness goals",
+    "Get evidence-based fitness advice",
+    hasVectorResults ? "Explore more personalized content" : "Build my knowledge base",
+    "What should I prioritize this week?",
+    "Schedule my next milestone check-in"
   ];
 
   // Add contextual suggestions to fill remaining slots
   for (const suggestion of contextualSuggestions) {
     if (suggestions.length >= 4) break;
-    if (!suggestions.includes(suggestion) && !suggestions.some(s => s.includes(suggestion.split(' ')[0]))) {
+    if (!suggestions.includes(suggestion) && !suggestions.some(s => 
+      s.toLowerCase().includes(suggestion.split(' ')[0].toLowerCase()) || 
+      suggestion.toLowerCase().includes(s.split(' ')[0].toLowerCase())
+    )) {
       suggestions.push(suggestion);
     }
   }
@@ -657,4 +784,42 @@ function getDefaultSuggestions(plan) {
   };
   
   return defaultSuggestions[plan] || defaultSuggestions.general;
+}
+
+/**
+ * LEGACY FUNCTION: Search fitness content using traditional methods
+ * Kept for backward compatibility but enhanced with error handling
+ */
+async function searchFitnessContent(query, limit = 3) {
+  try {
+    // This would typically search a knowledge base
+    // For now, return empty array to avoid errors
+    console.log("Legacy fitness content search called - consider migrating to vector search");
+    return [];
+  } catch (error) {
+    console.error("Error in legacy fitness content search:", error);
+    return [];
+  }
+}
+
+/**
+ * Format search results for context (legacy compatibility)
+ */
+function formatSearchResultsForContext(results, maxLength = 500) {
+  if (!results || results.length === 0) return '';
+  
+  let context = '\n=== FITNESS KNOWLEDGE ===\n';
+  let remainingLength = maxLength - context.length;
+  
+  for (const result of results) {
+    if (remainingLength <= 50) break;
+    
+    const resultText = `${result.title || 'Fitness Tip'}: ${result.content || result.summary || ''}\n`;
+    if (resultText.length <= remainingLength) {
+      context += resultText;
+      remainingLength -= resultText.length;
+    }
+  }
+  
+  return context;
 }

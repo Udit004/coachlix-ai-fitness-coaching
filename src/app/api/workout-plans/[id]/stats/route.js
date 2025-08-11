@@ -7,7 +7,7 @@ import { verifyUserToken } from "@/lib/verifyUser";
 // GET /api/workout-plans/[id]/stats - Get workout statistics
 export async function GET(request, { params }) {
   try {
-    const { id: planId } = params;
+    const { id: planId } = await params;
     
     // Verify authentication
     const authHeader =
