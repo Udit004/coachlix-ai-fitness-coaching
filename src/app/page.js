@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { app } from "../lib/firebase"; // Make sure this path is correct
 import { useAuthContext } from "../auth/AuthContext";
+import RecentActivitySection from "@/components/RecentActivitySection";
 
 import {
   Bot,
@@ -260,25 +261,6 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
-      {/* Notification Status Bar */}
-      {/* {mounted && (
-        <div className="bg-blue-100 px-4 py-2 text-center text-sm">
-          <span className="mr-4">
-            Notifications:{" "}
-            {notificationPermission === "granted"
-              ? "✅ Enabled"
-              : "❌ Disabled"}
-          </span>
-          {fcmToken && (
-            <button
-              onClick={testNotification}
-              className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600"
-            >
-              Test Notification
-            </button>
-          )}
-        </div>
-      )} */}
 
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-blue-50 via-white to-purple-50 pt-20 pb-32 overflow-hidden">
@@ -320,6 +302,8 @@ useEffect(() => {
                 Start Your Plan
               </button>
             </div>
+
+            <RecentActivitySection />
 
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-2xl mx-auto">
