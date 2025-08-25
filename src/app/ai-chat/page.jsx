@@ -250,7 +250,7 @@ const AIChatPage = () => {
     }));
   };
 
-  // Handle sending messages with enhanced error handling
+  // Handle sending messages with streaming support
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isTyping) return;
 
@@ -269,58 +269,119 @@ const AIChatPage = () => {
     setIsTyping(true);
     setError(null);
 
+    // Create initial AI message for streaming
+    const aiMessageId = Date.now() + 1;
+    const aiMessage = {
+      id: aiMessageId,
+      role: "ai",
+      content: "",
+      timestamp: new Date(),
+      suggestions: [],
+    };
+
+    addMessage(aiMessage);
+
     try {
-      // Send message using axios
-      const response = await axios.post("/api/chat", {
-        message: currentInput,
-        plan: selectedPlan,
-        conversationHistory: messages,
-        profile: userProfile,
-        userId: authUser?.uid,
+      // Use streaming API
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: currentInput,
+          plan: selectedPlan,
+          conversationHistory: messages,
+          profile: userProfile,
+          userId: authUser?.uid,
+          streaming: true, // Enable streaming
+        }),
       });
 
-      const data = response.data;
-
-      if (!data.success) {
-        throw new Error(data.message || "Failed to get AI response");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const aiResponse = {
-        id: Date.now() + 1,
-        role: "ai",
-        content: data.response,
-        timestamp: new Date(),
-        suggestions: data.suggestions || [],
-      };
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let streamingContent = "";
+      let suggestions = [];
 
-      addMessage(aiResponse);
+      // Read the stream
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
 
-      // Auto-save chat using the enhanced store
-      if (authUser?.uid) {
-        const updatedMessages = [...messages, userMessage, aiResponse];
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
 
-        if (isNewChat && updatedMessages.length >= 2) {
-          // Save new chat after first exchange
-          const title = generateChatTitle(updatedMessages);
-          const chatId = await saveHistoryChat(
-            authUser.uid,
-            title,
-            selectedPlan,
-            updatedMessages
-          );
-          if (chatId) {
-            setCurrentChatId(chatId);
-            setIsNewChat(false);
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              switch (data.type) {
+                case 'connection':
+                  console.log('Connected to streaming chat');
+                  break;
+                  
+                case 'word':
+                  streamingContent += data.word;
+                  // Update the message content in real-time
+                  updateLastMessage({
+                    ...aiMessage,
+                    content: streamingContent,
+                  });
+                  break;
+                  
+                case 'complete':
+                  // Finalize the message with full content and suggestions
+                  const finalMessage = {
+                    ...aiMessage,
+                    content: data.fullResponse,
+                    suggestions: data.suggestions || [],
+                  };
+                  updateLastMessage(finalMessage);
+                  
+                  // Auto-save chat
+                  if (authUser?.uid) {
+                    const updatedMessages = [...messages, userMessage, finalMessage];
+                    
+                    if (isNewChat && updatedMessages.length >= 2) {
+                      const title = generateChatTitle(updatedMessages);
+                      const chatId = await saveHistoryChat(
+                        authUser.uid,
+                        title,
+                        selectedPlan,
+                        updatedMessages
+                      );
+                      if (chatId) {
+                        setCurrentChatId(chatId);
+                        setIsNewChat(false);
+                      }
+                    } else if (currentChatId) {
+                      await updateHistoryChat(currentChatId, updatedMessages);
+                    }
+                  }
+                  break;
+                  
+                case 'error':
+                  throw new Error(data.error);
+                  
+                default:
+                  console.log('Unknown streaming data type:', data.type);
+              }
+            } catch (parseError) {
+              console.error('Error parsing streaming data:', parseError);
+            }
           }
-        } else if (currentChatId) {
-          // Update existing chat
-          await updateHistoryChat(currentChatId, updatedMessages);
         }
       }
+
     } catch (error) {
       console.error("Error sending message:", error);
 
-      // Enhanced error handling for LangChain-specific errors
       let errorMessage = error.message;
       if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
@@ -328,15 +389,14 @@ const AIChatPage = () => {
 
       setError(errorMessage);
 
-      const errorResponse = {
-        id: Date.now() + 1,
-        role: "ai",
-        content: `I apologize, but I'm having trouble responding right now. ${errorMessage}`,
-        timestamp: new Date(),
+      // Update the AI message to show error
+      const errorMessageContent = `I apologize, but I'm having trouble responding right now. ${errorMessage}`;
+      updateLastMessage({
+        ...aiMessage,
+        content: errorMessageContent,
         suggestions: ["Try again", "Check connection", "Refresh page"],
         isError: true,
-      };
-      addMessage(errorResponse);
+      });
     } finally {
       setIsTyping(false);
     }
@@ -596,9 +656,11 @@ const AIChatPage = () => {
                   messagesEndRef={messagesEndRef}
                   formatTime={formatTime}
                   copyToClipboard={copyToClipboard}
-                  currentChatId={currentChatId}
-                  isNewChat={isNewChat}
-                  onLoad={() => handleComponentLoad("chat")}
+                  streamingMessageId={isTyping ? messages[messages.length - 1]?.id : null}
+                  streamingContent={isTyping ? messages[messages.length - 1]?.content || "" : ""}
+                  onStreamingComplete={(content) => {
+                    console.log("Streaming completed:", content);
+                  }}
                 />
               </Suspense>
             </div>

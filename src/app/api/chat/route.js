@@ -1,4 +1,4 @@
-// app/api/chat/route.js - Enhanced with User Context Retrieval and Vector Search
+// app/api/chat/route.js - Enhanced with User Context Retrieval, Vector Search, and Streaming Support
 import { NextResponse } from "next/server";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { HumanMessage, SystemMessage, AIMessage } from "@langchain/core/messages";
@@ -7,13 +7,17 @@ import { personalizedVectorSearch, hybridSearch, createPersonalizedKnowledgeBase
 import { getFitnessTools } from "@/lib/tools";
 import { AgentExecutor, createToolCallingAgent } from "langchain/agents";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
+import { RunnableSequence } from "@langchain/core/runnables";
 
 // Import the enhanced context retrieval system
 import { getEnhancedUserContext } from "@/lib/contextRetrieval";
 
+// Import the enhanced agent
+import { EnhancedAgent, EnhancedErrorHandler, retryWithBackoff } from "@/lib/enhancedAgent";
+
 export async function POST(request) {
   try {
-    const { message, plan, conversationHistory, profile, userId } = await request.json();
+    const { message, plan, conversationHistory, profile, userId, streaming = false } = await request.json();
 
     // Validate required fields
     if (!message || !userId) {
@@ -21,6 +25,17 @@ export async function POST(request) {
         success: false,
         error: "Message and userId are required"
       }, { status: 400 });
+    }
+
+    // If streaming is requested, set up SSE response
+    if (streaming) {
+      return handleStreamingResponse(request, {
+        message,
+        plan,
+        conversationHistory,
+        profile,
+        userId
+      });
     }
 
     // Debug environment variables
@@ -45,7 +60,7 @@ export async function POST(request) {
       }, { status: 500 });
     }
 
-    // Initialize LangChain components
+    // **IMPROVED: Initialize LangChain components with better error handling**
     let llm;
     try {
       const apiKey = process.env.GEMINI_API_KEY;
@@ -55,56 +70,35 @@ export async function POST(request) {
 
       console.log("Attempting ChatGoogleGenerativeAI initialization...");
 
-      try {
-        llm = new ChatGoogleGenerativeAI({
-          apiKey: apiKey.trim(),
-          model: "gemini-1.5-flash",
-          temperature: 0.8,
-          maxOutputTokens: 1500,
-        });
-        console.log("✓ ChatGoogleGenerativeAI initialized with 'model' parameter");
-      } catch (error1) {
-        console.log("❌ 'model' parameter failed, trying 'modelName'...");
-        
-        try {
-          llm = new ChatGoogleGenerativeAI({
-            apiKey: apiKey.trim(),
-            modelName: "gemini-1.5-flash",
-            temperature: 0.8,
-            maxOutputTokens: 1500,
-          });
-          console.log("✓ ChatGoogleGenerativeAI initialized with 'modelName' parameter");
-        } catch (error2) {
-          console.log("❌ gemini-1.5-flash failed, trying gemini-pro...");
-          
-          try {
-            llm = new ChatGoogleGenerativeAI({
-              apiKey: apiKey.trim(),
-              modelName: "gemini-pro",
-              temperature: 0.8,
-            });
-            console.log("✓ ChatGoogleGenerativeAI initialized with gemini-pro");
-          } catch (error3) {
-            console.log("❌ All model variations failed, trying minimal config...");
-            
-            try {
-              llm = new ChatGoogleGenerativeAI({
-                apiKey: apiKey.trim(),
-              });
-              console.log("✓ ChatGoogleGenerativeAI initialized with minimal config");
-            } catch (error4) {
-              console.log("❌ All ChatGoogleGenerativeAI approaches failed");
-              console.error("All errors:", { 
-                error1: error1.message, 
-                error2: error2.message, 
-                error3: error3.message,
-                error4: error4.message 
-              });
-              throw new Error(`Failed to initialize ChatGoogleGenerativeAI after all attempts: ${error4.message}`);
-            }
+      // **ENHANCED: Use more robust model configuration**
+      llm = new ChatGoogleGenerativeAI({
+        apiKey: apiKey.trim(),
+        model: "gemini-1.5-flash",
+        temperature: 0.7, // Slightly lower for more consistent responses
+        maxOutputTokens: 2000, // Increased for more detailed responses
+        topP: 0.9, // Add top-p sampling for better response quality
+        topK: 40, // Add top-k sampling
+        safetySettings: [
+          {
+            category: "HARM_CATEGORY_HARASSMENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_HATE_SPEECH", 
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
           }
-        }
-      }
+        ]
+      });
+      
+      console.log("✓ ChatGoogleGenerativeAI initialized successfully");
       
     } catch (error) {
       console.error("Error initializing ChatGoogleGenerativeAI:", error);
@@ -113,7 +107,7 @@ export async function POST(request) {
         success: false,
         error: "Failed to initialize AI model. This appears to be a LangChain configuration issue.",
         details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-        suggestion: "Try: npm install @langchain/google-genai@0.2.15 or switch to Google's direct SDK"
+        suggestion: "Try: npm install @langchain/google-genai@0.2.16 or switch to Google's direct SDK"
       }, { status: 500 });
     }
 
@@ -121,6 +115,7 @@ export async function POST(request) {
     let tools;
     try {
       tools = getFitnessTools();
+      console.log(`✓ Loaded ${tools.length} fitness tools`);
     } catch (error) {
       console.error("Error getting fitness tools:", error);
       return NextResponse.json({
@@ -129,11 +124,11 @@ export async function POST(request) {
       }, { status: 500 });
     }
 
-    // **ENHANCED: Retrieve comprehensive user context**
+    // **ENHANCED: Retrieve comprehensive user context with better error handling**
     console.log("🔍 Retrieving enhanced user context...");
     let userContext;
     try {
-      userContext = await getEnhancedUserContext(userId, message, 2000);
+      userContext = await getEnhancedUserContext(userId, message, 2500); // Increased context length
       console.log("✅ Enhanced user context retrieved successfully");
       console.log(`📊 Context sections: ${userContext.contextSections || 'N/A'}, Length: ${userContext.totalLength || 'N/A'}`);
     } catch (error) {
@@ -147,12 +142,12 @@ export async function POST(request) {
       };
     }
 
-    // **NEW: Perform personalized vector search**
+    // **ENHANCED: Perform personalized vector search with better error handling**
     console.log("🔍 Performing personalized vector search...");
     let vectorSearchResults = [];
     try {
       // Use hybrid search for better results
-      vectorSearchResults = await hybridSearch(message, userId, 4);
+      vectorSearchResults = await hybridSearch(message, userId, 5); // Increased results
       console.log(`✅ Vector search completed: ${vectorSearchResults.length} results found`);
       
       // Create personalized knowledge base if this is a new user interaction
@@ -160,14 +155,14 @@ export async function POST(request) {
         console.log("🧠 Creating personalized knowledge base...");
         await createPersonalizedKnowledgeBase(userId);
         // Retry search after creating personalized content
-        vectorSearchResults = await personalizedVectorSearch(message, userId, 3);
+        vectorSearchResults = await personalizedVectorSearch(message, userId, 4);
       }
     } catch (error) {
       console.error("❌ Error in personalized vector search:", error);
       // Continue without vector search if there's an error
     }
 
-    // Enhanced system prompts with memory and tool awareness
+    // **ENHANCED: Improved system prompts with better personalization**
     const systemPrompts = {
       general: `You are Alex, a friendly and enthusiastic personal fitness coach with 10+ years of experience. You're like a supportive friend who happens to be a fitness expert.
 
@@ -200,7 +195,8 @@ Always:
 - Explain the "why" behind your recommendations
 - Use tools when you need specific data or want to save information
 - Adjust your communication style to match their energy level
-- Be encouraging but realistic about timelines and expectations`,
+- Be encouraging but realistic about timelines and expectations
+- Reference their specific context data when making recommendations`,
 
       badminton: `You are Coach Maya, a former professional badminton player turned personal coach. You're passionate about the sport and love sharing your knowledge with players of all levels.
 
@@ -229,7 +225,8 @@ Remember to:
 - Provide drills that match their skill level
 - Discuss both technique and strategy
 - Consider their physical fitness level for conditioning advice
-- Share motivation and mental game tips from your experience`,
+- Share motivation and mental game tips from your experience
+- Reference their specific badminton context and progress`,
 
       "weight-loss": `You are Dr. Sarah (call me Sarah!), a certified nutritionist and wellness coach who specializes in sustainable weight management. You believe in creating lasting lifestyle changes rather than quick fixes.
 
@@ -260,7 +257,8 @@ Always:
 - Focus on addition (adding healthy foods) rather than elimination
 - Use tools to provide accurate nutritional data
 - Encourage them to listen to their body
-- Remind them that setbacks are normal and part of the process`,
+- Remind them that setbacks are normal and part of the process
+- Reference their specific weight loss context and progress`,
 
       "muscle-gain": `You are Coach Mike, a certified strength and conditioning specialist with a passion for helping people build muscle and strength safely and effectively.
 
@@ -295,12 +293,13 @@ Focus on:
 - Creating progressive workout plans using the update_workout_plan tool
 - Optimizing nutrition for muscle growth with accurate data
 - Managing recovery and preventing burnout
-- Building sustainable habits for long-term success`
+- Building sustainable habits for long-term success
+- Reference their specific muscle gain context and progress`
     };
 
     let systemPrompt = systemPrompts[plan] || systemPrompts.general;
 
-    // Enhanced personalization with profile context
+    // **ENHANCED: Better personalization with profile context**
     let personalContext = '';
     if (profile && profile.name) {
       personalContext += `\nUser's name: ${profile.name}`;
@@ -325,11 +324,11 @@ Focus on:
       }
     }
 
-    // Get persistent chat history from MongoDB with error handling
+    // **ENHANCED: Get persistent chat history from MongoDB with better error handling**
     let chatHistoryContext = '';
     try {
-      const recentHistory = await getRecentChatHistory(userId, 5); // Last 5 exchanges
-      chatHistoryContext = formatChatHistoryForContext(recentHistory, 800);
+      const recentHistory = await getRecentChatHistory(userId, 6); // Increased to 6 exchanges
+      chatHistoryContext = formatChatHistoryForContext(recentHistory, 1000); // Increased context length
     } catch (error) {
       console.error("Error loading chat history:", error);
       // Continue without history if there's an error
@@ -338,7 +337,7 @@ Focus on:
     // **ENHANCED: Format vector search results for context**
     let vectorContext = '';
     try {
-      vectorContext = formatVectorResultsForContext(vectorSearchResults, 800);
+      vectorContext = formatVectorResultsForContext(vectorSearchResults, 1000); // Increased context length
     } catch (error) {
       console.error("Error formatting vector search results:", error);
     }
@@ -354,79 +353,63 @@ ${vectorContext}
 
 Current conversation context: The user is asking about fitness/health and you should provide helpful, personalized advice based on their comprehensive context shown above. This includes their current diet plans, workout plans, progress tracking, and personalized knowledge base.
 
+IMPORTANT: You MUST use tools to fetch real data when users ask about their specific plans, schedules, or progress. Do not give generic responses - always use the appropriate tool to get the actual data first.
+
 CRITICAL INSTRUCTIONS:
 1. Always reference the user's specific context when relevant - their current plans, goals, progress, and preferences
 2. Make your advice truly personalized based on their actual data from diet plans, workout plans, and progress tracking
 3. Use the vector search knowledge base to provide evidence-based recommendations
-4. Use tools when you need specific data or want to save/update information for the user
-5. If their current plans need modification based on their question, suggest using the update tools
-6. Reference their recent progress and activities to keep them motivated
-7. Acknowledge their equipment availability and dietary preferences in recommendations
+4. IMPORTANT: When users ask about their workout plans, schedules, or specific workout details, ALWAYS use the get_workout_plan tool to retrieve their current workout plans and schedules first
+5. Use tools when you need specific data or want to save/update information for the user
+6. If their current plans need modification based on their question, suggest using the update tools
+7. Reference their recent progress and activities to keep them motivated
+8. Acknowledge their equipment availability and dietary preferences in recommendations
+9. Be specific about their current situation and how your advice applies to them
+10. NEVER give generic responses about workout plans - always fetch the actual data using tools
+11. When users ask "What's my workout schedule?" or "Tell me about my workout plan" or "What should I do this week?" - IMMEDIATELY use get_workout_plan tool to fetch their actual plan data
+
+TOOL USAGE EXAMPLES:
+- For workout plan questions: Use get_workout_plan with {{"userId": "user_id"}} to get detailed schedules
+- For nutrition questions: Use nutrition_lookup with food name
+- For health calculations: Use calculate_health_metrics with user data
+
+SPECIFIC TRIGGERS FOR TOOL USAGE:
+- When user asks "What's my workout plan?" → Use get_workout_plan
+- When user asks "What should I do today?" → Use get_workout_plan
+- When user asks "Tell me about my schedule" → Use get_workout_plan
+- When user asks about food/nutrition → Use nutrition_lookup
+- When user asks about calories/BMI/health → Use calculate_health_metrics
 
 Remember: You have access to their complete fitness journey context - use it to provide personalized, actionable advice!`;
 
-    // Create prompt template for tool-calling agent
-    let prompt;
-    try {
-      prompt = ChatPromptTemplate.fromMessages([
-        ["system", fullSystemPrompt],
-        ["placeholder", "{chat_history}"],
-        ["human", "{input}"],
-        ["placeholder", "{agent_scratchpad}"],
-      ]);
-    } catch (error) {
-      console.error("Error creating prompt template:", error);
-      return NextResponse.json({
-        success: false,
-        error: "Failed to create conversation template."
-      }, { status: 500 });
-    }
+    // **ENHANCED: Create enhanced agent with better configuration**
+    const enhancedAgent = new EnhancedAgent(llm, tools, userId);
 
-    // Create tool-calling agent with error handling
-    let agent;
-    try {
-      agent = await createToolCallingAgent({
-        llm,
-        tools,
-        prompt,
-      });
-    } catch (error) {
-      console.error("Error creating tool-calling agent:", error);
-      return NextResponse.json({
-        success: false,
-        error: "Failed to initialize AI agent."
-      }, { status: 500 });
-    }
-
-    // Create agent executor
+    // Create the enhanced agent
     let agentExecutor;
     try {
-      agentExecutor = new AgentExecutor({
-        agent,
-        tools,
-        verbose: process.env.NODE_ENV === 'development',
-        maxIterations: 3,
-      });
+      agentExecutor = await enhancedAgent.createAgent(fullSystemPrompt);
+      console.log("✓ Enhanced agent created successfully");
     } catch (error) {
-      console.error("Error creating agent executor:", error);
+      console.error("Error creating enhanced agent:", error);
       return NextResponse.json({
         success: false,
-        error: "Failed to initialize AI executor."
+        error: "Failed to initialize enhanced AI agent."
       }, { status: 500 });
     }
 
-    // Prepare messages for the agent
+    // **ENHANCED: Prepare messages for the agent with better validation**
     const chatHistory = [];
     
     // Add recent conversation history if available
     if (conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
-      // Take last 6 messages to avoid token limits
-      const recentMessages = conversationHistory.slice(-6);
+      // Take last 8 messages to avoid token limits but provide more context
+      const recentMessages = conversationHistory.slice(-8);
       for (const msg of recentMessages) {
         try {
-          if (msg.role === 'user' && msg.content) {
+          if (msg.role === 'user' && msg.content && typeof msg.content === 'string') {
             chatHistory.push(new HumanMessage(msg.content));
-          } else if (msg.role === 'ai' && msg.content) {
+          } else if (msg.role === 'ai' && msg.content && typeof msg.content === 'string') {
             chatHistory.push(new AIMessage(msg.content));
           }
         } catch (error) {
@@ -436,66 +419,61 @@ Remember: You have access to their complete fitness journey context - use it to 
       }
     }
 
-    // Execute the agent with the user's message
+    // **ENHANCED: Execute the agent with better error handling and fallback**
     let result;
     try {
-      console.log("🤖 Executing agent with comprehensive context...");
-      result = await agentExecutor.invoke({
-        input: message,
-        chat_history: chatHistory,
-      });
+      result = await retryWithBackoff(
+        () => enhancedAgent.executeAgent(agentExecutor, message, chatHistory),
+        3 // max retries
+      );
+      console.log("✅ Enhanced agent execution completed successfully");
     } catch (error) {
-      console.error("Error executing agent:", error);
+      console.error("Error executing enhanced agent:", error);
       
-      // If agent execution fails, try a simple LLM call as fallback
-      try {
-        console.log("Attempting fallback: direct LLM call...");
-        const fallbackResponse = await llm.invoke([
-          new SystemMessage(fullSystemPrompt),
-          new HumanMessage(message)
-        ]);
-        
-        result = { output: fallbackResponse.content };
-        console.log("Fallback successful");
-        
-      } catch (fallbackError) {
-        console.error("Fallback also failed:", fallbackError);
-        
-        // Handle specific Gemini API errors
-        if (error.message?.includes("API key") || fallbackError.message?.includes("API key")) {
+      // Use enhanced error handling
+      const errorInfo = EnhancedErrorHandler.handleError(error);
+      
+      if (errorInfo.retry) {
+        // Try enhanced fallback
+        try {
+          result = await enhancedAgent.executeFallback(
+            message, 
+            chatHistory, 
+            systemPrompt, 
+            userContext.combined, 
+            vectorContext
+          );
+          console.log("✅ Enhanced fallback successful");
+        } catch (fallbackError) {
+          console.error("Enhanced fallback also failed:", fallbackError);
           return NextResponse.json({
             success: false,
-            error: "Invalid API key. Please check your Gemini API configuration."
-          }, { status: 401 });
-        } else if (error.message?.includes("quota") || error.message?.includes("rate limit")) {
-          return NextResponse.json({
-            success: false,
-            error: "API quota exceeded. Please try again later."
-          }, { status: 429 });
-        } else if (error.message?.includes("safety")) {
-          return NextResponse.json({
-            success: false,
-            error: "Content blocked by safety filters. Please rephrase your message."
-          }, { status: 400 });
-        } else {
-          return NextResponse.json({
-            success: false,
-            error: "AI processing error. Please try again.",
-            details: process.env.NODE_ENV === 'development' ? (error.message + " | " + fallbackError.message) : undefined
-          }, { status: 500 });
+            error: errorInfo.error
+          }, { status: errorInfo.status });
         }
+      } else {
+        return NextResponse.json({
+          success: false,
+          error: errorInfo.error
+        }, { status: errorInfo.status });
       }
     }
 
-    // Extract the final response
+    // **ENHANCED: Extract the final response with better validation**
     const aiResponse = result?.output || "I apologize, but I'm having trouble responding right now. Please try again.";
+    
+    // Validate response quality
+    if (aiResponse.length < 10) {
+      console.warn("AI response seems too short, may indicate an issue");
+    }
 
-    // Save conversation to persistent memory with error handling
+    // **ENHANCED: Save conversation to persistent memory with better error handling**
     try {
       await addToHistory(userId, [
         { role: 'user', content: message },
         { role: 'ai', content: aiResponse }
       ]);
+      console.log("✅ Chat history saved successfully");
     } catch (error) {
       console.error("Error saving to chat history:", error);
       // Continue even if saving fails - don't break the response
@@ -504,11 +482,12 @@ Remember: You have access to their complete fitness journey context - use it to 
     // **ENHANCED: Generate contextual suggestions based on comprehensive user data**
     const suggestions = generateComprehensiveSuggestions(aiResponse, plan, message, profile, userContext, vectorSearchResults);
 
-    // **NEW: Return enhanced response data**
+    // **ENHANCED: Return enhanced response data with better debugging**
     const responseData = {
       success: true,
       response: aiResponse,
       suggestions: suggestions,
+      metrics: enhancedAgent.getMetrics() // Add enhanced agent metrics
     };
 
     // Add comprehensive context info for development debugging
@@ -527,7 +506,14 @@ Remember: You have access to their complete fitness journey context - use it to 
           resultsFound: vectorSearchResults.length,
           topResultTitles: vectorSearchResults.slice(0, 3).map(r => r.metadata?.title || 'Unknown'),
           searchQuality: vectorSearchResults.filter(r => r.finalRelevanceScore > 0.7).length
-        }
+        },
+        agentExecution: {
+          usedAgent: result?.output ? true : false,
+          fallbackUsed: !result?.output ? true : false,
+          responseLength: aiResponse.length
+        },
+        enhancedAgentMetrics: enhancedAgent.getMetrics(),
+        contextUtilization: enhancedAgent.metrics.contextUtilization
       };
     }
 
@@ -536,7 +522,7 @@ Remember: You have access to their complete fitness journey context - use it to 
   } catch (error) {
     console.error("Chat API Error:", error);
     
-    // Handle specific LangChain/Gemini errors
+    // **ENHANCED: Handle specific LangChain/Gemini errors with better categorization**
     let errorMessage = "I'm having trouble connecting right now. Let me try again!";
     let statusCode = 500;
     
@@ -552,6 +538,9 @@ Remember: You have access to their complete fitness journey context - use it to 
     } else if (error.message?.includes("network") || error.message?.includes("timeout")) {
       errorMessage = "Network connection issue. Please try again.";
       statusCode = 503;
+    } else if (error.message?.includes("memory") || error.message?.includes("database")) {
+      errorMessage = "There's an issue with the chat memory. Please try again.";
+      statusCode = 500;
     }
 
     return NextResponse.json({
@@ -559,6 +548,273 @@ Remember: You have access to their complete fitness journey context - use it to 
       error: errorMessage,
       details: process.env.NODE_ENV === 'development' ? error.message : undefined,
     }, { status: statusCode });
+  }
+}
+
+/**
+ * Handle streaming response using Server-Sent Events
+ */
+async function handleStreamingResponse(request, { message, plan, conversationHistory, profile, userId }) {
+  try {
+    // Set up SSE headers
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          // Send initial connection message
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'connection', message: 'Connected to streaming chat' })}\n\n`));
+
+          // Initialize LLM and tools (same as non-streaming)
+          const llm = new ChatGoogleGenerativeAI({
+            apiKey: process.env.GEMINI_API_KEY.trim(),
+            model: "gemini-1.5-flash",
+            temperature: 0.7,
+            maxOutputTokens: 2000,
+            topP: 0.9,
+            topK: 40,
+            safetySettings: [
+              {
+                category: "HARM_CATEGORY_HARASSMENT",
+                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+              },
+              {
+                category: "HARM_CATEGORY_HATE_SPEECH", 
+                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+              },
+              {
+                category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+              },
+              {
+                category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+              }
+            ]
+          });
+
+          const tools = getFitnessTools();
+          
+          // Get user context and vector search results
+          const userContext = await getEnhancedUserContext(userId, message, 2500);
+          const vectorSearchResults = await hybridSearch(message, userId, 5);
+          
+          // Create system prompt (same as non-streaming)
+          const systemPrompts = {
+            general: `You are Alex, a friendly and enthusiastic personal fitness coach with 10+ years of experience. You're like a supportive friend who happens to be a fitness expert.
+
+Your personality:
+- Warm, encouraging, and genuinely excited about helping people reach their goals
+- Use casual, conversational language while maintaining professionalism
+- Remember details from previous conversations and reference them naturally
+- Ask follow-up questions to understand the person better
+- Share relevant personal anecdotes or experiences when appropriate
+- Use emojis occasionally to add warmth (but not excessively)
+- Be empathetic to struggles and celebrate victories, no matter how small
+
+Your expertise covers:
+- Personalized workout plans and form corrections
+- Nutrition advice and meal planning
+- Motivation and habit building
+- Injury prevention and recovery
+- Mental health and fitness relationship
+
+Available tools you can use:
+- nutrition_lookup: Look up nutritional information for foods
+- update_workout_plan: Create or update workout plans in the database
+- calculate_health_metrics: Calculate BMI, BMR, and calorie needs
+- track_progress: Record user's fitness progress
+
+Always:
+- Address the person by name when you know it
+- Remember their goals, preferences, and previous conversations
+- Provide actionable, specific advice
+- Explain the "why" behind your recommendations
+- Use tools when you need specific data or want to save information
+- Adjust your communication style to match their energy level
+- Be encouraging but realistic about timelines and expectations
+- Reference their specific context data when making recommendations`,
+            // ... other prompts can be added here
+          };
+
+          let systemPrompt = systemPrompts[plan] || systemPrompts.general;
+          
+          // Add personal context
+          let personalContext = '';
+          if (profile && profile.name) {
+            personalContext += `\nUser's name: ${profile.name}`;
+          }
+          
+          if (profile) {
+            const profileInfo = [];
+            if (profile.age) profileInfo.push(`Age: ${profile.age}`);
+            if (profile.gender) profileInfo.push(`Gender: ${profile.gender}`);
+            if (profile.location) profileInfo.push(`Location: ${profile.location}`);
+            if (profile.fitnessGoal) profileInfo.push(`Primary Goal: ${profile.fitnessGoal}`);
+            if (profile.experience) profileInfo.push(`Experience Level: ${profile.experience}`);
+            if (profile.height) profileInfo.push(`Height: ${profile.height}`);
+            if (profile.weight) profileInfo.push(`Current Weight: ${profile.weight}`);
+            if (profile.targetWeight) profileInfo.push(`Target Weight: ${profile.targetWeight}`);
+            if (profile.dietaryPreference) profileInfo.push(`Dietary Preference: ${profile.dietaryPreference}`);
+            if (profile.bio) profileInfo.push(`Additional Info: ${profile.bio}`);
+            
+            if (profileInfo.length > 0) {
+              personalContext += `\nUser Profile:\n${profileInfo.join('\n')}`;
+            }
+          }
+
+          const fullSystemPrompt = `${systemPrompt}${personalContext}
+
+${userContext.combined || ''}
+
+Current conversation context: The user is asking about fitness/health and you should provide helpful, personalized advice based on their comprehensive context shown above. This includes their current diet plans, workout plans, progress tracking, and personalized knowledge base.
+
+IMPORTANT: You MUST use tools to fetch real data when users ask about their specific plans, schedules, or progress. Do not give generic responses - always use the appropriate tool to get the actual data first.`;
+
+          // Create enhanced agent
+          const enhancedAgent = new EnhancedAgent(llm, tools, userId);
+          const agentExecutor = await enhancedAgent.createAgent(fullSystemPrompt);
+
+          // Prepare chat history
+          const chatHistory = [];
+          if (conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+            const recentMessages = conversationHistory.slice(-8);
+            for (const msg of recentMessages) {
+              try {
+                if (msg.role === 'user' && msg.content && typeof msg.content === 'string') {
+                  chatHistory.push(new HumanMessage(msg.content));
+                } else if (msg.role === 'ai' && msg.content && typeof msg.content === 'string') {
+                  chatHistory.push(new AIMessage(msg.content));
+                }
+              } catch (error) {
+                console.error("Error processing chat history message:", error);
+              }
+            }
+          }
+
+          // Execute agent with streaming
+          try {
+            const result = await retryWithBackoff(
+              () => enhancedAgent.executeAgent(agentExecutor, message, chatHistory),
+              3
+            );
+
+            const aiResponse = result?.output || "I apologize, but I'm having trouble responding right now. Please try again.";
+
+            // Stream the response word by word
+            const words = aiResponse.split(/(\s+)/);
+            let currentResponse = '';
+            
+            for (let i = 0; i < words.length; i++) {
+              const word = words[i];
+              currentResponse += word;
+              
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                type: 'word', 
+                word: word,
+                partialResponse: currentResponse,
+                isComplete: i === words.length - 1
+              })}\n\n`));
+              
+              await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 100));
+            }
+
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+              type: 'complete', 
+              fullResponse: aiResponse,
+              suggestions: generateComprehensiveSuggestions(aiResponse, plan, message, profile, userContext, vectorSearchResults)
+            })}\n\n`));
+
+            try {
+              await addToHistory(userId, [
+                { role: 'user', content: message },
+                { role: 'ai', content: aiResponse }
+              ]);
+            } catch (error) {
+              console.error("Error saving to chat history:", error);
+            }
+
+          } catch (error) {
+            console.error("Error executing enhanced agent:", error);
+            
+            // Try direct LLM fallback and stream it
+            try {
+              const fallbackSystemPrompt = `${systemPrompt}${personalContext}\n\n${userContext.combined || ''}`;
+              const fallbackResponse = await llm.invoke([
+                new SystemMessage(fallbackSystemPrompt),
+                ...chatHistory,
+                new HumanMessage(message)
+              ]);
+              const content = typeof fallbackResponse?.content === 'string' ? fallbackResponse.content : (Array.isArray(fallbackResponse?.content) ? fallbackResponse.content.map(c => (typeof c === 'string' ? c : c?.text || '')).join('') : '');
+              const aiResponse = content || "I apologize, but I'm having trouble responding right now. Please try again.";
+
+              const words = aiResponse.split(/(\s+)/);
+              let currentResponse = '';
+              for (let i = 0; i < words.length; i++) {
+                const word = words[i];
+                currentResponse += word;
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                  type: 'word', 
+                  word: word,
+                  partialResponse: currentResponse,
+                  isComplete: i === words.length - 1
+                })}\n\n`));
+                await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 100));
+              }
+
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                type: 'complete', 
+                fullResponse: aiResponse,
+                suggestions: generateComprehensiveSuggestions(aiResponse, plan, message, profile, userContext, vectorSearchResults)
+              })}\n\n`));
+
+              try {
+                await addToHistory(userId, [
+                  { role: 'user', content: message },
+                  { role: 'ai', content: aiResponse }
+                ]);
+              } catch (err2) {
+                console.error("Error saving fallback chat history:", err2);
+              }
+
+            } catch (fallbackErr) {
+              console.error("Streaming fallback also failed:", fallbackErr);
+              const errorInfo = EnhancedErrorHandler.handleError(error);
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                type: 'error', 
+                error: errorInfo.error
+              })}\n\n`));
+            }
+          }
+
+        } catch (error) {
+          console.error("Streaming error:", error);
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+            type: 'error', 
+            error: "An unexpected error occurred during streaming."
+          })}\n\n`));
+        } finally {
+          controller.close();
+        }
+      }
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
+
+  } catch (error) {
+    console.error("Error setting up streaming:", error);
+    return NextResponse.json({
+      success: false,
+      error: "Failed to set up streaming response"
+    }, { status: 500 });
   }
 }
 

@@ -12,7 +12,7 @@ import WorkoutPlan from "../models/WorkoutPlan";
 export class NutritionLookupTool extends Tool {
   name = "nutrition_lookup";
   description =
-    "Look up nutritional information for foods including calories, protein, carbs, and fats. Input should be a JSON string with foodName and optionally userId for personalized advice.";
+    "CRITICAL: Use this tool whenever a user asks about food nutrition, calories, macros, or dietary information. Input should be a JSON string with foodName and optionally userId for personalized advice. Returns detailed nutritional information including calories, protein, carbs, fats, and personalized recommendations based on their goals.";
 
   async _call(input) {
     try {
@@ -199,7 +199,7 @@ export class NutritionLookupTool extends Tool {
 export class UpdateWorkoutPlanTool extends Tool {
   name = "update_workout_plan";
   description =
-    "Update or create a workout plan for the user. Input should be a JSON string with userId, planName, exercises, duration, and goal. Can also retrieve existing plans for reference.";
+    "CRITICAL: Use this tool to create, update, or modify workout plans. Input should be a JSON string. To retrieve existing plans, use: {{\"userId\": \"user_id\", \"action\": \"get\"}}. To create/update plans, include planName, exercises, duration, and goal. This tool can also fetch current workout plans, schedules, and progress details. Use when users want to create new plans or modify existing ones.";
 
   async _call(planInput) {
     try {
@@ -315,12 +315,84 @@ export class UpdateWorkoutPlanTool extends Tool {
 }
 
 /**
+ * Tool specifically for retrieving workout plan details and schedules
+ */
+export class GetWorkoutPlanTool extends Tool {
+  name = "get_workout_plan";
+  description =
+    "CRITICAL: Use this tool whenever a user asks about their workout plans, schedules, exercises, or what they should do for their workouts. Input should be a JSON string with userId (required). Returns detailed information about their current workout plans including schedules, exercises, progress tracking, and weekly breakdowns. ALWAYS use this tool first when users ask about their workout routine.";
+
+  async _call(input) {
+    try {
+      console.log("🔍 GetWorkoutPlanTool called with input:", input);
+      
+      const data = JSON.parse(input);
+      const { userId } = data;
+
+      if (!userId) {
+        console.error("❌ GetWorkoutPlanTool: userId is required");
+        return "Error: userId is required to retrieve workout plans.";
+      }
+
+      console.log("🔍 GetWorkoutPlanTool: Connecting to database...");
+      await connectDB();
+      console.log("✅ GetWorkoutPlanTool: Database connected successfully");
+
+      // Get active workout plans
+      console.log("🔍 GetWorkoutPlanTool: Searching for workout plans for userId:", userId);
+      const activePlans = await WorkoutPlan.find({ userId, isActive: true })
+        .select("name goal difficulty currentWeek stats weeks description")
+        .lean();
+      
+      console.log("📊 GetWorkoutPlanTool: Found", activePlans.length, "active plans");
+
+      if (activePlans.length === 0) {
+        console.log("📝 GetWorkoutPlanTool: No active plans found, suggesting to create one");
+        return "No active workout plans found for this user. Would you like me to help you create one?";
+      }
+
+      console.log("📝 GetWorkoutPlanTool: Generating response for", activePlans.length, "plans");
+      let response = "Your Current Workout Plans:\n\n";
+      
+      for (const plan of activePlans) {
+        response += `📋 **${plan.name}**\n`;
+        response += `Goal: ${plan.goal}\n`;
+        response += `Difficulty: ${plan.difficulty}\n`;
+        response += `Current Week: ${plan.currentWeek}\n`;
+        response += `Progress: ${plan.stats?.completionRate || 0}% complete\n`;
+        response += `Total Workouts: ${plan.stats?.totalWorkouts || 0}\n`;
+        
+        if (plan.description) {
+          response += `Description: ${plan.description}\n`;
+        }
+
+        // Add weekly schedule if available
+        if (plan.weeks && plan.weeks.length > 0) {
+          response += `\n📅 **Weekly Schedule:**\n`;
+          plan.weeks.forEach((week, weekIndex) => {
+            response += `Week ${weekIndex + 1}: ${week.length} workouts\n`;
+          });
+        }
+
+        response += `\n---\n\n`;
+      }
+
+      console.log("✅ GetWorkoutPlanTool: Successfully generated response");
+      return response;
+    } catch (error) {
+      console.error("❌ GetWorkoutPlanTool error:", error);
+      return `Error retrieving workout plans: ${error.message}`;
+    }
+  }
+}
+
+/**
  * Enhanced health metrics tool with user context
  */
 export class HealthMetricsTool extends Tool {
   name = "calculate_health_metrics";
   description =
-    "Calculate BMI, BMR, and daily calorie needs. Input should be a JSON string with userId (required) and optionally weight, height, age, gender, activityLevel. Will use stored profile data if available.";
+    "CRITICAL: Use this tool whenever a user asks about health metrics, BMI, calorie needs, BMR, or macro calculations. Input should be a JSON string with userId (required) and optionally weight, height, age, gender, activityLevel. Will use stored profile data if available. Returns comprehensive health metrics and personalized recommendations.";
 
   async _call(metricsInput) {
     try {
@@ -495,6 +567,7 @@ export function getFitnessTools() {
   return [
     new NutritionLookupTool(),
     new UpdateWorkoutPlanTool(),
+    new GetWorkoutPlanTool(),
     new HealthMetricsTool(),
   ];
 }

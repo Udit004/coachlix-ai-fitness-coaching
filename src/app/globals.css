@@ -35,4 +35,18 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Streaming cursor animation */
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+.blink {
+  animation: blink 1s infinite;
+}
+
 
