@@ -28,110 +28,61 @@ export class NutritionLookupTool extends Tool {
         foodInput = input;
       }
 
-      // Enhanced nutrition database (you can integrate with real API)
-      const nutritionDatabase = {
-        "chicken breast": {
-          calories: 165,
-          protein: 31,
-          carbs: 0,
-          fat: 3.6,
-          per: "100g",
-          fiber: 0,
-        },
-        "brown rice": {
-          calories: 112,
-          protein: 2.3,
-          carbs: 23,
-          fat: 0.9,
-          per: "100g",
-          fiber: 1.8,
-        },
-        banana: {
-          calories: 89,
-          protein: 1.1,
-          carbs: 23,
-          fat: 0.3,
-          per: "medium banana",
-          fiber: 2.6,
-        },
-        salmon: {
-          calories: 208,
-          protein: 22,
-          carbs: 0,
-          fat: 12,
-          per: "100g",
-          fiber: 0,
-        },
-        oatmeal: {
-          calories: 68,
-          protein: 2.4,
-          carbs: 12,
-          fat: 1.4,
-          per: "100g",
-          fiber: 1.7,
-        },
-        eggs: {
-          calories: 155,
-          protein: 13,
-          carbs: 1.1,
-          fat: 11,
-          per: "2 large eggs",
-          fiber: 0,
-        },
-        "greek yogurt": {
-          calories: 100,
-          protein: 17,
-          carbs: 6,
-          fat: 0.4,
-          per: "170g container",
-          fiber: 0,
-        },
-        almonds: {
-          calories: 161,
-          protein: 6,
-          carbs: 6,
-          fat: 14,
-          per: "28g (24 nuts)",
-          fiber: 3.5,
-        },
-        "sweet potato": {
-          calories: 112,
-          protein: 2,
-          carbs: 26,
-          fat: 0.1,
-          per: "medium potato",
-          fiber: 3.9,
-        },
-        broccoli: {
-          calories: 34,
-          protein: 2.8,
-          carbs: 7,
-          fat: 0.4,
-          per: "100g",
-          fiber: 2.6,
-        },
-        quinoa: {
-          calories: 222,
-          protein: 8,
-          carbs: 39,
-          fat: 3.6,
-          per: "100g cooked",
-          fiber: 2.8,
-        },
-        avocado: {
-          calories: 234,
-          protein: 3,
-          carbs: 12,
-          fat: 21,
-          per: "medium avocado",
-          fiber: 10,
-        },
-      };
-
-      const normalizedInput = foodInput.toLowerCase().trim();
-      const nutritionInfo = nutritionDatabase[normalizedInput];
-
+      // Use USDA FoodData Central API when available
+      const apiKey = process.env.USDA_API_KEY;
       let response = "";
+
+      async function fetchFromUSDA(query) {
+        const url = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(apiKey)}&pageSize=1&query=${encodeURIComponent(query)}`;
+        const res = await fetch(url, { method: "GET" });
+        if (!res.ok) {
+          throw new Error(`USDA API error: ${res.status}`);
+        }
+        const data = await res.json();
+        const item = data?.foods?.[0];
+        if (!item) return null;
+
+        // Prefer labelNutrients if present (branded foods), else use foodNutrients
+        let calories, protein, carbs, fat, fiber, per;
+
+        if (item.labelNutrients) {
+          calories = item.labelNutrients?.calories?.value ?? undefined;
+          protein = item.labelNutrients?.protein?.value ?? undefined;
+          carbs = item.labelNutrients?.carbohydrates?.value ?? undefined;
+          fat = item.labelNutrients?.fat?.value ?? undefined;
+          fiber = item.labelNutrients?.fiber?.value ?? undefined;
+          per = item.servingSize && item.servingSizeUnit
+            ? `${item.servingSize}${item.servingSizeUnit}`
+            : "per serving";
+        }
+
+        if (calories === undefined || protein === undefined || carbs === undefined || fat === undefined) {
+          const nutrients = item.foodNutrients || [];
+          const byNumber = (n) => nutrients.find((x) => x.nutrientNumber === n || x.nutrientId === n);
+          // 208 kcal, 203 protein, 205 carbs, 204 fat, 291 fiber
+          calories = calories ?? byNumber("208")?.value;
+          protein = protein ?? byNumber("203")?.value;
+          carbs = carbs ?? byNumber("205")?.value;
+          fat = fat ?? byNumber("204")?.value;
+          fiber = fiber ?? byNumber("291")?.value;
+          per = per || "per 100g";
+        }
+
+        if (calories === undefined && protein === undefined && carbs === undefined && fat === undefined) {
+          return null;
+        }
+
+        return { calories, protein, carbs, fat, fiber: fiber ?? 0, per };
+      }
+
+      let nutritionInfo = null;
+      if (apiKey && typeof apiKey === "string" && apiKey.trim() !== "") {
+        try {
+          nutritionInfo = await fetchFromUSDA(foodInput);
+        } catch (err) {
+          console.error("Error calling USDA API:", err);
+        }
+      }
 
       if (nutritionInfo) {
         response = `${foodInput}:\n• Calories: ${nutritionInfo.calories}\n• Protein: ${nutritionInfo.protein}g\n• Carbs: ${nutritionInfo.carbs}g\n• Fat: ${nutritionInfo.fat}g\n• Fiber: ${nutritionInfo.fiber}g\n• Per: ${nutritionInfo.per}`;
@@ -182,7 +133,13 @@ export class NutritionLookupTool extends Tool {
           }
         }
       } else {
-        response = `I don't have specific nutritional data for "${foodInput}" in my database. I recommend checking a nutrition app like MyFitnessPal or consulting with a nutritionist for accurate information.`;
+        // Graceful fallback if API key missing or no result
+        response = `I couldn't find reliable nutrition data for "${foodInput}" right now.`;
+        if (!apiKey) {
+          response += `\nNote: USDA API key is not configured on the server.`;
+        } else {
+          response += `\nTry a more specific name or brand, e.g., "banana raw" or "oatmeal cooked".`;
+        }
       }
 
       return response;
