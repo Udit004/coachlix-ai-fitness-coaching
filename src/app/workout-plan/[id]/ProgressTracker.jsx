@@ -15,7 +15,7 @@ import {
   Activity,
   Flame,
 } from "lucide-react";
-import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, Brush, AreaChart, Area, ComposedChart, ReferenceLine } from "recharts";
 import workoutPlanService from "../../../service/workoutPlanService";
 
 export default function ProgressTracker({ plan, onClose }) {
@@ -117,6 +117,23 @@ export default function ProgressTracker({ plan, onClose }) {
 
     return calculatedWeeklyData;
   }, [plan.weeks]);
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-3 shadow border border-gray-200 dark:border-gray-700">
+          <div className="text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Week {label}</div>
+          {payload.map((entry, idx) => (
+            <div key={idx} className="text-xs text-gray-600 dark:text-gray-300 flex items-center space-x-2">
+              <span className="inline-block h-2 w-2 rounded-full" style={{ background: entry.color }}></span>
+              <span>{entry.name}: <span className="font-semibold">{entry.value}</span></span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
 
   const strengthData = useMemo(() => {
     const exercises = new Map();
@@ -304,26 +321,36 @@ export default function ProgressTracker({ plan, onClose }) {
                 </div>
               </div>
 
-              {/* Weekly Overview Chart */}
+              {/* Weekly Overview Chart (Composed with Gradient, Legend, Brush) */}
               <div className="bg-white dark:bg-gray-700/50 rounded-xl p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Weekly Completion Rate
+                  Weekly Overview
                 </h3>
                 {weeklyData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <RechartsLineChart data={weeklyData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="week" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line 
-                        type="monotone" 
-                        dataKey="completionRate" 
-                        stroke="#3b82f6" 
-                        strokeWidth={3}
-                        dot={{ fill: '#3b82f6', strokeWidth: 2, r: 6 }}
-                      />
-                    </RechartsLineChart>
+                  <ResponsiveContainer width="100%" height={340}>
+                    <ComposedChart data={weeklyData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+                      <defs>
+                        <linearGradient id="colorCompletion" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="colorDuration" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
+                      <XAxis dataKey="week" tick={{ fill: '#9ca3af' }} />
+                      <YAxis yAxisId="left" tick={{ fill: '#9ca3af' }} />
+                      <YAxis yAxisId="right" orientation="right" tick={{ fill: '#9ca3af' }} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend />
+                      <Area yAxisId="left" type="monotone" dataKey="completionRate" name="Completion %" stroke="#3b82f6" fillOpacity={1} fill="url(#colorCompletion)" />
+                      <Bar yAxisId="right" dataKey="workouts" name="Workouts" barSize={24} fill="#6366f1" radius={[6, 6, 0, 0]} />
+                      <Line yAxisId="right" type="monotone" dataKey="duration" name="Duration (hrs)" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
+                      <Brush height={20} stroke="#6b7280" travellerWidth={10} />
+                      <ReferenceLine yAxisId="left" y={100} stroke="#e5e7eb" />
+                    </ComposedChart>
                   </ResponsiveContainer>
                 ) : (
                   <div className="text-center py-8">
@@ -364,20 +391,22 @@ export default function ProgressTracker({ plan, onClose }) {
                 </div>
               </div>
 
-              {/* Weekly Stats Chart */}
+              {/* Weekly Stats Chart (Stacked Bars + Brush) */}
               <div className="bg-white dark:bg-gray-700/50 rounded-xl p-6">
                 <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4">
                   Workouts & Duration
                 </h4>
                 {weeklyData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={weeklyData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="week" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="workouts" fill="#3b82f6" name="Workouts Completed" />
-                      <Bar dataKey="duration" fill="#10b981" name="Duration (hours)" />
+                    <BarChart data={weeklyData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
+                      <XAxis dataKey="week" tick={{ fill: '#9ca3af' }} />
+                      <YAxis tick={{ fill: '#9ca3af' }} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend />
+                      <Bar dataKey="workouts" stackId="a" fill="#3b82f6" name="Workouts Completed" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="duration" stackId="a" fill="#10b981" name="Duration (hours)" radius={[6, 6, 0, 0]} />
+                      <Brush height={20} stroke="#6b7280" travellerWidth={10} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -403,13 +432,16 @@ export default function ProgressTracker({ plan, onClose }) {
                     Max Weight Progress
                   </h4>
                   <ResponsiveContainer width="100%" height={400}>
-                    <BarChart data={strengthData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="week" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="maxWeight" fill="#f59e0b" name="Max Weight (lbs)" />
-                    </BarChart>
+                    <ComposedChart data={strengthData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
+                      <XAxis dataKey="week" tick={{ fill: '#9ca3af' }} />
+                      <YAxis tick={{ fill: '#9ca3af' }} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend />
+                      <Area type="monotone" dataKey="maxWeight" name="Max Weight (lbs)" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.2} />
+                      <Bar dataKey="maxWeight" fill="#f59e0b" name="Max Weight (lbs)" radius={[6, 6, 0, 0]} />
+                      <Brush height={20} stroke="#6b7280" travellerWidth={10} />
+                    </ComposedChart>
                   </ResponsiveContainer>
                 </div>
               ) : (

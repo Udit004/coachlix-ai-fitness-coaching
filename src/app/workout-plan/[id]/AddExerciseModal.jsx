@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   X,
   Search,
@@ -25,12 +25,14 @@ export default function AddExerciseModal({
   const [exercises, setExercises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState("");
   const [selectedEquipment, setSelectedEquipment] = useState("");
   const [selectedDifficulty, setSelectedDifficulty] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedExercises, setSelectedExercises] = useState([]);
+  const [selectedDetails, setSelectedDetails] = useState({}); // per-exercise targets
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
@@ -82,10 +84,16 @@ export default function AddExerciseModal({
 
   const difficulties = ["Beginner", "Intermediate", "Advanced"];
 
+  // Debounce search input
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
   useEffect(() => {
     fetchExercises();
   }, [
-    searchTerm,
+    debouncedSearch,
     selectedCategory,
     selectedMuscleGroup,
     selectedEquipment,
@@ -99,14 +107,14 @@ export default function AddExerciseModal({
       const options = {
         page: pageNum,
         limit: 20,
-        ...(searchTerm && { search: searchTerm }),
+        ...(debouncedSearch && { search: debouncedSearch }),
         ...(selectedCategory && { category: selectedCategory }),
-        ...(selectedMuscleGroup && { muscleGroups: selectedMuscleGroup }),
-        ...(selectedEquipment && { equipment: selectedEquipment }),
+        ...(selectedMuscleGroup && { muscleGroups: [selectedMuscleGroup] }),
+        ...(selectedEquipment && { equipment: [selectedEquipment] }),
         ...(selectedDifficulty && { difficulty: selectedDifficulty }),
       };
 
-      const response = await exerciseService.getExercises(options);
+      let response = await exerciseService.getExercises(options);
 
       // Handle different response formats
       let newExercises;
@@ -119,6 +127,23 @@ export default function AddExerciseModal({
       } else {
         console.error("Unexpected response format:", response);
         newExercises = [];
+      }
+
+      // If nothing found from DB and we have a search term, fallback to external suggestions
+      if ((newExercises?.length || 0) === 0) {
+        const suggestQuery = debouncedSearch || selectedMuscleGroup || selectedEquipment || selectedCategory;
+        if (suggestQuery) {
+        try {
+          console.log('🔎 Falling back to external suggestions for:', suggestQuery);
+          const suggestResp = await fetch(`/api/exercises/suggest?q=${encodeURIComponent(suggestQuery)}`, { cache: 'no-store' });
+          const suggestJson = await suggestResp.json();
+          if (suggestJson?.success && Array.isArray(suggestJson.exercises)) {
+            newExercises = suggestJson.exercises;
+          }
+        } catch (e) {
+          console.warn('External suggestion failed', e);
+        }
+        }
       }
 
       if (pageNum === 1) {
@@ -150,8 +175,23 @@ export default function AddExerciseModal({
     setSelectedExercises((prev) => {
       const exists = prev.find((e) => e._id === exercise._id);
       if (exists) {
-        return prev.filter((e) => e._id !== exercise._id);
+        const updated = prev.filter((e) => e._id !== exercise._id);
+        setSelectedDetails((d) => {
+          const nd = { ...d };
+          delete nd[exercise._id];
+          return nd;
+        });
+        return updated;
       } else {
+        // initialize per-exercise targets
+        setSelectedDetails((d) => ({
+          ...d,
+          [exercise._id]: {
+            targetSets: exercise.metrics?.defaultSets || 3,
+            targetReps: exercise.metrics?.defaultReps || exercise.targetReps || "8-12",
+            targetWeight: 0,
+          },
+        }));
         return [...prev, exercise];
       }
     });
@@ -191,10 +231,12 @@ export default function AddExerciseModal({
           // Equipment
           equipment: exercise.equipment || ["Bodyweight"],
           
-          // Target values
-          targetSets: exercise.metrics?.defaultSets || 3,
-          targetReps: exercise.metrics?.defaultReps || exercise.targetReps || "8-12",
-          targetWeight: 0,
+          // Target values (customizable per selection)
+          targetSets: selectedDetails[exercise._id]?.targetSets ?? (exercise.metrics?.defaultSets || 3),
+          targetReps: selectedDetails[exercise._id]?.targetReps ?? (exercise.metrics?.defaultReps || exercise.targetReps || "8-12"),
+          targetWeight: Number.isFinite(selectedDetails[exercise._id]?.targetWeight)
+            ? selectedDetails[exercise._id].targetWeight
+            : 0,
           
           // Instructions and metadata
           instructions: Array.isArray(exercise.instructions)
@@ -354,6 +396,36 @@ export default function AddExerciseModal({
             </button>
           </div>
 
+          {/* Quick filter chips */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {["Chest","Back","Legs","Arms","Shoulders","Core"].map((mg) => (
+              <button
+                key={mg}
+                onClick={() => setSelectedMuscleGroup(selectedMuscleGroup === mg ? "" : mg)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  selectedMuscleGroup === mg
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600"
+                }`}
+              >
+                {mg}
+              </button>
+            ))}
+            {["Barbell","Dumbbell","Machine","Cable","Bodyweight"].map((eq) => (
+              <button
+                key={eq}
+                onClick={() => setSelectedEquipment(selectedEquipment === eq ? "" : eq)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  selectedEquipment === eq
+                    ? "bg-emerald-600 text-white border-emerald-600"
+                    : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600"
+                }`}
+              >
+                {eq}
+              </button>
+            ))}
+          </div>
+
           {/* AI Result */}
           {showAiResult && aiExercise && (
             <div className="mb-6 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg">
@@ -473,6 +545,58 @@ export default function AddExerciseModal({
 
         {/* Exercise List */}
         <div className="flex-1 overflow-y-auto p-6">
+          {/* Selected tray */}
+          {selectedExercises.length > 0 && (
+            <div className="mb-4 p-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+              <div className="flex flex-wrap gap-2">
+                {selectedExercises.map((ex) => (
+                  <div key={ex._id} className="flex items-center gap-2 px-3 py-2 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-100">{ex.name}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={selectedDetails[ex._id]?.targetSets ?? 3}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => setSelectedDetails((d) => ({
+                        ...d,
+                        [ex._id]: { ...(d[ex._id] || {}), targetSets: Math.max(1, parseInt(e.target.value || '1')) }
+                      }))}
+                      className="w-14 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100"
+                    />
+                    <input
+                      type="text"
+                      value={selectedDetails[ex._id]?.targetReps ?? '8-12'}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => setSelectedDetails((d) => ({
+                        ...d,
+                        [ex._id]: { ...(d[ex._id] || {}), targetReps: e.target.value }
+                      }))}
+                      className="w-16 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={selectedDetails[ex._id]?.targetWeight ?? 0}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => setSelectedDetails((d) => ({
+                        ...d,
+                        [ex._id]: { ...(d[ex._id] || {}), targetWeight: Math.max(0, parseFloat(e.target.value || '0')) }
+                      }))}
+                      className="w-16 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100"
+                    />
+                    <button
+                      onClick={() => toggleExerciseSelection(ex)}
+                      className="text-xs px-2 py-1 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>

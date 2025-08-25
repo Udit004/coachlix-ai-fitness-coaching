@@ -81,6 +81,7 @@ export default function WorkoutSessionPage() {
   const plan = sessionData?.plan;
   const workoutData = sessionData?.workout;
   const exercises = workoutData?.exercises || [];
+  const workoutIndex = sessionData?.workoutIndex;
 
   console.log("🏋️ Extracted data:", {
     plan: !!plan,
@@ -297,6 +298,7 @@ export default function WorkoutSessionPage() {
         weekNumber={weekNumber}
         dayNumber={dayNumber}
         workoutId={workoutId}
+        workoutIndex={workoutIndex}
         onBack={handleBack}
         onProgressSave={(result) => {
           console.log("Progress save result:", result);
@@ -330,6 +332,7 @@ export default function WorkoutSessionPage() {
               weekNumber={weekNumber}
               dayNumber={dayNumber}
               workoutId={workoutId}
+              workoutIndex={workoutIndex}
               exercises={exercises}
               onWorkoutComplete={() =>
                 console.log("Workout complete requested")

@@ -9,6 +9,7 @@ const WorkoutHeader = ({
   weekNumber, 
   dayNumber, 
   workoutId,
+  workoutIndex,
   onBack, 
   onProgressSave,
 }) => {
@@ -36,8 +37,8 @@ const WorkoutHeader = ({
         planId,
         weekNumber,
         dayNumber,
-        workoutId,
-        exerciseData,
+        workoutIndex,
+        exerciseDataMap: exerciseData,
       });
 
       if (onProgressSave) {

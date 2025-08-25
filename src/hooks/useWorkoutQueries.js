@@ -81,6 +81,7 @@ export const useWorkoutSession = (planId, weekNumber, dayNumber, workoutId) => {
 
       // Find the specific workout with multiple matching strategies
       let workout;
+      let workoutIndex = -1;
       const numericWorkoutId = parseInt(workoutId);
       
       console.log('🏋️ Looking for workout:', { workoutId, numericWorkoutId, availableWorkouts: day.workouts?.length });
@@ -88,18 +89,23 @@ export const useWorkoutSession = (planId, weekNumber, dayNumber, workoutId) => {
       if (!isNaN(numericWorkoutId)) {
         // Try index-based lookup first
         workout = day.workouts?.[numericWorkoutId];
+        workoutIndex = !isNaN(numericWorkoutId) ? numericWorkoutId : -1;
         console.log('🔢 Workout by index:', workout);
       }
       
       if (!workout) {
         // Try ID-based lookup
-        workout = day.workouts?.find(
+        const foundIndex = day.workouts?.findIndex(
           (w, index) =>
             w._id?.toString() === workoutId ||
             w.id?.toString() === workoutId ||
             index.toString() === workoutId
         );
-        console.log('🆔 Workout by ID:', workout);
+        if (foundIndex !== undefined && foundIndex !== -1) {
+          workoutIndex = foundIndex;
+          workout = day.workouts?.[foundIndex];
+        }
+        console.log('🆔 Workout by ID:', workout, 'at index:', workoutIndex);
       }
 
       if (!workout) {
@@ -114,10 +120,11 @@ export const useWorkoutSession = (planId, weekNumber, dayNumber, workoutId) => {
       console.log('✅ Found workout:', {
         name: workout.name,
         exerciseCount: workout.exercises?.length || 0,
-        exercises: workout.exercises?.map(e => ({ name: e.name, _id: e._id }))
+        exercises: workout.exercises?.map(e => ({ name: e.name, _id: e._id })),
+        workoutIndex
       });
 
-      return { plan, workout };
+      return { plan, workout, workoutIndex };
     },
     enabled: !!(planId && weekNumber !== undefined && dayNumber !== undefined && workoutId !== undefined),
     staleTime: 1 * 60 * 1000, // 1 minute
@@ -277,27 +284,50 @@ export const useCompleteWorkoutSession = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ planId, weekNumber, dayNumber, workoutId, sessionData }) => {
-      console.log('🏁 Completing workout session:', { planId, weekNumber, dayNumber, workoutId });
+    mutationFn: async ({ planId, weekNumber, dayNumber, workoutIndex, exerciseDataMap }) => {
+      console.log('🏁 Completing workout session (server):', { planId, weekNumber, dayNumber, workoutIndex });
+
+      // First, persist any exercise changes
+      if (exerciseDataMap && typeof exerciseDataMap === 'object') {
+        const updatePromises = Object.entries(exerciseDataMap).map(([exerciseIndexStr, data]) => {
+          const exerciseIndex = parseInt(exerciseIndexStr);
+          if (Number.isNaN(exerciseIndex)) return Promise.resolve();
+          const payload = {
+            sets: Array.isArray(data.sets) ? data.sets : [],
+            isCompleted: !!data.completed,
+            notes: data.notes || '',
+            personalRecord: data.personalRecord && data.personalRecord.weight && data.personalRecord.reps
+              ? data.personalRecord
+              : undefined,
+          };
+          return workoutPlanService.updateExerciseProgress(
+            planId,
+            weekNumber,
+            dayNumber,
+            workoutIndex,
+            exerciseIndex,
+            payload
+          ).catch((e) => {
+            console.warn('Exercise update failed for index', exerciseIndex, e);
+          });
+        });
+        await Promise.all(updatePromises);
+      }
       
-      // Use the correct function from the service
-      return await workoutPlanService.completeWorkoutSession(
-        planId, 
-        weekNumber, 
-        dayNumber, 
-        workoutId, 
-        sessionData
+      // Then mark the workout as completed
+      return await workoutPlanService.updateWorkoutStatus(
+        planId,
+        weekNumber,
+        dayNumber,
+        workoutIndex,
+        'completed'
       );
     },
     onSuccess: (data, variables) => {
-      console.log('✅ Workout completed successfully');
-      // Invalidate related queries
-      queryClient.invalidateQueries({ 
-        queryKey: workoutKeys.detail(variables.planId) 
-      });
-      queryClient.invalidateQueries({ 
-        queryKey: [...workoutKeys.progress(), variables.planId] 
-      });
+      console.log('✅ Workout completed on server');
+      queryClient.invalidateQueries({ queryKey: workoutKeys.detail(variables.planId) });
+      queryClient.invalidateQueries({ queryKey: workoutKeys.stats(variables.planId) });
+      queryClient.invalidateQueries({ queryKey: [...workoutKeys.progress(), variables.planId] });
     },
     onError: (error) => {
       console.error('❌ Failed to complete workout:', error);
@@ -305,34 +335,56 @@ export const useCompleteWorkoutSession = () => {
   });
 };
 
-// FIXED: Save workout progress
+// FIXED: Save workout progress (server persistence)
 export const useSaveWorkoutProgress = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ planId, weekNumber, dayNumber, workoutId, sessionData }) => {
-      console.log('💾 Saving workout progress:', { planId, weekNumber, dayNumber, workoutId });
-      
-      // Use the correct function from the service
-      return await workoutPlanService.saveWorkoutSessionProgress(
-        planId, 
-        weekNumber, 
-        dayNumber, 
-        workoutId, 
-        sessionData
-      );
+    mutationFn: async ({ planId, weekNumber, dayNumber, workoutIndex, exerciseDataMap }) => {
+      console.log('💾 Saving workout progress (server):', { planId, weekNumber, dayNumber, workoutIndex });
+
+      if (!exerciseDataMap || typeof exerciseDataMap !== 'object') {
+        return { success: false, message: 'No exercise data to save' };
+      }
+
+      const updatePromises = Object.entries(exerciseDataMap).map(([exerciseIndexStr, data]) => {
+        const exerciseIndex = parseInt(exerciseIndexStr);
+        if (Number.isNaN(exerciseIndex)) return Promise.resolve();
+        const payload = {
+          sets: Array.isArray(data.sets) ? data.sets : [],
+          isCompleted: !!data.completed,
+          notes: data.notes || '',
+          personalRecord: data.personalRecord && data.personalRecord.weight && data.personalRecord.reps
+            ? data.personalRecord
+            : undefined,
+        };
+        return workoutPlanService.updateExerciseProgress(
+          planId,
+          weekNumber,
+          dayNumber,
+          workoutIndex,
+          exerciseIndex,
+          payload
+        ).catch((e) => {
+          console.warn('Exercise update failed for index', exerciseIndex, e);
+        });
+      });
+
+      await Promise.all(updatePromises);
+      return { success: true };
     },
     onSuccess: (data, variables) => {
-      console.log('✅ Progress saved successfully');
-      // Optionally invalidate queries to refresh UI
+      console.log('✅ Progress saved to server');
       queryClient.invalidateQueries({ 
         queryKey: workoutKeys.session(
           variables.planId,
           variables.weekNumber,
           variables.dayNumber,
-          variables.workoutId
+          variables.workoutIndex
         ) 
       });
+      queryClient.invalidateQueries({ queryKey: workoutKeys.detail(variables.planId) });
+      queryClient.invalidateQueries({ queryKey: workoutKeys.stats(variables.planId) });
     },
     onError: (error) => {
       console.error('❌ Failed to save progress:', error);

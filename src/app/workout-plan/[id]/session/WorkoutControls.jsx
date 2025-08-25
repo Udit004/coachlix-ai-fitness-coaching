@@ -12,6 +12,7 @@ const WorkoutControls = ({
   weekNumber,
   dayNumber,
   workoutId,
+  workoutIndex,
   exercises, // Add exercises as prop
   onWorkoutComplete,
   onProgressSave,
@@ -119,8 +120,8 @@ const WorkoutControls = ({
         planId,
         weekNumber,
         dayNumber,
-        workoutId,
-        sessionData,
+        workoutIndex,
+        exerciseDataMap: sessionData.exerciseData,
       });
 
       console.log("✅ Progress saved successfully");
@@ -172,8 +173,8 @@ const WorkoutControls = ({
         planId,
         weekNumber,
         dayNumber,
-        workoutId,
-        sessionData,
+        workoutIndex,
+        exerciseDataMap: sessionData.exerciseData,
       });
 
       console.log("✅ Workout completed successfully");

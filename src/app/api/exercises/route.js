@@ -24,20 +24,39 @@ export async function GET(request) {
 
     // Build query based on filters
     if (search) {
-      query.$text = { $search: search };
-      sort = { score: { $meta: 'textScore' }, ...sort };
+      // Prefer text index if present, otherwise regex fallback across common fields
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { category: { $regex: search, $options: 'i' } },
+        { primaryMuscleGroups: { $in: [new RegExp(search, 'i')] } },
+        { secondaryMuscleGroups: { $in: [new RegExp(search, 'i')] } },
+        { equipment: { $in: [new RegExp(search, 'i')] } }
+      ];
     }
 
     if (category) query.category = category;
     if (difficulty) query.difficulty = difficulty;
-    if (equipment) query.equipment = { $in: equipment.split(',') };
+    if (equipment) {
+      const eqList = equipment.split(',').filter(Boolean);
+      if (eqList.length > 0) {
+        query.equipment = { $in: eqList.map((e) => new RegExp(`^${e}$`, 'i')) };
+      }
+    }
     
     if (muscleGroups) {
-      const groups = muscleGroups.split(',');
-      query.$or = [
-        { primaryMuscleGroups: { $in: groups } },
-        { secondaryMuscleGroups: { $in: groups } }
-      ];
+      const groups = muscleGroups.split(',').filter(Boolean).map((g) => new RegExp(`^${g}$`, 'i'));
+      if (groups.length > 0) {
+        // Merge with existing $or from search if present
+        const muscleClause = [
+          { primaryMuscleGroups: { $in: groups } },
+          { secondaryMuscleGroups: { $in: groups } }
+        ];
+        if (query.$or) {
+          query.$or = [...query.$or, ...muscleClause];
+        } else {
+          query.$or = muscleClause;
+        }
+      }
     }
 
     if (popular === 'true') {
@@ -46,11 +65,22 @@ export async function GET(request) {
 
     // Execute query with pagination
     const skip = (page - 1) * limit;
-    const exercises = await Exercise.find(query)
+    let exercises = await Exercise.find(query)
       .sort(sort)
       .skip(skip)
       .limit(limit)
       .lean();
+
+    // Fallback: if no results, loosen filters to return popular suggestions
+    if (exercises.length === 0) {
+      const fallbackQuery = { isActive: true };
+      if (category) fallbackQuery.category = category;
+      if (difficulty) fallbackQuery.difficulty = difficulty;
+      exercises = await Exercise.find(fallbackQuery)
+        .sort({ popularity: -1, averageRating: -1 })
+        .limit(limit)
+        .lean();
+    }
 
     const total = await Exercise.countDocuments(query);
 
