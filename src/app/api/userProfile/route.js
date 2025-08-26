@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import User from "@/models/userProfileModel";
 import { verifyUserToken } from "@/lib/verifyUser";
 import { NotificationService } from "@/lib/notificationService";
+import cache from "@/lib/simpleCache";
 import {
   analyzeProfileUpdate,
   generateNotificationContent,
@@ -27,17 +28,33 @@ async function getUserIdFromAuth(request) {
   }
 }
 
-// GET - Fetch user profile
+// GET - Fetch user profile with Next.js built-in caching
 export async function GET(request) {
   try {
+    console.log('🔍 Profile API called');
     await connectDB();
+    console.log('✅ Database connected');
 
     const userId = await getUserIdFromAuth(request);
+    console.log('👤 User ID:', userId);
+    
     if (!userId) {
+      console.log('❌ No user ID found - unauthorized');
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Try to get from cache first
+    const cacheKey = `user-profile:${userId}`;
+    const cachedProfile = cache.get(cacheKey);
+    if (cachedProfile) {
+      return NextResponse.json(
+        { success: true, data: cachedProfile },
+        { status: 200 }
+      );
+    }
+
     let user = await User.findOne({ firebaseUid: userId });
+    console.log('👤 User found in DB:', user ? 'Yes' : 'No');
 
     // Get the user's email from the Firebase token
     let userEmail = null;
@@ -48,6 +65,7 @@ export async function GET(request) {
     if (token) {
       const decodedToken = await verifyUserToken(token);
       userEmail = decodedToken?.email;
+      console.log('📧 User email:', userEmail);
     }
 
     if (!user && userEmail) {
@@ -95,10 +113,19 @@ export async function GET(request) {
       recentActivities: user.recentActivities,
     };
 
-    return NextResponse.json(
+    // Cache the profile data
+    cache.set(cacheKey, profileData, 900); // 15 minutes
+
+    // Use Next.js built-in caching as well
+    const response = NextResponse.json(
       { success: true, data: profileData },
       { status: 200 }
     );
+
+    // Also set HTTP cache headers
+    response.headers.set('Cache-Control', 's-maxage=900, stale-while-revalidate');
+    
+    return response;
   } catch (error) {
     console.error("Profile GET error:", error);
     return NextResponse.json(
@@ -197,6 +224,10 @@ export async function PUT(request) {
     if (!updatedUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    // Invalidate cache after successful update
+    const cacheKey = `user-profile:${userId}`;
+    cache.delete(cacheKey);
 
     // Initialize notification tracking variables
     let notificationsSent = false;
@@ -383,6 +414,10 @@ export async function DELETE(request) {
     if (!deletedUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    // Invalidate cache after successful deletion
+    const cacheKey = `user-profile:${userId}`;
+    cache.delete(cacheKey);
 
     // Send goodbye notification if user has FCM token
     if (deletedUser.pushToken) {

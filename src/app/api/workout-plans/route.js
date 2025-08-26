@@ -1,10 +1,11 @@
-// api/workout-plans/route.js - Main workout plans endpoint with notifications
+// api/workout-plans/route.js - Main workout plans endpoint with notifications and caching
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "../../../lib/db";
 import WorkoutPlan from "@/models/WorkoutPlan";
 import User from "@/models/userProfileModel";
 import { verifyUserToken } from "@/lib/verifyUser";
 import { NotificationService } from "@/lib/notificationService";
+import cache from "@/lib/simpleCache";
 
 // GET /api/workout-plans - Get all workout plans for user
 export async function GET(request) {
@@ -35,6 +36,20 @@ export async function GET(request) {
     const templates = searchParams.get("templates");
     const limit = searchParams.get("limit");
     const sort = searchParams.get("sort");
+
+    // Create cache key based on user and query parameters
+    const cacheKey = `workout-plans:${user.uid}:${active || 'all'}:${goal || 'all'}:${difficulty || 'all'}:${templates || 'all'}:${limit || 'all'}:${sort || 'default'}`;
+    
+    // Try to get from cache first
+    const cachedPlans = cache.get(cacheKey);
+    if (cachedPlans) {
+      return NextResponse.json({
+        success: true,
+        plans: cachedPlans.plans,
+        count: cachedPlans.count,
+        cached: true,
+      });
+    }
 
     // Build query
     let query = { userId: user.uid };
@@ -76,11 +91,24 @@ export async function GET(request) {
 
     const plans = await queryBuilder.exec();
 
-    return NextResponse.json({
+    // Cache the results for 10 minutes (workout plans don't change as frequently)
+    const cacheData = {
+      plans,
+      count: plans.length,
+    };
+    cache.set(cacheKey, cacheData, 600); // 10 minutes
+
+    // Use Next.js built-in caching as well
+    const response = NextResponse.json({
       success: true,
       plans,
       count: plans.length,
     });
+
+    // Set HTTP cache headers
+    response.headers.set('Cache-Control', 's-maxage=600, stale-while-revalidate');
+    
+    return response;
   } catch (error) {
     console.error("Error fetching workout plans:", error);
     return NextResponse.json(
@@ -150,6 +178,9 @@ export async function POST(request) {
     });
 
     const savedPlan = await workoutPlan.save();
+
+    // Invalidate all workout plan caches for this user
+    cache.clear(); // Clear all cache for now (simple approach)
 
     // Initialize notification tracking
     let notificationSent = false;
@@ -280,6 +311,9 @@ export async function PUT(request) {
       );
     }
 
+    // Invalidate all workout plan caches for this user
+    cache.clear(); // Clear all cache for now (simple approach)
+
     // Initialize notification tracking
     let notificationSent = false;
     let userData = null;
@@ -397,6 +431,9 @@ export async function DELETE(request) {
 
     // Delete the workout plan
     const deletedPlan = await WorkoutPlan.findOneAndDelete({ _id: planId, userId: user.uid });
+
+    // Invalidate all workout plan caches for this user
+    cache.clear(); // Clear all cache for now (simple approach)
 
     // Initialize notification tracking
     let notificationSent = false;

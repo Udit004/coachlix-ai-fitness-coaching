@@ -1,10 +1,11 @@
-// api/diet-plans/route.js - Main diet plans endpoint with notifications
+// api/diet-plans/route.js - Main diet plans endpoint with notifications and caching
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "../../../lib/db";
 import DietPlan from "@/models/DietPlan";
 import User from "@/models/userProfileModel";
 import { verifyUserToken } from "@/lib/verifyUser";
 import { NotificationService } from "@/lib/notificationService";
+import cache from "@/lib/simpleCache";
 
 // GET /api/diet-plans - Get all diet plans for user
 export async function GET(request) {
@@ -33,6 +34,20 @@ export async function GET(request) {
     const goal = searchParams.get("goal");
     const limit = searchParams.get("limit");
     const sort = searchParams.get("sort");
+
+    // Create cache key based on user and query parameters
+    const cacheKey = `diet-plans:${user.uid}:${active || 'all'}:${goal || 'all'}:${limit || 'all'}:${sort || 'default'}`;
+    
+    // Try to get from cache first
+    const cachedPlans = cache.get(cacheKey);
+    if (cachedPlans) {
+      return NextResponse.json({
+        success: true,
+        plans: cachedPlans.plans,
+        count: cachedPlans.count,
+        cached: true,
+      });
+    }
 
     // Build query
     let query = { userId: user.uid };
@@ -64,11 +79,24 @@ export async function GET(request) {
 
     const plans = await queryBuilder.exec();
 
-    return NextResponse.json({
+    // Cache the results for 10 minutes (diet plans don't change as frequently)
+    const cacheData = {
+      plans,
+      count: plans.length,
+    };
+    cache.set(cacheKey, cacheData, 600); // 10 minutes
+
+    // Use Next.js built-in caching as well
+    const response = NextResponse.json({
       success: true,
       plans,
       count: plans.length,
     });
+
+    // Set HTTP cache headers
+    response.headers.set('Cache-Control', 's-maxage=600, stale-while-revalidate');
+    
+    return response;
   } catch (error) {
     console.error("Error fetching diet plans:", error);
     return NextResponse.json(
@@ -140,6 +168,10 @@ export async function POST(request) {
     });
 
     const savedPlan = await dietPlan.save();
+
+    // Invalidate all diet plan caches for this user
+    const cachePattern = `diet-plans:${user.uid}:*`;
+    cache.clear(); // Clear all cache for now (simple approach)
 
     // Initialize notification tracking
     let notificationSent = false;
@@ -270,6 +302,9 @@ export async function PUT(request) {
       );
     }
 
+    // Invalidate all diet plan caches for this user
+    cache.clear(); // Clear all cache for now (simple approach)
+
     // Initialize notification tracking
     let notificationSent = false;
     let userData = null;
@@ -387,6 +422,9 @@ export async function DELETE(request) {
 
     // Delete the diet plan
     const deletedPlan = await DietPlan.findOneAndDelete({ _id: planId, userId: user.uid });
+
+    // Invalidate all diet plan caches for this user
+    cache.clear(); // Clear all cache for now (simple approach)
 
     // Initialize notification tracking
     let notificationSent = false;

@@ -1,8 +1,9 @@
-// api/diet-plans/[id]/route.js - Single diet plan operations (PUT and DELETE methods)
+// api/diet-plans/[id]/route.js - Single diet plan operations with caching
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import DietPlan from "@/models/DietPlan";
 import { verifyUserToken } from "@/lib/verifyUser";
+import cache from "@/lib/simpleCache";
 
 // GET /api/diet-plans/[id] - Get specific diet plan
 export async function GET(request, { params }) {
@@ -27,6 +28,16 @@ export async function GET(request, { params }) {
 
     const { id } = resolvedParams;
 
+    // Try to get from cache first
+    const cacheKey = `diet-plan:${id}:${user.uid}`;
+    const cachedPlan = cache.get(cacheKey);
+    if (cachedPlan) {
+      return NextResponse.json({
+        ...cachedPlan,
+        cached: true,
+      });
+    }
+
     const dietPlan = await DietPlan.findOne({ _id: id, userId: user.uid });
 
     if (!dietPlan) {
@@ -36,7 +47,14 @@ export async function GET(request, { params }) {
       );
     }
 
-    return NextResponse.json(dietPlan);
+    // Cache the diet plan for 15 minutes
+    cache.set(cacheKey, dietPlan, 900); // 15 minutes
+
+    // Use Next.js built-in caching as well
+    const response = NextResponse.json(dietPlan);
+    response.headers.set('Cache-Control', 's-maxage=900, stale-while-revalidate');
+    
+    return response;
   } catch (error) {
     console.error("Error fetching diet plan:", error);
     return NextResponse.json(
@@ -82,6 +100,10 @@ export async function PUT(request, { params }) {
         { status: 404 }
       );
     }
+
+    // Invalidate cache for this specific diet plan
+    const cacheKey = `diet-plan:${resolvedParams.id}:${user.uid}`;
+    cache.delete(cacheKey);
 
     return NextResponse.json(dietPlan);
   } catch (error) {
@@ -134,6 +156,10 @@ export async function DELETE(request, { params }) {
         { status: 404 }
       );
     }
+
+    // Invalidate cache for this specific diet plan
+    const cacheKey = `diet-plan:${resolvedParams.id}:${user.uid}`;
+    cache.delete(cacheKey);
 
     return NextResponse.json({ message: "Diet plan deleted successfully" });
   } catch (error) {
