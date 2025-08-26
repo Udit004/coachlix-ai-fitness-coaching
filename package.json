@@ -2,6 +2,7 @@
   "name": "coachlix-ai-fitness-coaching",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
@@ -10,12 +11,15 @@
     "postbuild": "next-sitemap",
     "cleanup:chats": "node scripts/cleanup-old-chats.js",
     "cleanup:chats:advanced": "node scripts/cleanup-old-chats.js advanced",
-    "cleanup:chats:check": "curl -X GET http://localhost:3000/api/chat-cleanup"
+    "cleanup:chats:check": "curl -X GET http://localhost:3000/api/chat-cleanup",
+    "setup:pinecone": "node scripts/setupPinecone.js",
+    "migrate:vectors": "node scripts/setupPinecone.js"
   },
   "dependencies": {
     "@langchain/core": "^0.3.68",
     "@langchain/google-genai": "^0.2.15",
     "@langchain/mongodb": "^0.1.0",
+    "@pinecone-database/pinecone": "^2.2.2",
     "@tanstack/react-query": "^5.84.2",
     "@tanstack/react-query-devtools": "^5.84.2",
     "@vercel/analytics": "^1.5.0",

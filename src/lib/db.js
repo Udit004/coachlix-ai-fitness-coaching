@@ -1,5 +1,9 @@
 // src/lib/db.js
 import mongoose from "mongoose";
+import dotenv from "dotenv";
+
+// Load environment variables from .env.local
+dotenv.config({ path: '.env.local' });
 
 const MONGODB_URI = process.env.MONGODB_URI;
 

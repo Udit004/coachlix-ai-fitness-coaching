@@ -1,23 +1,71 @@
-// lib/enhancedVectorSearch.js - Personalized Vector Search System
+// lib/enhancedVectorSearch.js - Enhanced Vector Search with Pinecone + MongoDB Fallback
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
-import { connectDB } from "./db.js";
+import { connectDB } from "./db.mjs";
 import FitnessEmbedding from "../models/FitnessEmbedding.js";
 import User from "../models/userProfileModel.js";
-import mongoose from "mongoose";
+import pineconeDB from "./pineconeVectorDB.js";
+import cache from "./simpleCache.js";
 
 const embeddings = new GoogleGenerativeAIEmbeddings({
   apiKey: process.env.GEMINI_API_KEY,
   modelName: "embedding-001",
 });
 
+// Configuration
+const USE_PINECONE = process.env.USE_PINECONE === 'true' && process.env.PINECONE_API_KEY;
+const CACHE_TTL = 300; // 5 minutes for search results
+
 /**
- * Enhanced personalized vector search
- * @param {string} query - User's query
- * @param {string} userId - User ID for personalization
- * @param {number} limit - Number of results to return
- * @returns {Array} Personalized search results
+ * Enhanced vector search with automatic fallback
  */
-export async function personalizedVectorSearch(query, userId, limit = 5) {
+export async function enhancedVectorSearch(query, userId, filters = {}, limit = 10) {
+  try {
+    // Check cache first
+    const cacheKey = `vector_search:${userId}:${query}:${JSON.stringify(filters)}:${limit}`;
+    const cachedResults = cache.get(cacheKey);
+    if (cachedResults) {
+      console.log('✅ Vector search cache hit');
+      return cachedResults;
+    }
+
+    let results = [];
+
+    // Try Pinecone first if available
+    if (USE_PINECONE) {
+      try {
+        console.log('🔍 Using Pinecone for vector search...');
+        results = await pineconeDB.search(query, userId, filters, limit);
+        
+        if (results && results.length > 0) {
+          console.log(`✅ Pinecone search successful: ${results.length} results`);
+          
+          // Cache results
+          cache.set(cacheKey, results, CACHE_TTL);
+          return results;
+        }
+      } catch (error) {
+        console.error('❌ Pinecone search failed, falling back to MongoDB:', error);
+      }
+    }
+
+    // Fallback to MongoDB vector search
+    console.log('🔍 Using MongoDB for vector search...');
+    results = await mongoDBVectorSearch(query, userId, filters, limit);
+    
+    // Cache results
+    cache.set(cacheKey, results, CACHE_TTL);
+    return results;
+
+  } catch (error) {
+    console.error('Error in enhanced vector search:', error);
+    return [];
+  }
+}
+
+/**
+ * MongoDB vector search (existing implementation)
+ */
+async function mongoDBVectorSearch(query, userId, filters = {}, limit = 10) {
   try {
     await connectDB();
     
@@ -30,10 +78,10 @@ export async function personalizedVectorSearch(query, userId, limit = 5) {
     const queryEmbedding = await embeddings.embedQuery(query);
     
     // Build personalized search filters
-    const searchFilters = buildPersonalizedFilters(user, query);
+    const searchFilters = buildPersonalizedFilters(user, query, filters);
     
-    // Perform vector similarity search with personalization
-    const results = await performPersonalizedSearch(queryEmbedding, searchFilters, limit * 2);
+    // Perform vector similarity search with MongoDB aggregation
+    const results = await performMongoDBSearch(queryEmbedding, searchFilters, limit * 2);
     
     // Re-rank results based on user context
     const rerankedResults = reRankByUserContext(results, user, query);
@@ -42,7 +90,7 @@ export async function personalizedVectorSearch(query, userId, limit = 5) {
     return formatEnhancedResults(rerankedResults.slice(0, limit), user);
     
   } catch (error) {
-    console.error("Error in personalized vector search:", error);
+    console.error("Error in MongoDB vector search:", error);
     return [];
   }
 }
@@ -50,8 +98,8 @@ export async function personalizedVectorSearch(query, userId, limit = 5) {
 /**
  * Build search filters based on user profile
  */
-function buildPersonalizedFilters(user, query) {
-  const filters = { isActive: true };
+function buildPersonalizedFilters(user, query, additionalFilters = {}) {
+  const filters = { isActive: true, ...additionalFilters };
   const queryLower = query.toLowerCase();
   
   // Plan-based filtering
@@ -77,7 +125,6 @@ function buildPersonalizedFilters(user, query) {
   
   // Equipment-based filtering
   if (user?.availableEquipment && user.availableEquipment.length > 0) {
-    // Show content that uses available equipment or no equipment
     filters.$or = [
       { 'metadata.equipment': { $in: user.availableEquipment } },
       { 'metadata.equipment': { $in: ['none', 'bodyweight'] } },
@@ -92,20 +139,14 @@ function buildPersonalizedFilters(user, query) {
     filters['metadata.type'] = { $in: ['nutrition', 'diet'] };
   }
   
-  // Dietary preferences
-  if (user?.dietaryPreference && (queryLower.includes('food') || queryLower.includes('meal'))) {
-    filters['metadata.tags'] = { $in: [user.dietaryPreference.toLowerCase()] };
-  }
-  
   return filters;
 }
 
 /**
  * Perform vector similarity search with MongoDB aggregation
  */
-async function performPersonalizedSearch(queryEmbedding, filters, limit) {
+async function performMongoDBSearch(queryEmbedding, filters, limit) {
   try {
-    // Use MongoDB aggregation for vector similarity search
     const pipeline = [
       { $match: filters },
       {
@@ -142,9 +183,9 @@ async function performPersonalizedSearch(queryEmbedding, filters, limit) {
     return results;
     
   } catch (error) {
-    console.error("Error in vector similarity search:", error);
+    console.error("Error in MongoDB vector similarity search:", error);
     
-    // Fallback to text search if vector search fails
+    // Fallback to text search
     return await FitnessEmbedding.find(filters)
       .sort({ 'metadata.created': -1 })
       .limit(limit)
@@ -179,11 +220,6 @@ function reRankByUserContext(results, user, query) {
       relevanceScore += equipmentMatch * 0.15;
     }
     
-    // Boost score for recent/popular content
-    if (result.metadata?.tags?.includes('popular') || result.metadata?.tags?.includes('trending')) {
-      relevanceScore += 0.1;
-    }
-    
     // Query-specific boosts
     if (queryLower.includes('beginner') && result.metadata?.difficulty === 'beginner') {
       relevanceScore += 0.2;
@@ -191,13 +227,10 @@ function reRankByUserContext(results, user, query) {
     if (queryLower.includes('quick') && result.metadata?.tags?.includes('quick')) {
       relevanceScore += 0.15;
     }
-    if (queryLower.includes('home') && result.metadata?.equipment?.includes('none')) {
-      relevanceScore += 0.15;
-    }
     
     return {
       ...result,
-      finalRelevanceScore: Math.min(relevanceScore, 1.0) // Cap at 1.0
+      finalRelevanceScore: Math.min(relevanceScore, 1.0)
     };
   }).sort((a, b) => b.finalRelevanceScore - a.finalRelevanceScore);
 }
@@ -211,19 +244,16 @@ function checkGoalAlignment(userGoal, contentPlan, contentTags) {
   const goalLower = userGoal.toLowerCase();
   const planLower = contentPlan.toLowerCase();
   
-  // Direct plan match
   if (goalLower.includes('weight loss') && planLower.includes('weight-loss')) return 1.0;
   if (goalLower.includes('muscle gain') && planLower.includes('muscle-gain')) return 1.0;
   if (goalLower.includes('badminton') && planLower.includes('badminton')) return 1.0;
   if (goalLower.includes('strength') && planLower.includes('strength')) return 1.0;
   
-  // Tag-based matching
   if (contentTags && Array.isArray(contentTags)) {
     const tagMatch = contentTags.some(tag => goalLower.includes(tag.toLowerCase()));
     if (tagMatch) return 0.7;
   }
   
-  // General fitness match
   if (planLower === 'general') return 0.5;
   
   return 0;
@@ -238,14 +268,11 @@ function checkExperienceMatch(userExp, contentDifficulty) {
   const expLower = userExp.toLowerCase();
   const diffLower = contentDifficulty.toLowerCase();
   
-  // Perfect matches
   if (expLower === diffLower) return 1.0;
   if (expLower === 'beginner' && diffLower === 'easy') return 1.0;
-  
-  // Acceptable matches
   if (expLower === 'intermediate' && (diffLower === 'beginner' || diffLower === 'easy')) return 0.7;
   if (expLower === 'advanced' && diffLower === 'intermediate') return 0.8;
-  if (expLower === 'beginner' && diffLower === 'intermediate') return 0.3; // Challenging but doable
+  if (expLower === 'beginner' && diffLower === 'intermediate') return 0.3;
   
   return 0;
 }
@@ -254,10 +281,9 @@ function checkExperienceMatch(userExp, contentDifficulty) {
  * Check equipment compatibility
  */
 function checkEquipmentCompatibility(userEquipment, contentEquipment) {
-  if (!contentEquipment || contentEquipment.length === 0) return 1.0; // No equipment needed
-  if (!userEquipment || userEquipment.length === 0) return 0; // User has no equipment
+  if (!contentEquipment || contentEquipment.length === 0) return 1.0;
+  if (!userEquipment || userEquipment.length === 0) return 0;
   
-  // Check if user has required equipment
   const hasAllEquipment = contentEquipment.every(item => 
     userEquipment.some(userItem => 
       userItem.toLowerCase().includes(item.toLowerCase()) || 
@@ -267,7 +293,6 @@ function checkEquipmentCompatibility(userEquipment, contentEquipment) {
   
   if (hasAllEquipment) return 1.0;
   
-  // Partial equipment match
   const partialMatch = contentEquipment.filter(item =>
     userEquipment.some(userItem => 
       userItem.toLowerCase().includes(item.toLowerCase()) || 
@@ -305,7 +330,6 @@ function formatEnhancedResults(results, user) {
 function formatContentForContext(result, user) {
   let formatted = `\n📚 ${result.metadata?.title || 'Fitness Content'}`;
   
-  // Add relevance indicators
   if (result.finalRelevanceScore > 0.8) {
     formatted += ` ⭐ (Highly Recommended)`;
   } else if (result.finalRelevanceScore > 0.6) {
@@ -314,7 +338,6 @@ function formatContentForContext(result, user) {
   
   formatted += `\n${result.content}`;
   
-  // Add personalized notes
   if (user && result.metadata) {
     const personalNotes = generatePersonalizedNotes(result.metadata, user);
     if (personalNotes) {
@@ -331,14 +354,12 @@ function formatContentForContext(result, user) {
 function generatePersonalizedNotes(metadata, user) {
   const notes = [];
   
-  // Experience level notes
   if (user.experience === 'beginner' && metadata.difficulty === 'intermediate') {
     notes.push("This might be challenging for your current level - consider starting with easier variations");
   } else if (user.experience === 'advanced' && metadata.difficulty === 'beginner') {
     notes.push("You can probably increase intensity or add variations to make this more challenging");
   }
   
-  // Equipment notes
   if (metadata.equipment && metadata.equipment.length > 0) {
     const hasEquipment = user.availableEquipment && 
       metadata.equipment.every(item => user.availableEquipment.includes(item));
@@ -347,7 +368,6 @@ function generatePersonalizedNotes(metadata, user) {
     }
   }
   
-  // Goal alignment notes
   if (user.fitnessGoal && metadata.plan) {
     const goalLower = user.fitnessGoal.toLowerCase();
     const planLower = metadata.plan.toLowerCase();
@@ -363,101 +383,16 @@ function generatePersonalizedNotes(metadata, user) {
 }
 
 /**
- * Create user-specific knowledge embeddings for common queries
+ * Hybrid search combining vector and traditional search
  */
-export async function createPersonalizedKnowledgeBase(userId) {
+export async function hybridSearch(query, userId, limit = 10) {
   try {
-    const user = await User.findOne({ firebaseUid: userId }).lean();
-    if (!user) return false;
-    
-    // Generate personalized content based on user profile
-    const personalizedContent = generatePersonalizedContent(user);
-    
-    // Create embeddings for personalized content
-    for (const content of personalizedContent) {
-      const embedding = await embeddings.embedQuery(content.content);
-      
-      await FitnessEmbedding.findOneAndUpdate(
-        { 
-          'metadata.userId': userId,
-          'metadata.title': content.title 
-        },
-        {
-          content: content.content,
-          embedding: embedding,
-          metadata: {
-            ...content.metadata,
-            userId: userId,
-            personalized: true,
-            created: new Date()
-          },
-          isActive: true
-        },
-        { upsert: true, new: true }
-      );
-    }
-    
-    console.log(`✅ Created personalized knowledge base for user ${userId}`);
-    return true;
-    
-  } catch (error) {
-    console.error("Error creating personalized knowledge base:", error);
-    return false;
-  }
-}
-
-/**
- * Generate personalized content based on user profile
- */
-function generatePersonalizedContent(user) {
-  const content = [];
-  
-  // Personalized workout recommendations
-  if (user.fitnessGoal && user.experience && user.availableEquipment) {
-    content.push({
-      content: `Personalized ${user.fitnessGoal} workout plan for ${user.experience} level using ${user.availableEquipment.join(', ')}. Focus on progressive overload, proper form, and consistency. Start with 3 sessions per week and gradually increase intensity.`,
-      title: `Personal ${user.fitnessGoal} Plan`,
-      metadata: {
-        type: 'workout',
-        plan: user.fitnessGoal.toLowerCase().replace(' ', '-'),
-        difficulty: user.experience.toLowerCase(),
-        equipment: user.availableEquipment,
-        tags: ['personalized', user.fitnessGoal.toLowerCase()]
-      }
-    });
-  }
-  
-  // Personalized nutrition advice
-  if (user.fitnessGoal && user.dietaryPreference) {
-    content.push({
-      content: `Personalized ${user.dietaryPreference} nutrition plan for ${user.fitnessGoal}. Focus on whole foods, proper macronutrient balance, and meal timing. Include adequate protein, complex carbohydrates, and healthy fats.`,
-      title: `Personal ${user.dietaryPreference} Nutrition`,
-      metadata: {
-        type: 'nutrition',
-        plan: user.fitnessGoal.toLowerCase().replace(' ', '-'),
-        tags: ['personalized', user.dietaryPreference.toLowerCase(), 'nutrition']
-      }
-    });
-  }
-  
-  return content;
-}
-
-/**
- * Search with hybrid approach: vector + traditional search
- */
-export async function hybridSearch(query, userId, limit = 5) {
-  try {
-    // Perform both vector and text search
     const [vectorResults, textResults] = await Promise.all([
-      personalizedVectorSearch(query, userId, Math.ceil(limit * 0.7)),
+      enhancedVectorSearch(query, userId, {}, Math.ceil(limit * 0.7)),
       traditionalSearch(query, userId, Math.ceil(limit * 0.5))
     ]);
     
-    // Combine and deduplicate results
     const combinedResults = mergeSearchResults(vectorResults, textResults);
-    
-    // Return top results
     return combinedResults.slice(0, limit);
     
   } catch (error) {
@@ -495,7 +430,6 @@ function mergeSearchResults(vectorResults, textResults) {
   const seen = new Set();
   const merged = [];
   
-  // Add vector results first (higher priority)
   for (const result of vectorResults) {
     const id = result._id?.toString() || result.metadata?.title;
     if (id && !seen.has(id)) {
@@ -504,7 +438,6 @@ function mergeSearchResults(vectorResults, textResults) {
     }
   }
   
-  // Add unique text results
   for (const result of textResults) {
     const id = result._id?.toString() || result.metadata?.title;
     if (id && !seen.has(id)) {
@@ -516,3 +449,80 @@ function mergeSearchResults(vectorResults, textResults) {
   return merged;
 }
 
+/**
+ * Migrate existing MongoDB embeddings to Pinecone
+ */
+export async function migrateToPinecone() {
+  if (!USE_PINECONE) {
+    console.log('❌ Pinecone not configured, skipping migration');
+    return false;
+  }
+
+  try {
+    await connectDB();
+    
+    // Get all active embeddings from MongoDB
+    const embeddings = await FitnessEmbedding.find({ isActive: true }).lean();
+    console.log(`📦 Found ${embeddings.length} embeddings to migrate`);
+    
+    // Prepare content for Pinecone
+    const contents = embeddings.map(embedding => ({
+      id: embedding._id.toString(),
+      content: embedding.content,
+      metadata: {
+        ...embedding.metadata,
+        id: embedding._id.toString(),
+        userId: 'global', // Mark as global content
+        isActive: true
+      }
+    }));
+    
+    // Batch upsert to Pinecone
+    const success = await pineconeDB.batchUpsert(contents);
+    
+    if (success) {
+      console.log(`✅ Successfully migrated ${contents.length} embeddings to Pinecone`);
+      return true;
+    } else {
+      console.log('❌ Failed to migrate embeddings to Pinecone');
+      return false;
+    }
+    
+  } catch (error) {
+    console.error('Error migrating to Pinecone:', error);
+    return false;
+  }
+}
+
+/**
+ * Get search performance metrics
+ */
+export async function getSearchMetrics() {
+  const metrics = {
+    pineconeEnabled: USE_PINECONE,
+    cacheStats: cache.getStats(),
+    mongoDBStats: null,
+    pineconeStats: null
+  };
+  
+  try {
+    // Get MongoDB stats
+    await connectDB();
+    const mongoCount = await FitnessEmbedding.countDocuments({ isActive: true });
+    metrics.mongoDBStats = { totalEmbeddings: mongoCount };
+    
+    // Get Pinecone stats if available
+    if (USE_PINECONE) {
+      const pineconeStats = await pineconeDB.getStats();
+      metrics.pineconeStats = pineconeStats;
+    }
+  } catch (error) {
+    console.error('Error getting search metrics:', error);
+  }
+  
+  return metrics;
+}
+
+// Export legacy functions for backward compatibility
+export const personalizedVectorSearch = enhancedVectorSearch;
+export { createPersonalizedKnowledgeBase } from './vectorSearch.js';

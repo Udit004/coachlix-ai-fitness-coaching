@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { HumanMessage, SystemMessage, AIMessage } from "@langchain/core/messages";
 import { createChatMemory, getRecentChatHistory, addToHistory, formatChatHistoryForContext } from "@/lib/memory";
-import { personalizedVectorSearch, hybridSearch, createPersonalizedKnowledgeBase } from "@/lib/vectorSearch";
+import { enhancedVectorSearch, hybridSearch, createPersonalizedKnowledgeBase } from "@/lib/enhancedVectorSearch.js";
 import { getFitnessTools } from "@/lib/tools";
 import { classifyIntent, mapCategoryToPlan } from "@/lib/routerAgent";
 import { AgentExecutor, createToolCallingAgent } from "langchain/agents";
@@ -169,7 +169,7 @@ export async function POST(request) {
         console.log("🧠 Creating personalized knowledge base...");
         await createPersonalizedKnowledgeBase(userId);
         // Retry search after creating personalized content
-        vectorSearchResults = await personalizedVectorSearch(message, userId, 4);
+        vectorSearchResults = await enhancedVectorSearch(message, userId, {}, 4);
       }
     } catch (error) {
       console.error("❌ Error in personalized vector search:", error);
