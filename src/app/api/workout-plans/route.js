@@ -5,7 +5,7 @@ import WorkoutPlan from "@/models/WorkoutPlan";
 import User from "@/models/userProfileModel";
 import { verifyUserToken } from "@/lib/verifyUser";
 import { NotificationService } from "@/lib/notificationService";
-import cache from "@/lib/simpleCache";
+// Disabled simple in-memory cache for per-user lists to avoid stale reads across serverless instances
 
 // GET /api/workout-plans - Get all workout plans for user
 export async function GET(request) {
@@ -37,19 +37,7 @@ export async function GET(request) {
     const limit = searchParams.get("limit");
     const sort = searchParams.get("sort");
 
-    // Create cache key based on user and query parameters
-    const cacheKey = `workout-plans:${user.uid}:${active || 'all'}:${goal || 'all'}:${difficulty || 'all'}:${templates || 'all'}:${limit || 'all'}:${sort || 'default'}`;
-    
-    // Try to get from cache first
-    const cachedPlans = cache.get(cacheKey);
-    if (cachedPlans) {
-      return NextResponse.json({
-        success: true,
-        plans: cachedPlans.plans,
-        count: cachedPlans.count,
-        cached: true,
-      });
-    }
+    // Bypass server-side in-memory caching to ensure fresh data per request
 
     // Build query
     let query = { userId: user.uid };
@@ -91,23 +79,13 @@ export async function GET(request) {
 
     const plans = await queryBuilder.exec();
 
-    // Cache the results for 10 minutes (workout plans don't change as frequently)
-    const cacheData = {
-      plans,
-      count: plans.length,
-    };
-    cache.set(cacheKey, cacheData, 600); // 10 minutes
-
-    // Use Next.js built-in caching as well
     const response = NextResponse.json({
       success: true,
       plans,
       count: plans.length,
     });
-
-    // Set HTTP cache headers
-    response.headers.set('Cache-Control', 's-maxage=600, stale-while-revalidate');
-    
+    // Ensure no HTTP-level caching for authenticated resources
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     return response;
   } catch (error) {
     console.error("Error fetching workout plans:", error);
@@ -179,8 +157,7 @@ export async function POST(request) {
 
     const savedPlan = await workoutPlan.save();
 
-    // Invalidate all workout plan caches for this user
-    cache.clear(); // Clear all cache for now (simple approach)
+    // No in-memory cache to invalidate; responses are non-cached
 
     // Initialize notification tracking
     let notificationSent = false;
@@ -311,8 +288,7 @@ export async function PUT(request) {
       );
     }
 
-    // Invalidate all workout plan caches for this user
-    cache.clear(); // Clear all cache for now (simple approach)
+    // No in-memory cache to invalidate; responses are non-cached
 
     // Initialize notification tracking
     let notificationSent = false;
@@ -432,8 +408,7 @@ export async function DELETE(request) {
     // Delete the workout plan
     const deletedPlan = await WorkoutPlan.findOneAndDelete({ _id: planId, userId: user.uid });
 
-    // Invalidate all workout plan caches for this user
-    cache.clear(); // Clear all cache for now (simple approach)
+    // No in-memory cache to invalidate; responses are non-cached
 
     // Initialize notification tracking
     let notificationSent = false;

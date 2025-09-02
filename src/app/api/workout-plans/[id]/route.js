@@ -5,7 +5,7 @@ import WorkoutPlan from "@/models/WorkoutPlan";
 import User from "@/models/userProfileModel";
 import { verifyUserToken } from "@/lib/verifyUser";
 import { NotificationService } from "@/lib/notificationService";
-import cache from "@/lib/simpleCache";
+// Disabled simple in-memory cache for per-user plan to avoid stale reads across serverless instances
 
 // GET /api/workout-plans/[id] - Get specific workout plan
 export async function GET(request, { params }) {
@@ -31,16 +31,7 @@ export async function GET(request, { params }) {
 
     await connectDB();
 
-    // Try to get from cache first
-    const cacheKey = `workout-plan:${planId}:${user.uid}`;
-    const cachedPlan = cache.get(cacheKey);
-    if (cachedPlan) {
-      return NextResponse.json({
-        success: true,
-        plan: cachedPlan,
-        cached: true,
-      });
-    }
+    // Bypass server-side in-memory caching to ensure fresh data per request
 
     // Find the workout plan
     const plan = await WorkoutPlan.findOne({
@@ -58,16 +49,11 @@ export async function GET(request, { params }) {
       );
     }
 
-    // Cache the workout plan for 15 minutes
-    cache.set(cacheKey, plan, 900); // 15 minutes
-
-    // Use Next.js built-in caching as well
     const response = NextResponse.json({
       success: true,
-      plan,
+      plan: plan.toObject(),
     });
-    response.headers.set('Cache-Control', 's-maxage=900, stale-while-revalidate');
-    
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     return response;
   } catch (error) {
     console.error("Error fetching workout plan:", error);
@@ -117,10 +103,6 @@ export async function PUT(request, { params }) {
         { status: 404 }
       );
     }
-
-    // Invalidate cache for this specific workout plan
-    const cacheKey = `workout-plan:${planId}:${user.uid}`;
-    cache.delete(cacheKey);
 
     // Send notification for workout plan update
     try {
