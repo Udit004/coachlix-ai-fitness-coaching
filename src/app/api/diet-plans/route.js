@@ -5,7 +5,7 @@ import DietPlan from "@/models/DietPlan";
 import User from "@/models/userProfileModel";
 import { verifyUserToken } from "@/lib/verifyUser";
 import { NotificationService } from "@/lib/notificationService";
-import cache from "@/lib/simpleCache";
+// Disabled simple in-memory cache for per-user lists to avoid stale reads across serverless instances
 
 // GET /api/diet-plans - Get all diet plans for user
 export async function GET(request) {
@@ -35,19 +35,7 @@ export async function GET(request) {
     const limit = searchParams.get("limit");
     const sort = searchParams.get("sort");
 
-    // Create cache key based on user and query parameters
-    const cacheKey = `diet-plans:${user.uid}:${active || 'all'}:${goal || 'all'}:${limit || 'all'}:${sort || 'default'}`;
-    
-    // Try to get from cache first
-    const cachedPlans = cache.get(cacheKey);
-    if (cachedPlans) {
-      return NextResponse.json({
-        success: true,
-        plans: cachedPlans.plans,
-        count: cachedPlans.count,
-        cached: true,
-      });
-    }
+    // Bypass server-side in-memory caching to ensure fresh data per request
 
     // Build query
     let query = { userId: user.uid };
@@ -79,23 +67,13 @@ export async function GET(request) {
 
     const plans = await queryBuilder.exec();
 
-    // Cache the results for 10 minutes (diet plans don't change as frequently)
-    const cacheData = {
-      plans,
-      count: plans.length,
-    };
-    cache.set(cacheKey, cacheData, 600); // 10 minutes
-
-    // Use Next.js built-in caching as well
     const response = NextResponse.json({
       success: true,
       plans,
       count: plans.length,
     });
-
-    // Set HTTP cache headers
-    response.headers.set('Cache-Control', 's-maxage=600, stale-while-revalidate');
-    
+    // Ensure no HTTP-level caching for authenticated resources
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     return response;
   } catch (error) {
     console.error("Error fetching diet plans:", error);
@@ -150,6 +128,18 @@ export async function POST(request) {
       );
     }
 
+    const days = body.days || [];
+
+    // Validate that the number of days matches the duration
+    if (days.length !== duration) {
+      return NextResponse.json(
+        {
+          message: `The number of days (${days.length}) does not match the duration (${duration}).`,
+        },
+        { status: 400 }
+      );
+    }
+
     // Create new diet plan
     const dietPlan = new DietPlan({
       userId: user.uid,
@@ -161,7 +151,7 @@ export async function POST(request) {
       targetCarbs: targetCarbs || 0,
       targetFats: targetFats || 0,
       duration,
-      days: body.days || [],
+      days,
       difficulty: body.difficulty || "Beginner",
       tags: body.tags || [],
       createdBy: body.createdBy || "user",
@@ -169,9 +159,7 @@ export async function POST(request) {
 
     const savedPlan = await dietPlan.save();
 
-    // Invalidate all diet plan caches for this user
-    const cachePattern = `diet-plans:${user.uid}:*`;
-    cache.clear(); // Clear all cache for now (simple approach)
+    // No in-memory cache to invalidate; responses are non-cached
 
     // Initialize notification tracking
     let notificationSent = false;
@@ -288,6 +276,26 @@ export async function PUT(request) {
       );
     }
 
+    // Ensure consistency between duration and days array
+    if (updateData.duration && updateData.days) {
+      if (updateData.duration !== updateData.days.length) {
+        return NextResponse.json(
+          { message: "Duration and days array length must match" },
+          { status: 400 }
+        );
+      }
+    } else if (updateData.duration && !updateData.days) {
+        return NextResponse.json(
+            { message: "If updating duration, days array must be provided" },
+            { status: 400 }
+        );
+    } else if (!updateData.duration && updateData.days) {
+        return NextResponse.json(
+            { message: "If updating days array, duration must be provided" },
+            { status: 400 }
+        );
+    }
+
     // Find and update the diet plan
     const updatedPlan = await DietPlan.findOneAndUpdate(
       { _id: planId, userId: user.uid },
@@ -302,8 +310,7 @@ export async function PUT(request) {
       );
     }
 
-    // Invalidate all diet plan caches for this user
-    cache.clear(); // Clear all cache for now (simple approach)
+    // No in-memory cache to invalidate; responses are non-cached
 
     // Initialize notification tracking
     let notificationSent = false;
@@ -423,8 +430,7 @@ export async function DELETE(request) {
     // Delete the diet plan
     const deletedPlan = await DietPlan.findOneAndDelete({ _id: planId, userId: user.uid });
 
-    // Invalidate all diet plan caches for this user
-    cache.clear(); // Clear all cache for now (simple approach)
+    // No in-memory cache to invalidate; responses are non-cached
 
     // Initialize notification tracking
     let notificationSent = false;

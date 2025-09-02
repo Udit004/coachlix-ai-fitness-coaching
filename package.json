@@ -20,12 +20,15 @@
     "@langchain/google-genai": "^0.2.15",
     "@langchain/mongodb": "^0.1.0",
     "@pinecone-database/pinecone": "^2.2.2",
+    "@radix-ui/react-slot": "^1.2.3",
     "@tanstack/react-query": "^5.84.2",
     "@tanstack/react-query-devtools": "^5.84.2",
     "@vercel/analytics": "^1.5.0",
     "@vercel/speed-insights": "^1.2.0",
     "axios": "^1.10.0",
+    "class-variance-authority": "^0.7.1",
     "cloudinary": "^2.7.0",
+    "clsx": "^2.1.1",
     "dotenv": "^17.2.1",
     "firebase": "^10.5.0",
     "firebase-admin": "^12.0.0",
@@ -42,6 +45,7 @@
     "react-hot-toast": "^2.5.2",
     "react-intersection-observer": "^9.16.0",
     "recharts": "^3.1.0",
+    "tailwind-merge": "^3.3.1",
     "zustand": "^5.0.6"
   },
   "devDependencies": {

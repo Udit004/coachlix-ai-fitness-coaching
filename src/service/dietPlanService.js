@@ -27,7 +27,12 @@ const handleResponse = async (response) => {
   }
 
   const data = await response.json();
-  return data; // Return the full response data
+  // Many endpoints return { plan: {...} } after mutations; normalize to the plan object
+  // while preserving list endpoints like { plans: [...] }
+  if (data && typeof data === "object" && "plan" in data && data.plan) {
+    return data.plan;
+  }
+  return data; // Return the full response data when no single plan wrapper is present
 };
 
 // Get all diet plans for current user

@@ -72,7 +72,12 @@ export async function POST(request, { params }) {
 
     const savedPlan = await dietPlan.save();
 
-    return NextResponse.json(savedPlan);
+    // Invalidate cache for this plan
+    const cache = (await import('@/lib/simpleCache')).default;
+    const cacheKey = `diet-plan:${resolvedParams.id}:${user.uid}`;
+    cache.delete(cacheKey);
+
+    return NextResponse.json(savedPlan.toObject());
   } catch (error) {
     console.error("Error adding food item:", error);
     return NextResponse.json(
