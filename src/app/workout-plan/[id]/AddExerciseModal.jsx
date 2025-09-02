@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import exerciseService from "../../../service/exerciseService";
 import workoutPlanService from "../../../service/workoutPlanService";
+import useWorkoutSessionStore from "@/stores/workoutSessionStore";
 
 export default function AddExerciseModal({
   onClose,
@@ -22,6 +23,7 @@ export default function AddExerciseModal({
   dayNumber,
   workoutId,
 }) {
+  const { setWorkoutData, initializeExerciseData, planData } = useWorkoutSessionStore();
   const [exercises, setExercises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -83,6 +85,9 @@ export default function AddExerciseModal({
   ];
 
   const difficulties = ["Beginner", "Intermediate", "Advanced"];
+
+  // Generate a stable identity for exercises from multiple sources
+  const getExerciseKey = (exercise) => exercise?._id || exercise?.id || exercise?.slug || exercise?.name || null;
 
   // Debounce search input
   useEffect(() => {
@@ -172,13 +177,14 @@ export default function AddExerciseModal({
   };
 
   const toggleExerciseSelection = (exercise) => {
+    const exerciseKey = getExerciseKey(exercise);
     setSelectedExercises((prev) => {
-      const exists = prev.find((e) => e._id === exercise._id);
+      const exists = prev.find((e) => getExerciseKey(e) === exerciseKey);
       if (exists) {
-        const updated = prev.filter((e) => e._id !== exercise._id);
+        const updated = prev.filter((e) => getExerciseKey(e) !== exerciseKey);
         setSelectedDetails((d) => {
           const nd = { ...d };
-          delete nd[exercise._id];
+          if (exerciseKey) delete nd[exerciseKey];
           return nd;
         });
         return updated;
@@ -186,7 +192,7 @@ export default function AddExerciseModal({
         // initialize per-exercise targets
         setSelectedDetails((d) => ({
           ...d,
-          [exercise._id]: {
+          [exerciseKey || `${exercise.name}`]: {
             targetSets: exercise.metrics?.defaultSets || 3,
             targetReps: exercise.metrics?.defaultReps || exercise.targetReps || "8-12",
             targetWeight: 0,
@@ -272,6 +278,29 @@ export default function AddExerciseModal({
       );
 
       console.log("✅ Exercises added successfully!");
+      
+      // Refresh workout in session store so sidebar updates immediately
+      try {
+        // Fetch full plan
+        const plan = await workoutPlanService.getWorkoutPlan(planId);
+        let updatedWorkout = null;
+        // Try to resolve by index if workoutId is numeric, else by ObjectId match
+        if (typeof workoutId === 'number' || /^\d+$/.test(String(workoutId))) {
+          const week = plan.weeks?.find(w => w.weekNumber === weekNumber);
+          const day = week?.days?.find(d => d.dayNumber === dayNumber);
+          updatedWorkout = day?.workouts?.[Number(workoutId)] || null;
+        } else {
+          const week = plan.weeks?.find(w => w.weekNumber === weekNumber);
+          const day = week?.days?.find(d => d.dayNumber === dayNumber);
+          updatedWorkout = day?.workouts?.find(w => String(w._id) === String(workoutId)) || null;
+        }
+        if (updatedWorkout) {
+          setWorkoutData(updatedWorkout, plan);
+          initializeExerciseData(updatedWorkout);
+        }
+      } catch (refreshErr) {
+        console.warn('Could not refresh workout in store:', refreshErr);
+      }
       
       // Call the onAdd callback if provided (for refreshing parent component)
       if (onAdd && typeof onAdd === 'function') {
@@ -549,27 +578,29 @@ export default function AddExerciseModal({
           {selectedExercises.length > 0 && (
             <div className="mb-4 p-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
               <div className="flex flex-wrap gap-2">
-                {selectedExercises.map((ex) => (
-                  <div key={ex._id} className="flex items-center gap-2 px-3 py-2 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
+                {selectedExercises.map((ex, idx) => {
+                  const exKey = getExerciseKey(ex) || `sel-${idx}`;
+                  return (
+                  <div key={exKey} className="flex items-center gap-2 px-3 py-2 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
                     <span className="text-sm font-medium text-gray-800 dark:text-gray-100">{ex.name}</span>
                     <input
                       type="number"
                       min={1}
-                      value={selectedDetails[ex._id]?.targetSets ?? 3}
+                      value={selectedDetails[exKey]?.targetSets ?? 3}
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) => setSelectedDetails((d) => ({
                         ...d,
-                        [ex._id]: { ...(d[ex._id] || {}), targetSets: Math.max(1, parseInt(e.target.value || '1')) }
+                        [exKey]: { ...(d[exKey] || {}), targetSets: Math.max(1, parseInt(e.target.value || '1')) }
                       }))}
                       className="w-14 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100"
                     />
                     <input
                       type="text"
-                      value={selectedDetails[ex._id]?.targetReps ?? '8-12'}
+                      value={selectedDetails[exKey]?.targetReps ?? '8-12'}
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) => setSelectedDetails((d) => ({
                         ...d,
-                        [ex._id]: { ...(d[ex._id] || {}), targetReps: e.target.value }
+                        [exKey]: { ...(d[exKey] || {}), targetReps: e.target.value }
                       }))}
                       className="w-16 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100"
                     />
@@ -577,11 +608,11 @@ export default function AddExerciseModal({
                       type="number"
                       min={0}
                       step={1}
-                      value={selectedDetails[ex._id]?.targetWeight ?? 0}
+                      value={selectedDetails[exKey]?.targetWeight ?? 0}
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) => setSelectedDetails((d) => ({
                         ...d,
-                        [ex._id]: { ...(d[ex._id] || {}), targetWeight: Math.max(0, parseFloat(e.target.value || '0')) }
+                        [exKey]: { ...(d[exKey] || {}), targetWeight: Math.max(0, parseFloat(e.target.value || '0')) }
                       }))}
                       className="w-16 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100"
                     />
@@ -592,7 +623,7 @@ export default function AddExerciseModal({
                       Remove
                     </button>
                   </div>
-                ))}
+                );})}
               </div>
             </div>
           )}
@@ -613,14 +644,15 @@ export default function AddExerciseModal({
             </div>
           ) : (
             <div className="space-y-4">
-              {exercises.map((exercise) => {
+              {exercises.map((exercise, idx) => {
+                const exerciseKey = getExerciseKey(exercise) || `ex-${idx}`;
                 const isSelected = selectedExercises.find(
-                  (e) => e._id === exercise._id
+                  (e) => getExerciseKey(e) === exerciseKey
                 );
 
                 return (
                   <div
-                    key={exercise._id}
+                    key={exerciseKey}
                     onClick={() => toggleExerciseSelection(exercise)}
                     className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
                       isSelected
