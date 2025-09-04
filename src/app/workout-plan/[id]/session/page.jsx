@@ -163,32 +163,18 @@ export default function WorkoutSessionPage() {
   // FIXED: Handle adding exercises with immediate refetch
   const handleAddExercisesFromModal = async (selectedExercises) => {
     try {
-      console.log("➕ Adding exercises:", selectedExercises);
+      // Modal already performed the add via its own API call.
+      const exerciseCount = Array.isArray(selectedExercises)
+        ? selectedExercises.length
+        : 0;
 
-      await addExercisesMutation.mutateAsync({
-        planId,
-        weekNumber,
-        dayNumber,
-        workoutId,
-        exercises: selectedExercises,
-      });
-
-      const exerciseCount = selectedExercises.length;
-      console.log(`✅ Added ${exerciseCount} exercises successfully`);
-
-      // Immediately refetch the session data to show new exercises
+      // Just refetch to update UI
       await refetch();
 
-      alert(
-        `${exerciseCount} exercise${
-          exerciseCount !== 1 ? "s" : ""
-        } added successfully!`
-      );
-
+      console.log(`🔄 Refetched after modal added ${exerciseCount} exercises`);
       return { success: true, count: exerciseCount };
     } catch (error) {
-      console.error("❌ Error adding exercises:", error);
-      alert("Failed to add exercises. Please try again.");
+      console.error("❌ Error refreshing after add:", error);
       return { success: false, error: error.message };
     }
   };
