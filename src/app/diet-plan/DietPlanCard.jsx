@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, Target, Clock, MoreVertical, Edit, Trash2, Copy, Eye, Play } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-export default function DietPlanCard({ plan, onDelete, onClone }) {
+export default function DietPlanCard({ plan, onDelete, onClone, onEdit }) {
   const [showMenu, setShowMenu] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -74,7 +74,10 @@ export default function DietPlanCard({ plan, onDelete, onClone }) {
       console.error('Cannot edit plan: missing ID');
       return;
     }
-    
+    if (typeof onEdit === 'function') {
+      onEdit(plan);
+      return;
+    }
     try {
       router.push(`/diet-plans/${planId}/edit`);
     } catch (error) {

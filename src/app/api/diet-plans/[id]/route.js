@@ -142,9 +142,7 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // Invalidate cache for this specific diet plan
-    const cacheKey = `diet-plan:${resolvedParams.id}:${user.uid}`;
-    cache.delete(cacheKey);
+    // No server-side in-memory cache to invalidate
 
     return NextResponse.json({ message: "Diet plan deleted successfully" });
   } catch (error) {

@@ -16,6 +16,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { 
   useDietPlans, 
   useCreateDietPlan, 
+  useUpdateDietPlan,
   useDeleteDietPlan, 
   useCloneDietPlan 
 } from "../../hooks/useDietPlanQueries";
@@ -38,6 +39,22 @@ export default function DietPlansPage() {
   } = useDietPlanStore();
 
   const CreatePlanModal = dynamic(() => import("./CreatePlanModal"), {
+    loading: () => (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+        <div className="w-[90%] max-w-xl bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
+          <div className="space-y-4 animate-pulse">
+            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+            <div className="h-10 bg-gray-300 dark:bg-gray-600 rounded w-1/2 mt-6"></div>
+          </div>
+        </div>
+      </div>
+    ),
+    ssr: false,
+  });
+
+  const EditPlanModal = dynamic(() => import("./EditPlanModal"), {
     loading: () => (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
         <div className="w-[90%] max-w-xl bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
@@ -83,8 +100,11 @@ export default function DietPlansPage() {
   } = useDietPlans(queryOptions);
 
   const createPlanMutation = useCreateDietPlan();
+  const updatePlanMutation = useUpdateDietPlan();
   const deletePlanMutation = useDeleteDietPlan();
   const clonePlanMutation = useCloneDietPlan();
+
+  const [editingPlan, setEditingPlan] = useState(null);
 
   // Show auth error if there's an authentication issue
   if (authError) {
@@ -177,6 +197,14 @@ export default function DietPlansPage() {
       console.error("Error cloning plan:", err);
     }
   }, [clonePlanMutation]);
+
+  const handleEditOpen = useCallback((plan) => {
+    setEditingPlan(plan);
+  }, []);
+
+  const handleEditSave = useCallback(async (planId, updateData) => {
+    await updatePlanMutation.mutateAsync({ planId, updateData });
+  }, [updatePlanMutation]);
 
   const calculateAverageCalories = useCallback(() => {
     if (!Array.isArray(dietPlans) || dietPlans.length === 0) return 0;
@@ -451,6 +479,7 @@ export default function DietPlansPage() {
                   plan={plan}
                   onDelete={handleDeletePlan}
                   onClone={handleClonePlan}
+                  onEdit={handleEditOpen}
                   isDeleting={deletePlanMutation.isPending}
                   isCloning={clonePlanMutation.isPending}
                 />
@@ -465,6 +494,15 @@ export default function DietPlansPage() {
             onClose={() => setShowCreateModal(false)}
             onCreate={handleCreatePlan}
             isCreating={createPlanMutation.isPending}
+          />
+        )}
+
+        {/* Edit Plan Modal */}
+        {editingPlan && (
+          <EditPlanModal
+            plan={editingPlan}
+            onClose={() => setEditingPlan(null)}
+            onSave={handleEditSave}
           />
         )}
       </div>
