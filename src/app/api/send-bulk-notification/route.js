@@ -1,3 +1,6 @@
+import { NextResponse } from 'next/server';
+import admin from '@/lib/firebaseAdmin';
+
 export async function POST(request) {
     try {
       const { tokens, title, body, data, imageUrl } = await request.json();

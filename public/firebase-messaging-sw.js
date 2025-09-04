@@ -8,7 +8,7 @@ firebase.initializeApp({
   apiKey: "AIzaSyASNVaKwP8_OGOkHLkHL44X1_z3uo5tUng",
   authDomain: "coachlix-ai-fitness-coaching.firebaseapp.com",
   projectId: "coachlix-ai-fitness-coaching",
-  storageBucket: "coachlix-ai-fitness-coaching.firebasestorage.app",
+  storageBucket: "coachlix-ai-fitness-coaching.appspot.com",
   messagingSenderId: "835492354129",
   appId: "1:835492354129:web:800c00563cb884e42f4070"
 });
@@ -23,7 +23,7 @@ messaging.onBackgroundMessage(function (payload) {
   const notificationTitle = payload.notification?.title || 'Coachlix Notification';
   const notificationOptions = {
     body: payload.notification?.body || 'You have a new update!',
-    icon: '/icon-192x192.png', // Replace with your actual icon path
+    icon: '/icon-192.png',
     badge: '/badge-icon.png', // Optional: for showing notification count
     data: payload.data // Attach any data if required
   };

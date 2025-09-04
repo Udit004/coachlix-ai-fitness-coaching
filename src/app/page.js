@@ -89,8 +89,11 @@ const setupNotifications = async () => {
     if (permission === "granted") {
       console.log("Notification permission granted.");
 
+      // Ensure we use the registered service worker
+      const registration = await navigator.serviceWorker.ready;
       const fcmToken = await getToken(messaging, {
         vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+        serviceWorkerRegistration: registration,
       });
 
       if (fcmToken) {
@@ -193,9 +196,13 @@ useEffect(() => {
     }
 
     try {
+      const authToken = authUser ? await authUser.getIdToken() : undefined;
       const response = await fetch("/api/send-notification", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
         body: JSON.stringify({
           token: fcmToken,
           title: "Test Notification",

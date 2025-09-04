@@ -1,5 +1,7 @@
 // lib/notificationService.js - Improved NotificationService implementation
 import admin from './firebaseAdmin';
+import { connectDB } from './db';
+import User from '@/models/userProfileModel';
 
 export class NotificationService {
   // Send custom notification
@@ -43,6 +45,20 @@ export class NotificationService {
         message: error.message,
         details: error.details
       });
+
+      // Auto-clean up invalid tokens to prevent repeated failures
+      if (error.code === 'messaging/registration-token-not-registered') {
+        try {
+          await connectDB();
+          const updateResult = await User.updateMany(
+            { pushToken: token },
+            { $unset: { pushToken: "" } }
+          );
+          console.log('🧹 Cleaned up invalid FCM token for users:', updateResult.modifiedCount);
+        } catch (cleanupError) {
+          console.error('Failed to clean up invalid FCM token:', cleanupError);
+        }
+      }
       throw error;
     }
   }

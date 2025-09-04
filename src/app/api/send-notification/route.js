@@ -1,4 +1,10 @@
-// Add this function to get user's FCM token
+import { NextResponse } from 'next/server';
+import User from '@/models/userProfileModel';
+import { connectDB } from '@/lib/db';
+import admin from '@/lib/firebaseAdmin';
+import { verifyUserToken } from '@/lib/verifyUser';
+
+// Helper to fetch the user's stored FCM token
 async function getUserFCMToken(userId) {
   await connectDB();
   const user = await User.findOne({ firebaseUid: userId });
@@ -7,21 +13,25 @@ async function getUserFCMToken(userId) {
 
 export async function POST(request) {
   try {
-    const { title, body, data } = await request.json();
+    const { title, body, data, token: directToken } = await request.json();
     
-    // Get user from auth header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json({ message: 'Authorization required' }, { status: 401 });
-    }
-    
-    const token = authHeader.replace('Bearer ', '');
-    const user = await verifyUserToken(token);
-    
-    // Get user's FCM token
-    const fcmToken = await getUserFCMToken(user.uid);
+    // Allow either a direct device token or an auth header for current user's token
+    let fcmToken = directToken;
+
     if (!fcmToken) {
-      return NextResponse.json({ message: 'No FCM token found for user' }, { status: 404 });
+      const authHeader = request.headers.get('authorization');
+      if (!authHeader) {
+        return NextResponse.json({ message: 'Authorization required' }, { status: 401 });
+      }
+
+      const idToken = authHeader.replace('Bearer ', '');
+      const user = await verifyUserToken(idToken);
+
+      // Get user's stored FCM token
+      fcmToken = await getUserFCMToken(user.uid);
+      if (!fcmToken) {
+        return NextResponse.json({ message: 'No FCM token found for user' }, { status: 404 });
+      }
     }
     
     // Send notification
