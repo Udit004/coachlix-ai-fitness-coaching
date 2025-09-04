@@ -9,7 +9,7 @@ import { NotificationService } from "@/lib/notificationService";
 // POST /api/workout-plans/[id]/clone - Clone workout plan
 export async function POST(request, { params }) {
   try {
-    const { id: planId } = params;
+    const { id: planId } = await params;
     
     // Verify authentication
     const authHeader =

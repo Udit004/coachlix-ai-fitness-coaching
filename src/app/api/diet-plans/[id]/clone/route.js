@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import DietPlan from "@/models/DietPlan";
 import { verifyUserToken } from "@/lib/verifyUser";
+import User from "@/models/userProfileModel";
+import { NotificationService } from "@/lib/notificationService";
+
 
 export async function POST(request, { params }) {
   try {
@@ -32,9 +35,11 @@ export async function POST(request, { params }) {
       );
     }
 
+    const resolvedParams = await params;
+
     // Find original plan
     const originalPlan = await DietPlan.findOne({
-      _id: params.id,
+      _id: resolvedParams.id,
       userId: user.uid,
     });
 
@@ -68,6 +73,25 @@ export async function POST(request, { params }) {
     });
 
     const savedClone = await clonedPlan.save();
+
+    // Send notification to user if push token exists
+    try {
+      const userDoc = await User.findOne({ firebaseUid: user.uid });
+      if (userDoc?.pushToken) {
+        await NotificationService.sendCustomNotification(
+          userDoc.pushToken,
+          "Diet Plan Cloned ✅",
+          `Your plan "${originalPlan.name}" was cloned as "${name.trim()}"`,
+          {
+            type: "diet_plan_cloned",
+            planId: savedClone._id.toString(),
+            planName: savedClone.name,
+          }
+        );
+      }
+    } catch (notifyError) {
+      console.error("Failed to send clone notification:", notifyError);
+    }
 
     return NextResponse.json(savedClone, { status: 201 });
   } catch (error) {

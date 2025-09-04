@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import DietPlan from "@/models/DietPlan";
 import { verifyUserToken } from "@/lib/verifyUser";
+import User from "@/models/userProfileModel";
+import { NotificationService } from "@/lib/notificationService";
 // Disabled simple in-memory cache for per-user plans to avoid stale reads across serverless instances
 
 // GET /api/diet-plans/[id] - Get specific diet plan
@@ -90,6 +92,25 @@ export async function PUT(request, { params }) {
       );
     }
 
+    // Notify user on update
+    try {
+      const userDoc = await User.findOne({ firebaseUid: user.uid });
+      if (userDoc?.pushToken) {
+        await NotificationService.sendCustomNotification(
+          userDoc.pushToken,
+          "Diet Plan Updated 📝",
+          `Your plan "${dietPlan.name}" was updated successfully.`,
+          {
+            type: "diet_plan_updated",
+            planId: dietPlan._id.toString(),
+            planName: dietPlan.name,
+          }
+        );
+      }
+    } catch (notifyError) {
+      console.error("Failed to send update notification:", notifyError);
+    }
+
     return NextResponse.json(dietPlan);
   } catch (error) {
     console.error("Error updating diet plan:", error);
@@ -140,6 +161,24 @@ export async function DELETE(request, { params }) {
         { message: "Diet plan not found" },
         { status: 404 }
       );
+    }
+
+    // Notify user on deletion
+    try {
+      const userDoc = await User.findOne({ firebaseUid: user.uid });
+      if (userDoc?.pushToken) {
+        await NotificationService.sendCustomNotification(
+          userDoc.pushToken,
+          "Diet Plan Deleted 🗑️",
+          `Your plan "${dietPlan.name}" was deleted.`,
+          {
+            type: "diet_plan_deleted",
+            planName: dietPlan.name,
+          }
+        );
+      }
+    } catch (notifyError) {
+      console.error("Failed to send delete notification:", notifyError);
     }
 
     // No server-side in-memory cache to invalidate

@@ -25,8 +25,30 @@ messaging.onBackgroundMessage(function (payload) {
     body: payload.notification?.body || 'You have a new update!',
     icon: '/icon-192.png',
     badge: '/badge-icon.png', // Optional: for showing notification count
-    data: payload.data // Attach any data if required
+    data: {
+      ...(payload.data || {}),
+      link: (payload?.fcmOptions && payload.fcmOptions.link) || (payload?.data && payload.data.link) || '/',
+    }
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// Handle clicks on notifications to open/focus the app
+self.addEventListener('notificationclick', function(event) {
+  const targetUrl = (event.notification && event.notification.data && event.notification.data.link) || '/';
+  event.notification.close();
+
+  event.waitUntil(
+    (async () => {
+      const allClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const existing = allClients.find((client) => client.url.includes(self.registration.scope));
+      if (existing) {
+        existing.focus();
+        try { existing.navigate(targetUrl); } catch (_) {}
+        return;
+      }
+      await clients.openWindow(targetUrl);
+    })()
+  );
 });
