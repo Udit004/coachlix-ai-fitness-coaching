@@ -5,10 +5,18 @@ const BASE_URL = "/api/workout-plans";
 
 // Get authorization header with Firebase token
 const getAuthHeaders = async () => {
-  const user = auth.currentUser;
+  // Wait briefly for Firebase to hydrate user on refresh
+  let user = auth.currentUser;
+  if (!user) {
+    // Poll a few times to avoid race conditions on hard refresh
+    for (let attempt = 0; attempt < 5 && !user; attempt++) {
+      await new Promise((r) => setTimeout(r, 200));
+      user = auth.currentUser;
+    }
+  }
   if (!user) throw new Error("User not authenticated");
 
-  const token = await user.getIdToken();
+  const token = await user.getIdToken(true);
   return {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,

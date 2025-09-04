@@ -33,10 +33,11 @@ export const useWorkoutPlans = (options = {}) => {
 
 // Get single workout plan
 export const useWorkoutPlan = (planId) => {
+  const { user, loading } = useAuth();
   return useQuery({
     queryKey: workoutKeys.detail(planId),
     queryFn: () => workoutPlanService.getWorkoutPlan(planId),
-    enabled: !!planId,
+    enabled: !!planId && !!user && !loading,
     staleTime: 2 * 60 * 1000, // 2 minutes
     cacheTime: 10 * 60 * 1000, // 10 minutes
   });
@@ -44,6 +45,7 @@ export const useWorkoutPlan = (planId) => {
 
 // FIXED: Get specific workout session data with better debugging
 export const useWorkoutSession = (planId, weekNumber, dayNumber, workoutId) => {
+  const { user, loading } = useAuth();
   return useQuery({
     queryKey: workoutKeys.session(planId, weekNumber, dayNumber, workoutId),
     queryFn: async () => {
@@ -126,7 +128,7 @@ export const useWorkoutSession = (planId, weekNumber, dayNumber, workoutId) => {
 
       return { plan, workout, workoutIndex };
     },
-    enabled: !!(planId && weekNumber !== undefined && dayNumber !== undefined && workoutId !== undefined),
+    enabled: !!user && !loading && !!(planId && weekNumber !== undefined && dayNumber !== undefined && workoutId !== undefined),
     staleTime: 1 * 60 * 1000, // 1 minute
     cacheTime: 5 * 60 * 1000, // 5 minutes
     retry: 1, // Reduce retries for faster debugging
