@@ -10,7 +10,7 @@ class PineconeVectorDB {
     this.index = this.pinecone.index(process.env.PINECONE_INDEX_NAME || 'coachlix-fitness');
     this.embeddings = new GoogleGenerativeAIEmbeddings({
       apiKey: process.env.GEMINI_API_KEY,
-      modelName: "embedding-001",
+      modelName: "text-embedding-004", // Fixed: Use current stable embedding model
     });
   }
 

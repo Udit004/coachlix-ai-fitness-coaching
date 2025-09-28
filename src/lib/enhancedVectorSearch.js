@@ -8,7 +8,7 @@ import cache from "./simpleCache.js";
 
 const embeddings = new GoogleGenerativeAIEmbeddings({
   apiKey: process.env.GEMINI_API_KEY,
-  modelName: "embedding-001",
+  modelName: "text-embedding-004", // Fixed: Use current stable embedding model
 });
 
 // Configuration

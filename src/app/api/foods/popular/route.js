@@ -211,7 +211,7 @@ Please respond with ONLY a JSON object in this exact format (no additional text)
 
 If the food doesn't exist or you're unsure, return null.`;
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
     
     const response = await fetch(apiUrl, {
       method: "POST",

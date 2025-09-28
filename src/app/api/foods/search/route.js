@@ -121,7 +121,7 @@ Return ONLY a JSON array of food objects, maximum 10 results. Each object should
 
 Focus on common, real foods that people would actually eat. If the query is too vague or no foods match, return an empty array [].`;
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
     
     const response = await fetch(apiUrl, {
       method: "POST",

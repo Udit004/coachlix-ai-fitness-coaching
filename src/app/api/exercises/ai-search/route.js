@@ -108,7 +108,7 @@ Exercise name to analyze: "${exerciseName.trim()}"`;
     };
 
     // Make API call to Gemini
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
 
     console.log("🤖 Making AI request for exercise:", exerciseName);
 
