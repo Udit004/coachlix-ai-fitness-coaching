@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoachLix - Offline</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      text-align: center;
+    }
+    .container {
+      padding: 20px;
+    }
+    h1 { font-size: 2.5em; margin-bottom: 10px; }
+    p { font-size: 1.2em; }
+    .icon { font-size: 4em; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📵</div>
+    <h1>You're Offline</h1>
+    <p>No internet connection. But don't worry!</p>
+    <p>Your cached workout data is still available.</p>
+    <button onclick="window.location.reload()" 
+            style="margin-top: 20px; padding: 10px 20px; font-size: 1em; 
+                   background: white; color: #667eea; border: none; 
+                   border-radius: 5px; cursor: pointer;">
+      Try Again
+    </button>
+  </div>
+</body>
+</html>
