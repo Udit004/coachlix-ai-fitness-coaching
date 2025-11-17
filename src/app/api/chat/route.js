@@ -1,4 +1,4 @@
-// app/api/chat/route.js - Enhanced with User Context Retrieval, Vector Search, and Streaming Support
+// app/api/chat/route.js - Enhanced with User Context Retrieval, Vector Search, Streaming Support, and LangSmith Tracing
 import { NextResponse } from "next/server";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import {
@@ -36,6 +36,22 @@ import {
   buildFullSystemPrompt,
   buildStreamingSystemPrompt,
 } from "@/lib/prompts";
+
+// Import LangSmith for tracing
+import { Client as LangSmithClient } from "langsmith";
+
+// Initialize LangSmith client if tracing is enabled
+let langsmithClient = null;
+if (process.env.LANGCHAIN_TRACING_V2 === "true" && process.env.LANGCHAIN_API_KEY) {
+  try {
+    langsmithClient = new LangSmithClient({
+      apiKey: process.env.LANGCHAIN_API_KEY,
+    });
+    console.log("✅ LangSmith tracing enabled");
+  } catch (error) {
+    console.warn("⚠️ Failed to initialize LangSmith:", error.message);
+  }
+}
 
 export async function POST(request) {
   try {
@@ -109,8 +125,8 @@ export async function POST(request) {
 
       console.log("Attempting ChatGoogleGenerativeAI initialization...");
 
-      // **ENHANCED: Use more robust model configuration**
-      const llm = new ChatGoogleGenerativeAI({
+      // **ENHANCED: Use more robust model configuration with LangSmith tracing**
+      const llmConfig = {
         apiKey: process.env.GEMINI_API_KEY.trim(),
         model: "gemini-2.5-flash", // Updated to current model
         temperature: 0.7,
@@ -135,7 +151,20 @@ export async function POST(request) {
             threshold: "BLOCK_MEDIUM_AND_ABOVE",
           },
         ],
-      });
+      };
+
+      // Add LangSmith callbacks if tracing is enabled
+      if (process.env.LANGCHAIN_TRACING_V2 === "true") {
+        llmConfig.callbacks = [];
+        llmConfig.metadata = {
+          userId: userId,
+          plan: plan || "general",
+          streaming: streaming,
+        };
+        llmConfig.tags = ["chat-api", "gemini-2.5-flash", userId];
+      }
+
+      const llm = new ChatGoogleGenerativeAI(llmConfig);
 
       console.log("✓ ChatGoogleGenerativeAI initialized successfully");
     } catch (error) {

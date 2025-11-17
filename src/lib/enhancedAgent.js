@@ -1,11 +1,11 @@
-// lib/enhancedAgent.js - Enhanced LangChain Agent Configuration
+// lib/enhancedAgent.js - Enhanced LangChain Agent Configuration with LangSmith Tracing
 import { AgentExecutor, createToolCallingAgent, createStructuredChatAgent } from "langchain/agents";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { createChatMemory } from "./memory";
 
 /**
- * Enhanced agent configuration with better error handling and performance
+ * Enhanced agent configuration with better error handling, performance, and LangSmith tracing
  */
 export class EnhancedAgent {
   constructor(llm, tools, userId) {
@@ -21,10 +21,13 @@ export class EnhancedAgent {
       totalRequests: 0,
       successfulRequests: 0
     };
+    // LangSmith tracing configuration
+    this.tracingEnabled = process.env.LANGCHAIN_TRACING_V2 === "true";
+    this.projectName = process.env.LANGCHAIN_PROJECT || "coachlix-ai-fitness";
   }
 
   /**
-   * Create enhanced agent with better configuration
+   * Create enhanced agent with better configuration and LangSmith tracing
    */
   async createAgent(systemPrompt) {
     try {
@@ -47,8 +50,8 @@ export class EnhancedAgent {
         prompt: finalPrompt,
       });
 
-      // Enhanced agent executor with better configuration
-      const agentExecutor = new AgentExecutor({
+      // Enhanced agent executor with better configuration and LangSmith tracing
+      const executorConfig = {
         agent,
         tools: this.tools,
         verbose: process.env.NODE_ENV === 'development',
@@ -57,7 +60,20 @@ export class EnhancedAgent {
         handleParsingErrors: true,
         earlyStoppingMethod: "generate", // Better stopping criteria
         // Note: Memory is handled separately through chat history parameter
-      });
+      };
+
+      // Add LangSmith tracing metadata if enabled
+      if (this.tracingEnabled) {
+        executorConfig.metadata = {
+          userId: this.userId,
+          agentType: "tool-calling",
+          toolsCount: this.tools.length,
+          project: this.projectName,
+        };
+        executorConfig.tags = ["enhanced-agent", "fitness-coach", this.userId];
+      }
+
+      const agentExecutor = new AgentExecutor(executorConfig);
 
       return agentExecutor;
     } catch (error) {
@@ -67,7 +83,7 @@ export class EnhancedAgent {
   }
 
   /**
-   * Execute agent with enhanced error handling and metrics
+   * Execute agent with enhanced error handling, metrics, and LangSmith tracing
    */
   async executeAgent(agentExecutor, input, chatHistory) {
     const startTime = Date.now();
@@ -78,10 +94,24 @@ export class EnhancedAgent {
       console.log("🔧 Available tools:", this.tools.map(tool => tool.name));
       console.log("📝 Input:", input);
       
-      const result = await agentExecutor.invoke({
+      // Prepare execution config with LangSmith metadata
+      const invokeConfig = {
         input: input,
         chat_history: chatHistory,
-      });
+      };
+
+      // Add LangSmith tracing context if enabled
+      if (this.tracingEnabled) {
+        invokeConfig.metadata = {
+          userId: this.userId,
+          inputLength: input.length,
+          historyLength: chatHistory.length,
+          timestamp: new Date().toISOString(),
+        };
+        invokeConfig.tags = ["agent-execution", this.userId];
+      }
+
+      const result = await agentExecutor.invoke(invokeConfig);
 
       const responseTime = Date.now() - startTime;
       this.updateMetrics(true, responseTime, result);
@@ -89,6 +119,12 @@ export class EnhancedAgent {
       console.log("✅ Enhanced agent execution completed successfully");
       console.log("📊 Result:", JSON.stringify(result, null, 2));
       console.log("🔧 Tools used:", result.intermediateSteps ? result.intermediateSteps.length : 0);
+      
+      // Log to LangSmith if enabled
+      if (this.tracingEnabled) {
+        console.log(`📊 LangSmith Trace: Check ${this.projectName} project for details`);
+      }
+      
       return result;
 
     } catch (error) {
