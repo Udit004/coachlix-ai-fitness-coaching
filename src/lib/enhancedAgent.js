@@ -31,14 +31,23 @@ export class EnhancedAgent {
    */
   async createAgent(systemPrompt) {
     try {
+      // Combine all system messages into one (required for Gemini)
+      const combinedSystemPrompt = `${systemPrompt}
+
+Available tools:
+${this.tools.map(tool => `${tool.name}: ${tool.description || 'No description available'}`).join('\n')}
+
+Tool names: ${this.tools.map(tool => tool.name).join(', ')}
+
+CRITICAL: You have access to powerful tools. When users ask about their workout plans, schedules, nutrition, or progress - ALWAYS use the appropriate tool to fetch real data first. Do not give generic responses. Use get_workout_plan for workout questions, nutrition_lookup for food questions, and calculate_health_metrics for health calculations.`;
+
       // Create the prompt template for tool calling agent
+      // IMPORTANT: System message MUST be first for Gemini API
       const finalPrompt = ChatPromptTemplate.fromMessages([
-        ["system", systemPrompt],
-        ["system", `Available tools:\n${this.tools.map(tool => `${tool.name}: ${tool.description || 'No description available'}`).join('\n')}\n\nTool names: ${this.tools.map(tool => tool.name).join(', ')}`],
+        ["system", combinedSystemPrompt],
         ["placeholder", "{chat_history}"],
         ["human", "{input}"],
-        ["placeholder", "{agent_scratchpad}"],
-        ["system", "CRITICAL: You have access to powerful tools. When users ask about their workout plans, schedules, nutrition, or progress - ALWAYS use the appropriate tool to fetch real data first. Do not give generic responses. Use get_workout_plan for workout questions, nutrition_lookup for food questions, and calculate_health_metrics for health calculations."]
+        ["placeholder", "{agent_scratchpad}"]
       ]);
 
       console.log("🔧 Creating agent with tools:", this.tools.map(t => t.name));

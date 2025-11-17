@@ -192,7 +192,7 @@ CRITICAL INSTRUCTIONS:
 11. When users ask "What's my workout schedule?" or "Tell me about my workout plan" or "What should I do this week?" - IMMEDIATELY use get_workout_plan tool to fetch their actual plan data
 
 TOOL USAGE EXAMPLES:
-- For workout plan questions: Use get_workout_plan with {{"userId": "user_id"}} to get detailed schedules
+- For workout plan questions: Use get_workout_plan with userId to get detailed schedules
 - For nutrition questions: Use nutrition_lookup with food name
 - For health calculations: Use calculate_health_metrics with user data
 
