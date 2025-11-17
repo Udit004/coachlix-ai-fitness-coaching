@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   User,
   Bot,
@@ -12,10 +12,16 @@ import {
   Target,
   Trophy,
   Star,
+  Loader2,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
-const ChatMessage = ({ message, handleSuggestionClick, userProfile }) => {
+const ChatMessage = ({ 
+  message, 
+  handleSuggestionClick, 
+  userProfile,
+  isStreaming = false, // New prop to indicate if this message is currently streaming
+}) => {
   const formatMessageContent = (content) => {
     // Convert markdown-style formatting to HTML with enhanced styling
     let formattedContent = content
@@ -264,7 +270,7 @@ const ChatMessage = ({ message, handleSuggestionClick, userProfile }) => {
           >
             {/* Message Content */}
             <div
-              className={`inline-block p-5 rounded-2xl shadow-sm ${
+              className={`inline-block p-5 rounded-2xl shadow-sm transition-all duration-300 ${
                 message.role === "user"
                   ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
                   : message.isError
@@ -289,13 +295,22 @@ const ChatMessage = ({ message, handleSuggestionClick, userProfile }) => {
                     __html: formatMessageContent(message.content),
                   }}
                 />
+                
+                {/* Streaming cursor indicator - Three dots like ChatGPT, only show when no content yet */}
+                {isStreaming && message.role === "ai" && !message.content && (
+                  <span className="inline-flex items-center ml-1 space-x-1">
+                    <span className="inline-block w-1 h-1 bg-gray-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="inline-block w-1 h-1 bg-gray-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="inline-block w-1 h-1 bg-gray-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </span>
+                )}
               </div>
 
-              {/* AI Enhancement Indicator */}
-              {message.role === "ai" && !message.isError && (
+              {/* AI Enhancement Indicator - Only show when NOT streaming */}
+              {!isStreaming && message.role === "ai" && !message.isError && message.content && (
                 <div className="flex items-center mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
                   <div className="flex items-center space-x-2">
-                    <Sparkles className="h-3 w-3 text-blue-500 animate-pulse" />
+                    <Sparkles className="h-3 w-3 text-blue-500" />
                     <span className="font-medium">
                       Personalized for {userProfile?.name || "you"}
                     </span>
@@ -309,43 +324,46 @@ const ChatMessage = ({ message, handleSuggestionClick, userProfile }) => {
               )}
             </div>
 
-            {/* Message Actions */}
-            <div
-              className={`flex items-center mt-3 space-x-2 text-xs text-gray-400 ${
-                message.role === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
-              <Clock className="h-3 w-3" />
-              <span className="font-medium">
-                {formatTime(message.timestamp)}
-              </span>
-              {message.role === "ai" && !message.isError && (
-                <div className="flex items-center space-x-1 ml-3">
-                  <button
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-                    title="Helpful response"
-                  >
-                    <ThumbsUp className="h-3 w-3 hover:text-green-600" />
-                  </button>
-                  <button
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-                    title="Not helpful"
-                  >
-                    <ThumbsDown className="h-3 w-3 hover:text-red-500" />
-                  </button>
-                  <button
-                    onClick={() => copyToClipboard(message.content)}
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-                    title="Copy message"
-                  >
-                    <Copy className="h-3 w-3 hover:text-blue-500" />
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Message Actions - Only show when NOT streaming */}
+            {!isStreaming && (
+              <div
+                className={`flex items-center mt-3 space-x-2 text-xs text-gray-400 ${
+                  message.role === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
+                <Clock className="h-3 w-3" />
+                <span className="font-medium">
+                  {formatTime(message.timestamp)}
+                </span>
+                {message.role === "ai" && !message.isError && (
+                  <div className="flex items-center space-x-1 ml-3">
+                    <button
+                      className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                      title="Helpful response"
+                    >
+                      <ThumbsUp className="h-3 w-3 hover:text-green-600" />
+                    </button>
+                    <button
+                      className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                      title="Not helpful"
+                    >
+                      <ThumbsDown className="h-3 w-3 hover:text-red-500" />
+                    </button>
+                    <button
+                      onClick={() => copyToClipboard(message.content)}
+                      className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                      title="Copy message"
+                    >
+                      <Copy className="h-3 w-3 hover:text-blue-500" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
-            {/* Personalized AI Suggestions */}
-            {message.role === "ai" &&
+            {/* Personalized AI Suggestions - Only show when NOT streaming and has suggestions */}
+            {!isStreaming &&
+              message.role === "ai" &&
               getPersonalizedSuggestions().length > 0 && (
                 <div className="mt-5 space-y-3">
                   <div className="flex items-center space-x-2 text-xs text-gray-500">
