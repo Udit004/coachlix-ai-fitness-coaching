@@ -11,31 +11,31 @@ import {
   getRecentChatHistory,
   addToHistory,
   formatChatHistoryForContext,
-} from "@/lib/memory";
+} from "@/ai/memory";
 import {
   enhancedVectorSearch,
   hybridSearch,
   createPersonalizedKnowledgeBase,
-} from "@/lib/enhancedVectorSearch.js";
-import { getFitnessTools } from "@/lib/tools";
-import { classifyIntent, mapCategoryToPlan } from "@/lib/routerAgent";
+} from "@/ai/search";
+import { getFitnessTools } from "@/ai/tools";
+import { classifyIntent, mapCategoryToPlan } from "@/ai/agents/routerAgent";
 import { AgentExecutor, createToolCallingAgent } from "langchain/agents";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { RunnableSequence } from "@langchain/core/runnables";
 
 // Import the enhanced context retrieval system
-import { getEnhancedUserContext } from "@/lib/contextRetrieval";
+import { getEnhancedUserContext } from "@/ai/search";
 
 // Import the enhanced agent
 import {
   EnhancedAgent,
   EnhancedErrorHandler,
   retryWithBackoff,
-} from "@/lib/enhancedAgent";
+} from "@/ai/agents/enhancedAgent";
 import {
   buildFullSystemPrompt,
   buildStreamingSystemPrompt,
-} from "@/lib/prompts";
+} from "@/ai/prompts";
 
 // Import LangSmith for tracing
 import { Client as LangSmithClient } from "langsmith";
