@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GetWorkoutPlanTool } from '@/lib/tools';
+import { GetWorkoutPlanTool } from '@/ai/tools/workoutTool';
 
 export async function POST(request) {
   try {
