@@ -13,6 +13,8 @@ import {
   Calendar,
   Clock,
   Trophy,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import WorkoutPlanCard from "./WorkoutPlanCard";
 import { useAuth } from "../../hooks/useAuth";
@@ -35,6 +37,7 @@ export default function WorkoutPlansPage() {
   const [sortBy, setSortBy] = useState("newest");
   const [editingPlan, setEditingPlan] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   // Query options
   const queryOptions = useMemo(() => ({
@@ -230,6 +233,23 @@ export default function WorkoutPlansPage() {
     }
   };
 
+  const handleToggleActive = async (planId, isActive) => {
+    if (!planId) {
+      console.error("Plan ID is required for toggling active status");
+      return;
+    }
+
+    try {
+      await updatePlanMutation.mutateAsync({ 
+        planId, 
+        updateData: { isActive } 
+      });
+    } catch (err) {
+      console.error("Error toggling plan active status:", err);
+      alert("Failed to update plan status. Please try again.");
+    }
+  };
+
   // Show loading while auth is loading
   if (authLoading) {
     return (
@@ -332,85 +352,100 @@ export default function WorkoutPlansPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-            <div className="flex items-center">
-              <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <Dumbbell className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+        <div className="flex gap-2 mb-8 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm flex-1 sm:p-6 sm:rounded-xl">
+            <div className="flex flex-col items-center text-center">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg sm:p-3 mb-2">
+                <Dumbbell className="h-4 w-4 text-blue-600 dark:text-blue-400 sm:h-6 sm:w-6" />
               </div>
-              <div className="ml-4">
-                <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  {stats.totalPlans}
-                </p>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">
-                  Total Plans
-                </p>
-              </div>
+              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-1">
+                Total Plans
+              </p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-white sm:text-2xl">
+                {stats.totalPlans}
+              </p>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-            <div className="flex items-center">
-              <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
-                <Target className="h-6 w-6 text-green-600 dark:text-green-400" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm flex-1 sm:p-6 sm:rounded-xl">
+            <div className="flex flex-col items-center text-center">
+              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg sm:p-3 mb-2">
+                <Target className="h-4 w-4 text-green-600 dark:text-green-400 sm:h-6 sm:w-6" />
               </div>
-              <div className="ml-4">
-                <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  {stats.activePlans}
-                </p>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">
-                  Active Plans
-                </p>
-              </div>
+              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-1">
+                Active Plans
+              </p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-white sm:text-2xl">
+                {stats.activePlans}
+              </p>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-            <div className="flex items-center">
-              <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                <Clock className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm flex-1 sm:p-6 sm:rounded-xl">
+            <div className="flex flex-col items-center text-center">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg sm:p-3 mb-2">
+                <Clock className="h-4 w-4 text-purple-600 dark:text-purple-400 sm:h-6 sm:w-6" />
               </div>
-              <div className="ml-4">
-                <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  {stats.averageDuration}
-                </p>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">
-                  Avg Duration (weeks)
-                </p>
-              </div>
+              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-1">
+                Avg Duration (weeks)
+              </p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-white sm:text-2xl">
+                {stats.averageDuration}
+              </p>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-            <div className="flex items-center">
-              <div className="p-3 bg-orange-100 dark:bg-orange-900 rounded-lg">
-                <Trophy className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm flex-1 sm:p-6 sm:rounded-xl">
+            <div className="flex flex-col items-center text-center">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg sm:p-3 mb-2">
+                <Trophy className="h-4 w-4 text-orange-600 dark:text-orange-400 sm:h-6 sm:w-6" />
               </div>
-              <div className="ml-4">
-                <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  {stats.totalWorkouts}
-                </p>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">
-                  Total Workouts
-                </p>
-              </div>
+              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-1">
+                Total Workouts
+              </p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-white sm:text-2xl">
+                {stats.totalWorkouts}
+              </p>
             </div>
           </div>
         </div>
 
         {/* Filters and Search */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm mb-8">
-          <div className="flex flex-col lg:flex-row gap-4">
-            {/* Search */}
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search workout plans..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-              />
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm mb-8">
+          {/* Mobile Toggle Button */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="lg:hidden w-full flex items-center justify-between p-4 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors"
+          >
+            <div className="flex items-center space-x-2">
+              <Filter className="h-5 w-5" />
+              <span className="font-medium">Filters & Search</span>
+              {(searchTerm || selectedGoal || selectedDifficulty || sortBy !== "newest") && (
+                <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-semibold text-white bg-blue-600 rounded-full">
+                  {[searchTerm, selectedGoal, selectedDifficulty, sortBy !== "newest"].filter(Boolean).length}
+                </span>
+              )}
+            </div>
+            {showFilters ? (
+              <ChevronUp className="h-5 w-5" />
+            ) : (
+              <ChevronDown className="h-5 w-5" />
+            )}
+          </button>
+
+          {/* Filters Content */}
+          <div className={`${showFilters ? 'block' : 'hidden'} lg:block p-6`}>
+            <div className="flex flex-col lg:flex-row gap-4">
+              {/* Search */}
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search workout plans..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                />
             </div>
 
             {/* Goal Filter */}
@@ -452,6 +487,7 @@ export default function WorkoutPlansPage() {
               <option value="updated">Recently Updated</option>
               <option value="popular">Most Popular</option>
             </select>
+            </div>
           </div>
         </div>
 
@@ -512,6 +548,7 @@ export default function WorkoutPlansPage() {
                   onDelete={handleDeletePlan}
                   onClone={handleClonePlan}
                   onEdit={handleEditPlan}
+                  onToggleActive={handleToggleActive}
                   isDeleting={deletePlanMutation.isLoading}
                   isCloning={clonePlanMutation.isLoading}
                 />

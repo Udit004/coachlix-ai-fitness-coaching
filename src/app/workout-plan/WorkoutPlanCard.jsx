@@ -13,12 +13,14 @@ import {
   TrendingUp,
   Award,
   Dumbbell,
+  Power,
 } from "lucide-react";
 
-export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit }) {
+export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit, onToggleActive }) {
   const router = useRouter();
   const [showDropdown, setShowDropdown] = useState(false);
   const [isCloning, setIsCloning] = useState(false);
+  const [isTogglingActive, setIsTogglingActive] = useState(false);
 
   const handleClone = async () => {
     const newName = prompt("Enter a name for the cloned plan:", `${plan.name} (Copy)`);
@@ -45,6 +47,19 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit }) {
       await onDelete(plan._id);
     }
     setShowDropdown(false);
+  };
+
+  const handleToggleActive = async () => {
+    if (!onToggleActive) return;
+    setIsTogglingActive(true);
+    try {
+      await onToggleActive(plan._id, !plan.isActive);
+    } catch (error) {
+      console.error("Error toggling plan status:", error);
+    } finally {
+      setIsTogglingActive(false);
+      setShowDropdown(false);
+    }
   };
 
   const handleCardClick = (e) => {
@@ -142,6 +157,15 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit }) {
                     >
                       <Copy className="h-4 w-4" />
                       <span>{isCloning ? "Cloning..." : "Clone Plan"}</span>
+                    </button>
+                    
+                    <button
+                      onClick={handleToggleActive}
+                      disabled={isTogglingActive}
+                      className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+                    >
+                      <Power className="h-4 w-4" />
+                      <span>{isTogglingActive ? "Updating..." : (plan.isActive ? "Mark as Inactive" : "Mark as Active")}</span>
                     </button>
                     
                     <hr className="my-1 border-gray-200 dark:border-gray-600" />
@@ -275,11 +299,19 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit }) {
       </div>
 
       {/* Active Status Indicator */}
-      {plan.isActive && (
-        <div className="absolute top-4 right-4">
-          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-        </div>
-      )}
+      <div className="absolute top-4 right-4">
+        {plan.isActive ? (
+          <span className="inline-flex items-center px-2 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs font-medium rounded-full">
+            <span className="w-2 h-2 bg-green-500 rounded-full mr-1.5 animate-pulse"></span>
+            Active
+          </span>
+        ) : (
+          <span className="inline-flex items-center px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs font-medium rounded-full">
+            <span className="w-2 h-2 bg-gray-400 rounded-full mr-1.5"></span>
+            Inactive
+          </span>
+        )}
+      </div>
     </div>
   );
 }
