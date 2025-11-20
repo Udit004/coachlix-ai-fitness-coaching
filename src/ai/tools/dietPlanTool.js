@@ -10,14 +10,14 @@ import DietPlan from "../../models/DietPlan";
 export class CreateDietPlanTool extends Tool {
   name = "create_diet_plan";
   description =
-    "CRITICAL: Use this tool whenever a user wants to create a new diet plan. Input should be a JSON string with userId (required), planName, goal, targetCalories, duration (days), and optionally dietaryRestrictions, preferences. This tool intelligently generates a complete diet plan with meals based on user goals and preferences. Returns a fully structured diet plan with daily meals.";
+    "Create diet plans. Input: JSON with userId, planName, goal, targetCalories, duration. Returns structured meal plan.";
 
   async _call(input) {
     try {
       console.log("🍽️ CreateDietPlanTool called with input:", input);
       
       const planData = JSON.parse(input);
-      const {
+      let {
         userId,
         planName,
         goal,
@@ -32,6 +32,25 @@ export class CreateDietPlanTool extends Tool {
       if (!userId) {
         console.error("❌ CreateDietPlanTool: userId is required");
         return "Error: userId is required to create a diet plan.";
+      }
+
+      // Parse duration if it's a string with "days", "weeks", or "months"
+      if (typeof duration === 'string') {
+        const durationMatch = duration.match(/(\d+)\s*(day|week|month)/i);
+        if (durationMatch) {
+          const value = parseInt(durationMatch[1]);
+          const unit = durationMatch[2].toLowerCase();
+          if (unit.startsWith('week')) {
+            duration = value * 7; // Convert weeks to days
+          } else if (unit.startsWith('month')) {
+            duration = value * 30; // Convert months to days
+          } else {
+            duration = value; // Already in days
+          }
+        } else {
+          // Try to parse as plain number string
+          duration = parseInt(duration) || 7;
+        }
       }
 
       console.log("🔍 CreateDietPlanTool: Connecting to database...");
@@ -51,8 +70,8 @@ export class CreateDietPlanTool extends Tool {
 
       // Use provided data or fall back to calculated health metrics
       const userGoal = goal || user.fitnessGoal || "Maintenance";
-      const userWeight = parseFloat(user.weight?.replace(/[^\d.]/g, "")) || 70;
-      const userHeight = parseFloat(user.height?.replace(/[^\d.]/g, "")) || 170;
+      const userWeight = user.weight || 70;
+      const userHeight = user.height || 170;
       const userAge = user.age || calculateAge(user.birthDate) || 25;
       const userGender = user.gender || "male";
 
@@ -180,7 +199,7 @@ export class CreateDietPlanTool extends Tool {
 export class UpdateDietPlanTool extends Tool {
   name = "update_diet_plan";
   description =
-    "CRITICAL: Use this tool to update, modify, or retrieve existing diet plans. Input should be a JSON string with userId and action fields. To retrieve plans, use action get. To update a plan, include planId, and any fields to update (name, meals, targetCalories, etc.). Can add/remove meals, adjust macros, or modify plan details. Always use this when users want to change their diet plan.";
+    "Update or get diet plans. Input: JSON with userId, action, planId. Returns modified diet plan.";
 
   async _call(input) {
     try {

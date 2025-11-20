@@ -10,7 +10,7 @@ import DietPlan from "../../models/DietPlan";
 export class NutritionLookupTool extends Tool {
   name = "nutrition_lookup";
   description =
-    "CRITICAL: Use this tool whenever a user asks about food nutrition, calories, macros, or dietary information. Input should be a JSON string with foodName and optionally userId for personalized advice. Returns detailed nutritional information including calories, protein, carbs, fats, and personalized recommendations based on their goals.";
+    "Get food nutrition info. Input: foodName or JSON with foodName and userId. Returns calories, protein, carbs, fats.";
 
   async _call(input) {
     try {
