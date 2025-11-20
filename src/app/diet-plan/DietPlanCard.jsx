@@ -1,11 +1,12 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, Target, Clock, MoreVertical, Edit, Trash2, Copy, Eye, Play } from 'lucide-react';
+import { Calendar, Target, Clock, MoreVertical, Edit, Trash2, Copy, Eye, Play, Power } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-export default function DietPlanCard({ plan, onDelete, onClone, onEdit }) {
+export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggleActive }) {
   const [showMenu, setShowMenu] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isTogglingActive, setIsTogglingActive] = useState(false);
   const router = useRouter();
   const menuRef = useRef(null);
 
@@ -151,6 +152,29 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit }) {
     }
   };
 
+  const handleToggleActive = async () => {
+    if (!onToggleActive || typeof onToggleActive !== 'function') {
+      console.error('onToggleActive prop is required and must be a function');
+      return;
+    }
+
+    if (!planId) {
+      console.error('Cannot toggle plan status: missing ID');
+      return;
+    }
+
+    setIsTogglingActive(true);
+    try {
+      await onToggleActive(planId, !planIsActive);
+    } catch (error) {
+      console.error('Error toggling plan status:', error);
+      alert('Failed to update plan status. Please try again.');
+    } finally {
+      setIsTogglingActive(false);
+      setShowMenu(false);
+    }
+  };
+
   const getGoalColor = (goal) => {
     if (!goal || typeof goal !== 'string') return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
     
@@ -278,6 +302,14 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit }) {
                 >
                   <Copy className="h-4 w-4 flex-shrink-0" />
                   <span>Clone Plan</span>
+                </button>
+                <button
+                  onClick={handleToggleActive}
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2"
+                  disabled={isTogglingActive || loading}
+                >
+                  <Power className="h-4 w-4 flex-shrink-0" />
+                  <span>{isTogglingActive ? 'Updating...' : (planIsActive ? 'Mark as Inactive' : 'Mark as Active')}</span>
                 </button>
                 <button
                   onClick={handleDelete}
@@ -418,13 +450,19 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit }) {
       </div>
 
       {/* Status Indicator */}
-      {!planIsActive && (
-        <div className="absolute top-4 right-4">
-          <span className="inline-flex items-center px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full">
+      <div className="absolute top-6 right-14">
+        {planIsActive ? (
+          <span className="inline-flex items-center px-2 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs font-medium rounded-full">
+            <span className="w-2 h-2 bg-green-500 rounded-full mr-1.5 animate-pulse"></span>
+            Active
+          </span>
+        ) : (
+          <span className="inline-flex items-center px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs font-medium rounded-full">
+            <span className="w-2 h-2 bg-gray-400 rounded-full mr-1.5"></span>
             Inactive
           </span>
-        </div>
-      )}
+        )}
+      </div>
       
       {/* Loading Overlay */}
       {loading && (
