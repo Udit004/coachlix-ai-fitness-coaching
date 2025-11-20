@@ -35,7 +35,7 @@ const ChatHeader = ({
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 shadow-sm px-2 sm:px-4 py-3">
+    <header className="sticky top-16 z-40 bg-white border-b border-gray-200 shadow-sm px-2 sm:px-4 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2">
         {/* Left side - Menu + Plan Selector */}
         <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">

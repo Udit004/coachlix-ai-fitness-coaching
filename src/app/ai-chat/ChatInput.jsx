@@ -397,7 +397,7 @@ const ChatInput = ({
                 ? 'Drop files to attach' 
                 : isListening 
                   ? 'Listening...' 
-                  : 'Powered by DeepSeek AI'}
+                  : 'Powered by Gemini AI'}
             </span>
           </div>
           <div className="flex items-center space-x-2">
