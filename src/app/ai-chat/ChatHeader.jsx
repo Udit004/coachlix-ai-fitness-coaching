@@ -102,7 +102,7 @@ const ChatHeader = ({
         </div>
 
         {/* Center - Chat Status */}
-        <div className="hidden sm:flex items-center space-x-2 flex-shrink-0">
+        <div className="hidden lg:flex items-center space-x-2 flex-shrink-0">
           {isNewChat ? (
             <div className="flex items-center space-x-2 text-purple-600">
               <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
@@ -197,25 +197,6 @@ const ChatHeader = ({
         </div>
       </div>
 
-      {/* Mobile status bar */}
-      <div className="sm:hidden mt-2 flex items-center justify-between text-xs px-1">
-        {userProfile?.name && (
-          <span className="text-gray-600 truncate max-w-[50%]">
-            Hello, {userProfile.name}
-          </span>
-        )}
-        {isNewChat ? (
-          <div className="flex items-center space-x-1 text-green-600">
-            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-            <span>New</span>
-          </div>
-        ) : (
-          <div className="flex items-center space-x-1 text-blue-600">
-            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-            <span>Continuing</span>
-          </div>
-        )}
-      </div>
 
       {/* Backdrop */}
       {(isDropdownOpen || isMobileMenuOpen) && (

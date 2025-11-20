@@ -31,9 +31,9 @@ const ChatContainer = ({
   };
 
   return (
-    <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 flex flex-col h-full overflow-hidden">
+    <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 flex flex-col h-full max-h-full overflow-hidden">
       {/* Chat Messages - Scrollable Area */}
-      <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4">
         {messages.map((message, index) => {
           // Check if this message is currently streaming
           const isStreaming = message.id === streamingMessageId && message.role === "ai";

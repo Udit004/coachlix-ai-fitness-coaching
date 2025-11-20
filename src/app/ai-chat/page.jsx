@@ -605,15 +605,15 @@ const AIChatPage = () => {
 
       {/* Main Chat Layout with Enhanced Loading */}
       <div className="flex-1 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2 sm:py-6 h-full">
-          <div className="flex gap-2 sm:gap-6 h-full">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2 sm:py-6 h-full flex flex-col">
+          <div className="flex gap-2 sm:gap-6 flex-1 min-h-0">
             {/* Enhanced Sidebar with Suspense */}
             <div
               className={`${
                 sidebarOpen
                   ? "fixed inset-0 z-50 bg-white lg:relative lg:inset-auto lg:bg-transparent"
                   : "hidden lg:block"
-              } w-full lg:w-80 flex-shrink-0 overflow-y-auto h-full p-4 lg:p-0`}
+              } w-full lg:w-80 flex-shrink-0 overflow-y-auto lg:h-full p-4 lg:p-0`}
             >
               <Suspense fallback={<ComponentLoading type="sidebar" />}>
                 <ChatSidebar
@@ -629,7 +629,7 @@ const AIChatPage = () => {
             </div>
 
             {/* Chat Container with Suspense */}
-            <div className="flex-1 h-full min-w-0">
+            <div className="flex-1 min-h-0 min-w-0">
               <Suspense fallback={<ComponentLoading type="chat" />}>
                 <ChatContainer
                   messages={messages}
