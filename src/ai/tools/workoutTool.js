@@ -10,7 +10,7 @@ import WorkoutPlan from "../../models/WorkoutPlan";
 export class UpdateWorkoutPlanTool extends Tool {
   name = "update_workout_plan";
   description =
-    "CRITICAL: Use this tool to create, update, or modify workout plans. Input should be a JSON string with userId and action fields. To retrieve existing plans, use action get. To create/update plans, include planName, exercises, duration, and goal. This tool can also fetch current workout plans, schedules, and progress details. Use when users want to create new plans or modify existing ones.";
+    "Create or modify workout plans. Input: JSON with userId, action, planName, exercises. Returns workout plan details.";
 
   async _call(planInput) {
     try {
@@ -131,7 +131,7 @@ export class UpdateWorkoutPlanTool extends Tool {
 export class GetWorkoutPlanTool extends Tool {
   name = "get_workout_plan";
   description =
-    "CRITICAL: Use this tool whenever a user asks about their workout plans, schedules, exercises, or what they should do for their workouts. Input should be a JSON string with userId (required). Returns detailed information about their current workout plans including schedules, exercises, progress tracking, and weekly breakdowns. ALWAYS use this tool first when users ask about their workout routine.";
+    "Get user workout plans and schedules. Input: JSON with userId. Returns current workouts, exercises, progress.";
 
   async _call(input) {
     try {

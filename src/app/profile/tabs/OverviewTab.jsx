@@ -106,22 +106,49 @@ export default function OverviewTab({
             )}
           </div>
 
+          {/* Gender */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Gender <span className="text-red-500">*</span>
+            </label>
+            {isEditing ? (
+              <select
+                value={data.gender || ""}
+                onChange={(e) => onInputChange("gender", e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                required
+              >
+                <option value="">Select gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            ) : (
+              <p className="p-3 bg-gray-50 rounded-lg text-gray-900 capitalize">
+                {data.gender || "Not specified"}
+              </p>
+            )}
+          </div>
+
           {/* Height */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Height
+              Height (cm)
             </label>
             {isEditing ? (
               <input
-                type="text"
+                type="number"
                 value={data.height || ""}
-                onChange={(e) => onInputChange("height", e.target.value)}
+                onChange={(e) => onInputChange("height", parseFloat(e.target.value) || "")}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-                placeholder="Enter your height (e.g. 170 cm)"
+                placeholder="Enter your height in cm (e.g. 170)"
+                min="50"
+                max="300"
+                step="0.1"
               />
             ) : (
               <p className="p-3 bg-gray-50 rounded-lg text-gray-900">
-                {data.height}
+                {data.height ? `${data.height} cm` : "Not specified"}
               </p>
             )}
           </div>
@@ -171,22 +198,71 @@ export default function OverviewTab({
             )}
           </div>
 
-          {/* Weight */}
+          {/* Age */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Weight
+              Age (optional)
             </label>
             {isEditing ? (
               <input
-                type="text"
-                value={data.weight || ""}
-                onChange={(e) => onInputChange("weight", e.target.value)}
+                type="number"
+                value={data.age || ""}
+                onChange={(e) => onInputChange("age", parseInt(e.target.value) || "")}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-                placeholder="Enter your current weight (e.g. 70 kg)"
+                placeholder="Enter your age"
+                min="10"
+                max="120"
               />
             ) : (
               <p className="p-3 bg-gray-50 rounded-lg text-gray-900">
-                {data.weight}
+                {data.age || "Not specified"}
+              </p>
+            )}
+          </div>
+
+          {/* Activity Level */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Activity Level
+            </label>
+            {isEditing ? (
+              <select
+                value={data.activityLevel || "moderately active"}
+                onChange={(e) => onInputChange("activityLevel", e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+              >
+                <option value="sedentary">Sedentary (little or no exercise)</option>
+                <option value="lightly active">Lightly Active (1-3 days/week)</option>
+                <option value="moderately active">Moderately Active (3-5 days/week)</option>
+                <option value="very active">Very Active (6-7 days/week)</option>
+                <option value="extra active">Extra Active (intense daily training)</option>
+              </select>
+            ) : (
+              <p className="p-3 bg-gray-50 rounded-lg text-gray-900 capitalize">
+                {data.activityLevel || "moderately active"}
+              </p>
+            )}
+          </div>
+
+          {/* Weight */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Weight (kg)
+            </label>
+            {isEditing ? (
+              <input
+                type="number"
+                value={data.weight || ""}
+                onChange={(e) => onInputChange("weight", parseFloat(e.target.value) || "")}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
+                placeholder="Enter your current weight in kg (e.g. 70)"
+                min="20"
+                max="500"
+                step="0.1"
+              />
+            ) : (
+              <p className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                {data.weight ? `${data.weight} kg` : "Not specified"}
               </p>
             )}
           </div>
@@ -194,19 +270,22 @@ export default function OverviewTab({
           {/* Target Weight */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Target Weight
+              Target Weight (kg)
             </label>
             {isEditing ? (
               <input
-                type="text"
+                type="number"
                 value={data.targetWeight || ""}
-                onChange={(e) => onInputChange("targetWeight", e.target.value)}
+                onChange={(e) => onInputChange("targetWeight", parseFloat(e.target.value) || "")}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-                placeholder="Enter your target weight (e.g. 65 kg)"
+                placeholder="Enter your target weight in kg (e.g. 65)"
+                min="20"
+                max="500"
+                step="0.1"
               />
             ) : (
               <p className="p-3 bg-gray-50 rounded-lg text-gray-900">
-                {data.targetWeight}
+                {data.targetWeight ? `${data.targetWeight} kg` : "Not specified"}
               </p>
             )}
           </div>
