@@ -22,6 +22,8 @@ const ChatMessage = ({
   userProfile,
   isStreaming = false, // New prop to indicate if this message is currently streaming
 }) => {
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
   const formatMessageContent = (content) => {
     // Convert markdown-style formatting to HTML with enhanced styling
     let formattedContent = content
@@ -179,30 +181,30 @@ const ChatMessage = ({
     if (message.role === "user") {
       if (userProfile?.name) {
         return (
-          <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg text-white font-bold ring-2 ring-white">
+          <div className="flex-shrink-0 w-7 h-7 md:w-10 md:h-10 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 rounded-lg md:rounded-xl flex items-center justify-center shadow-md md:shadow-lg text-white text-xs md:text-base font-bold ring-1 md:ring-2 ring-white">
             {userProfile.name.charAt(0).toUpperCase()}
           </div>
         );
       }
       return (
-        <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg ring-2 ring-white">
-          <User className="h-5 w-5 text-white" />
+        <div className="flex-shrink-0 w-7 h-7 md:w-10 md:h-10 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 rounded-lg md:rounded-xl flex items-center justify-center shadow-md md:shadow-lg ring-1 md:ring-2 ring-white">
+          <User className="h-3.5 w-3.5 md:h-5 md:w-5 text-white" />
         </div>
       );
     }
 
     return (
       <div
-        className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ring-2 ring-white ${
+        className={`flex-shrink-0 w-7 h-7 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center shadow-md md:shadow-lg ring-1 md:ring-2 ring-white ${
           message.isError
             ? "bg-gradient-to-br from-red-500 via-red-600 to-red-700 text-white"
             : "bg-gradient-to-br from-green-500 via-emerald-600 to-teal-600 text-white"
         }`}
       >
         {message.isError ? (
-          <AlertCircle className="h-5 w-5" />
+          <AlertCircle className="h-3.5 w-3.5 md:h-5 md:w-5" />
         ) : (
-          <Bot className="h-5 w-5" />
+          <Bot className="h-3.5 w-3.5 md:h-5 md:w-5" />
         )}
       </div>
     );
@@ -256,21 +258,10 @@ const ChatMessage = ({
           message.role === "user" ? "order-2" : "order-1"
         }`}
       >
-        <div
-          className={`flex items-start space-x-4 ${
-            message.role === "user" ? "flex-row-reverse space-x-reverse" : ""
-          }`}
-        >
-          {getPersonalizedAvatar()}
-
-          <div
-            className={`flex-1 ${
-              message.role === "user" ? "text-right" : "text-left"
-            }`}
-          >
+        <div className={`${message.role === "user" ? "text-right" : "text-left"}`}>
             {/* Message Content */}
             <div
-              className={`inline-block p-5 rounded-2xl shadow-sm transition-all duration-300 ${
+              className={`inline-block p-3 md:p-5 rounded-xl md:rounded-2xl shadow-sm transition-all duration-300 ${
                 message.role === "user"
                   ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
                   : message.isError
@@ -308,13 +299,13 @@ const ChatMessage = ({
 
               {/* AI Enhancement Indicator - Only show when NOT streaming */}
               {!isStreaming && message.role === "ai" && !message.isError && message.content && (
-                <div className="flex items-center mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
-                  <div className="flex items-center space-x-2">
-                    <Sparkles className="h-3 w-3 text-blue-500" />
+                <div className="flex items-center mt-2 md:mt-3 pt-2 md:pt-3 border-t border-gray-100 text-[10px] md:text-xs text-gray-500">
+                  <div className="flex items-center space-x-1.5 md:space-x-2">
+                    <Sparkles className="h-2.5 w-2.5 md:h-3 md:w-3 text-blue-500" />
                     <span className="font-medium">
                       Personalized for {userProfile?.name || "you"}
                     </span>
-                    <div className="flex items-center space-x-1 ml-2">
+                    <div className="hidden md:flex items-center space-x-1 ml-2">
                       <Zap className="h-3 w-3 text-yellow-500" />
                       <Target className="h-3 w-3 text-green-500" />
                       <Trophy className="h-3 w-3 text-purple-500" />
@@ -327,34 +318,34 @@ const ChatMessage = ({
             {/* Message Actions - Only show when NOT streaming */}
             {!isStreaming && (
               <div
-                className={`flex items-center mt-3 space-x-2 text-xs text-gray-400 ${
+                className={`flex items-center mt-2 md:mt-3 space-x-1.5 md:space-x-2 text-[10px] md:text-xs text-gray-400 ${
                   message.role === "user" ? "justify-end" : "justify-start"
                 }`}
               >
-                <Clock className="h-3 w-3" />
+                <Clock className="h-2.5 w-2.5 md:h-3 md:w-3" />
                 <span className="font-medium">
                   {formatTime(message.timestamp)}
                 </span>
                 {message.role === "ai" && !message.isError && (
-                  <div className="flex items-center space-x-1 ml-3">
+                  <div className="flex items-center space-x-0.5 md:space-x-1 ml-2 md:ml-3">
                     <button
-                      className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                      className="p-1 md:p-1.5 hover:bg-gray-100 rounded-md md:rounded-lg transition-colors duration-200"
                       title="Helpful response"
                     >
-                      <ThumbsUp className="h-3 w-3 hover:text-green-600" />
+                      <ThumbsUp className="h-2.5 w-2.5 md:h-3 md:w-3 hover:text-green-600" />
                     </button>
                     <button
-                      className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                      className="p-1 md:p-1.5 hover:bg-gray-100 rounded-md md:rounded-lg transition-colors duration-200"
                       title="Not helpful"
                     >
-                      <ThumbsDown className="h-3 w-3 hover:text-red-500" />
+                      <ThumbsDown className="h-2.5 w-2.5 md:h-3 md:w-3 hover:text-red-500" />
                     </button>
                     <button
                       onClick={() => copyToClipboard(message.content)}
-                      className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                      className="p-1 md:p-1.5 hover:bg-gray-100 rounded-md md:rounded-lg transition-colors duration-200"
                       title="Copy message"
                     >
-                      <Copy className="h-3 w-3 hover:text-blue-500" />
+                      <Copy className="h-2.5 w-2.5 md:h-3 md:w-3 hover:text-blue-500" />
                     </button>
                   </div>
                 )}
@@ -365,31 +356,63 @@ const ChatMessage = ({
             {!isStreaming &&
               message.role === "ai" &&
               getPersonalizedSuggestions().length > 0 && (
-                <div className="mt-5 space-y-3">
-                  <div className="flex items-center space-x-2 text-xs text-gray-500">
-                    <Star className="h-3 w-3 text-yellow-500" />
-                    <span className="font-medium">Suggested follow-ups</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {getPersonalizedSuggestions().map((suggestion, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleSuggestionClick(suggestion)}
-                        className="group relative px-4 py-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 text-sm rounded-xl hover:from-blue-100 hover:to-indigo-100 transition-all duration-300 border border-blue-200/50 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 hover:scale-[1.02] font-medium overflow-hidden"
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/0 to-indigo-400/0 group-hover:from-blue-400/5 group-hover:to-indigo-400/5 transition-all duration-300"></div>
-                        <div className="relative flex items-center space-x-1">
-                          <Sparkles className="h-3 w-3 opacity-60 group-hover:opacity-100 transition-opacity duration-200" />
-                          <span className="group-hover:font-semibold transition-all duration-200">
-                            {suggestion}
-                          </span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                <div className="mt-3 md:mt-4">
+                  {/* Toggle Button */}
+                  <button
+                    onClick={() => setShowSuggestions(!showSuggestions)}
+                    className="group flex items-center space-x-2 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-700 text-xs md:text-sm rounded-lg border border-blue-200/50 transition-all duration-200 hover:shadow-sm"
+                  >
+                    <Sparkles className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                    <span className="font-medium">
+                      {showSuggestions ? "Hide" : "Show"} follow-up suggestions
+                    </span>
+                    <span className="text-[10px] md:text-xs bg-blue-200/50 px-1.5 py-0.5 rounded-full">
+                      {getPersonalizedSuggestions().length}
+                    </span>
+                    <svg
+                      className={`h-3 w-3 transition-transform duration-200 ${
+                        showSuggestions ? "rotate-180" : ""
+                      }`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </button>
+
+                  {/* Suggestions List with smooth transition */}
+                  {showSuggestions && (
+                    <div className="mt-2 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="flex flex-wrap gap-1.5 md:gap-2">
+                        {getPersonalizedSuggestions().map((suggestion, index) => (
+                          <button
+                            key={index}
+                            onClick={() => {
+                              handleSuggestionClick(suggestion);
+                              setShowSuggestions(false); // Auto-hide after selection
+                            }}
+                            className="group relative px-2.5 py-1.5 md:px-4 md:py-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 text-xs md:text-sm rounded-lg md:rounded-xl hover:from-blue-100 hover:to-indigo-100 transition-all duration-300 border border-blue-200/50 shadow-sm hover:shadow-md active:scale-95 md:hover:-translate-y-0.5 md:hover:scale-[1.02] font-medium overflow-hidden"
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-blue-400/0 to-indigo-400/0 group-hover:from-blue-400/5 group-hover:to-indigo-400/5 transition-all duration-300"></div>
+                            <div className="relative flex items-center space-x-1">
+                              <Sparkles className="h-2.5 w-2.5 md:h-3 md:w-3 opacity-60 group-hover:opacity-100 transition-opacity duration-200" />
+                              <span className="group-hover:font-semibold transition-all duration-200 line-clamp-1">
+                                {suggestion}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
-          </div>
         </div>
       </div>
     </div>

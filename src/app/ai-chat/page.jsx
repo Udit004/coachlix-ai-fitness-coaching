@@ -417,17 +417,12 @@ const AIChatPage = () => {
       const welcomeMessage = {
         id: Date.now(),
         role: "ai",
-        content: `Welcome back, ${
-          userProfile.name
-        }! 🎯 I'm your AI fitness coach, ready to help you achieve your ${userProfile.fitnessGoal?.replace(
-          "-",
-          " "
-        )} goals.\n\nI can help you with:\n• Personalized workout plans\n• Nutrition guidance\n• Progress tracking\n• Motivation and support\n\nWhat would you like to work on today?`,
+        content: `Hi ${userProfile.name}! 👋 Ready to work on your ${userProfile.fitnessGoal?.replace("-", " ")} goals?`,
         timestamp: new Date(),
         suggestions: [
           `Create a ${userProfile.fitnessGoal?.replace("-", " ")} plan`,
+          "Design a meal plan",
           "Track my progress",
-          "Get nutrition advice",
           "Set weekly goals",
         ],
       };
@@ -509,17 +504,12 @@ const AIChatPage = () => {
       const welcomeMessage = {
         id: Date.now(),
         role: "ai",
-        content: `Welcome back, ${
-          userProfile.name
-        }! 🎯 I'm your AI fitness coach, ready to help you achieve your ${userProfile.fitnessGoal?.replace(
-          "-",
-          " "
-        )} goals.\n\nI can help you with:\n• Personalized workout plans\n• Nutrition guidance\n• Progress tracking\n• Motivation and support\n\nWhat would you like to work on today?`,
+        content: `Hi ${userProfile.name}! 👋 Ready to work on your ${userProfile.fitnessGoal?.replace("-", " ")} goals?`,
         timestamp: new Date(),
         suggestions: [
           `Create a ${userProfile.fitnessGoal?.replace("-", " ")} plan`,
+          "Design a meal plan",
           "Track my progress",
-          "Get nutrition advice",
           "Set weekly goals",
         ],
       };
