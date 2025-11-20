@@ -4,9 +4,11 @@ export function createLLM(streaming = false) {
   return new ChatGoogleGenerativeAI({
     apiKey: process.env.GEMINI_API_KEY,
     modelName: "gemini-1.5-flash",
-    temperature: 0.7,
-    maxOutputTokens: streaming ? 2048 : 8192,
+    temperature: 0.5, // Reduced for more focused responses
+    maxOutputTokens: streaming ? 1024 : 2048, // Reduced significantly
     streaming: streaming,
+    // Enable context caching for repeated system prompts (saves ~50% tokens)
+    cacheControl: true,
   });
 }
 

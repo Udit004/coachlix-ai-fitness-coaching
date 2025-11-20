@@ -33,12 +33,7 @@ export class EnhancedAgent {
       // Combine all system messages into one (required for Gemini)
       const combinedSystemPrompt = `${systemPrompt}
 
-Available tools:
-${this.tools.map(tool => `${tool.name}: ${tool.description || 'No description available'}`).join('\n')}
-
-Tool names: ${this.tools.map(tool => tool.name).join(', ')}
-
-CRITICAL: You have access to powerful tools. When users ask about their workout plans, schedules, nutrition, or progress - ALWAYS use the appropriate tool to fetch real data first. Do not give generic responses. Use get_workout_plan for workout questions, nutrition_lookup for food questions, and calculate_health_metrics for health calculations.`;
+Use tools to fetch real user data. Tool results are final - present them directly without additional commentary.`;
 
       // Create the prompt template for tool calling agent
       // IMPORTANT: System message MUST be first for Gemini API
@@ -62,11 +57,11 @@ CRITICAL: You have access to powerful tools. When users ask about their workout 
       const executorConfig = {
         agent,
         tools: this.tools,
-        verbose: process.env.NODE_ENV === 'development',
-        maxIterations: 6, // Increased for more complex reasoning
-        returnIntermediateSteps: true, // Enable to see tool usage
+        verbose: false, // Disable to reduce overhead
+        maxIterations: 2, // Reduced: tool call + response only
+        returnIntermediateSteps: true,
         handleParsingErrors: true,
-        earlyStoppingMethod: "generate", // Better stopping criteria
+        earlyStoppingMethod: "force", // Force stop after tool call to prevent re-thinking
         // Note: Memory is handled separately through chat history parameter
       };
 
@@ -92,14 +87,14 @@ CRITICAL: You have access to powerful tools. When users ask about their workout 
 
   /**
    * Execute agent with enhanced error handling, metrics, and LangSmith tracing
+   * Optimized to return tool results directly without second LLM call
    */
   async executeAgent(agentExecutor, input, chatHistory) {
     const startTime = Date.now();
     this.metrics.totalRequests++;
 
     try {
-      console.log("🤖 Executing enhanced agent with comprehensive context...");
-      console.log("🔧 Available tools:", this.tools.map(tool => tool.name));
+      console.log("🤖 Executing enhanced agent...");
       console.log("📝 Input:", input);
       
       // Prepare execution config with LangSmith metadata
@@ -121,17 +116,22 @@ CRITICAL: You have access to powerful tools. When users ask about their workout 
 
       const result = await agentExecutor.invoke(invokeConfig);
 
+      // OPTIMIZATION: If a tool was used, return its output directly
+      // This prevents the second LLM call to "reformat" the tool output
+      if (result.intermediateSteps && result.intermediateSteps.length > 0) {
+        const lastStep = result.intermediateSteps[result.intermediateSteps.length - 1];
+        if (lastStep.observation) {
+          console.log("⚡ Returning tool result directly (single-pass optimization)");
+          result.output = lastStep.observation;
+        }
+      }
+
       const responseTime = Date.now() - startTime;
       this.updateMetrics(true, responseTime, result);
       
-      console.log("✅ Enhanced agent execution completed successfully");
-      console.log("📊 Result:", JSON.stringify(result, null, 2));
-      console.log("🔧 Tools used:", result.intermediateSteps ? result.intermediateSteps.length : 0);
-      
-      // Log to LangSmith if enabled
-      if (this.tracingEnabled) {
-        console.log(`📊 LangSmith Trace: Check ${this.projectName} project for details`);
-      }
+      console.log("✅ Agent execution completed");
+      console.log("⏱️ Time:", responseTime + "ms");
+      console.log("🔧 Tools used:", result.intermediateSteps?.length || 0);
       
       return result;
 
