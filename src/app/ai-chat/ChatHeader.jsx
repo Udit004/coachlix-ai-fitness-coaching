@@ -104,8 +104,8 @@ const ChatHeader = ({
         {/* Center - Chat Status */}
         <div className="hidden sm:flex items-center space-x-2 flex-shrink-0">
           {isNewChat ? (
-            <div className="flex items-center space-x-2 text-green-600">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <div className="flex items-center space-x-2 text-purple-600">
+              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
               <span className="text-sm font-medium">New Chat</span>
             </div>
           ) : (

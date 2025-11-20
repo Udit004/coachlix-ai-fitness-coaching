@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 const WelcomeCard = ({ userProfile }) => {
+  const [messageIndex, setMessageIndex] = useState(0);
+
   const getMotivationalMessage = () => {
     if (!userProfile) return "Let's start your fitness journey!";
     
@@ -11,8 +13,17 @@ const WelcomeCard = ({ userProfile }) => {
       `Time to shine, ${name}! ✨`
     ];
     
-    return messages[Math.floor(Math.random() * messages.length)];
+    return messages[messageIndex];
   };
+
+  useEffect(() => {
+    // Change message every 5 seconds
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => (prev + 1) % 3);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   if (!userProfile) {
     return null;

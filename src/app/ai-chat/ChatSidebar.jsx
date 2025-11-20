@@ -19,6 +19,7 @@ import {
   Sparkles,
   ChevronRight,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import WelcomeCard from "./WelcomeCard";
 import PlanSelector from "./PlanSelector";
 import QuickActions from "./QuickActions";
@@ -60,35 +61,35 @@ const ChatHistoryLoading = () => (
 );
 
 // Simple QuickStats component - removed Zustand dependency to avoid infinite loops
-const QuickStats = React.memo(({ userProfile }) => {
-  // You can replace this with actual stats once the store is fixed
-  return (
-    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center space-x-2">
-          <TrendingUp className="w-4 h-4 text-indigo-600" />
-          <h3 className="font-medium text-indigo-900">Your Progress</h3>
-        </div>
-        <Sparkles className="w-4 h-4 text-indigo-500" />
-      </div>
+// const QuickStats = React.memo(({ userProfile }) => {
+//   // You can replace this with actual stats once the store is fixed
+//   return (
+//     <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
+//       <div className="flex items-center justify-between mb-3">
+//         <div className="flex items-center space-x-2">
+//           <TrendingUp className="w-4 h-4 text-indigo-600" />
+//           <h3 className="font-medium text-indigo-900">Your Progress</h3>
+//         </div>
+//         <Sparkles className="w-4 h-4 text-indigo-500" />
+//       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="text-center">
-          <div className="text-lg font-bold text-indigo-900">-</div>
-          <div className="text-xs text-indigo-600">Total Chats</div>
-        </div>
-        <div className="text-center">
-          <div className="text-lg font-bold text-indigo-900">-</div>
-          <div className="text-xs text-indigo-600">Messages</div>
-        </div>
-      </div>
+//       <div className="grid grid-cols-2 gap-3">
+//         <div className="text-center">
+//           <div className="text-lg font-bold text-indigo-900">-</div>
+//           <div className="text-xs text-indigo-600">Total Chats</div>
+//         </div>
+//         <div className="text-center">
+//           <div className="text-lg font-bold text-indigo-900">-</div>
+//           <div className="text-xs text-indigo-600">Messages</div>
+//         </div>
+//       </div>
 
-      <div className="mt-2 pt-2 border-t border-indigo-200">
-        <div className="text-xs text-indigo-600">Loading stats...</div>
-      </div>
-    </div>
-  );
-});
+//       <div className="mt-2 pt-2 border-t border-indigo-200">
+//         <div className="text-xs text-indigo-600">Loading stats...</div>
+//       </div>
+//     </div>
+//   );
+// });
 
 // Simple RecentChatsPreview - removed Zustand dependency to avoid infinite loops
 const RecentChatsPreview = React.memo(({ onViewAll, onSelectChat }) => {
@@ -107,10 +108,6 @@ const RecentChatsPreview = React.memo(({ onViewAll, onSelectChat }) => {
           <ChevronRight className="w-3 h-3" />
         </button>
       </div>
-
-      <p className="text-sm text-purple-600">
-        View your chat history in the History tab
-      </p>
     </div>
   );
 });
@@ -124,6 +121,7 @@ const ChatSidebar = ({
   userProfile,
   quickActions,
 }) => {
+  const router = useRouter();
   const { user: authUser } = useAuthContext();
   const [activeTab, setActiveTab] = useState("menu"); // 'menu' or 'history'
 
@@ -225,7 +223,7 @@ const ChatSidebar = ({
           </div>
 
           {/* Quick Stats */}
-          <QuickStats userProfile={userProfile} />
+          {/* <QuickStats userProfile={userProfile} /> */}
 
           {/* Recent Chats Preview */}
           <RecentChatsPreview
@@ -240,11 +238,11 @@ const ChatSidebar = ({
             quickActions={quickActions}
           />
 
-          {/* Progress Stats */}
+          {/* Progress Stats
           <ProgressStats userProfile={userProfile} />
 
           {/* Goal Progress */}
-          <GoalProgress userProfile={userProfile} />
+          {/* <GoalProgress userProfile={userProfile} />  */}
 
           {/* Settings Preview */}
           <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl p-4 border border-gray-100">
@@ -253,7 +251,7 @@ const ChatSidebar = ({
                 <User className="w-4 h-4 text-gray-600" />
                 <h3 className="font-medium text-gray-900">Profile</h3>
               </div>
-              <button className="p-1 text-gray-500 hover:text-gray-700 transition-colors">
+              <button onClick={() => router.push("/profile")} className="p-1 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">
                 <Settings className="w-4 h-4" />
               </button>
             </div>
