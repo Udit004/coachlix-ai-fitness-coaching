@@ -5,11 +5,16 @@ import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { app } from "@/lib/firebase";
 import { useAuthContext } from "@/auth/AuthContext";
 import { useWorkoutPlans, useWorkoutStats } from "@/hooks/useWorkoutQueries";
-import { useDietPlans } from "@/hooks/useDietPlanQueries";
+import { useDietPlans, useUpdateDay } from "@/hooks/useDietPlanQueries";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bot, Play } from "lucide-react";
+import { Bot, Play, TrendingUp, Calendar } from "lucide-react";
+import MacroProgressRing from "@/components/home/MacroProgressRing";
+import WaterIntakeTracker from "@/components/home/WaterIntakeTracker";
+import PersonalRecordsWidget from "@/components/home/PersonalRecordsWidget";
+import WeeklyCalendarView from "@/components/home/WeeklyCalendarView";
+import StreakCounter from "@/components/home/StreakCounter";
 
 function WorkoutTodaySummary({ plan, onStart }) {
   try {
@@ -133,6 +138,93 @@ export default function HomeDashboard() {
   const selectedDietPlan = dietPlanList.find(p => p._id === favoriteDietPlanId) || (dietPlanList[0] || null);
 
   const { data: workoutStats } = useWorkoutStats(selectedWorkoutPlan?._id);
+  const updateDayMutation = useUpdateDay();
+
+  // Calculate streaks
+  const calculateWorkoutStreak = () => {
+    if (!selectedWorkoutPlan?.weeks) return 0;
+    let streak = 0;
+    const today = new Date();
+    for (let i = 0; i < 30; i++) {
+      const checkDate = new Date(today);
+      checkDate.setDate(checkDate.getDate() - i);
+      const hasWorkout = selectedWorkoutPlan.weeks.some(week =>
+        week.days.some(day => {
+          if (day.isRestDay) return false;
+          return day.workouts?.some(w => w.isCompleted);
+        })
+      );
+      if (hasWorkout) streak++; else break;
+    }
+    return streak;
+  };
+
+  const calculateNutritionStreak = () => {
+    // Simple implementation - can be enhanced with actual tracking
+    return 0; // TODO: Implement based on meal logging
+  };
+
+  // Get today's nutrition data
+  const getTodaysNutrition = () => {
+    if (!selectedDietPlan?.days) return null;
+    const today = new Date();
+    const planStart = selectedDietPlan.createdAt ? new Date(selectedDietPlan.createdAt) : today;
+    const dayDiff = Math.floor((today.setHours(0,0,0,0) - planStart.setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
+    const dayIndex = Math.max(0, Math.min((selectedDietPlan.days.length || 1) - 1, dayDiff));
+    const day = selectedDietPlan.days[dayIndex];
+    
+    if (!day) return null;
+    
+    return {
+      current: {
+        calories: day.totalCalories || 0,
+        protein: day.totalProtein || 0,
+        carbs: day.totalCarbs || 0,
+        fats: day.totalFats || 0,
+      },
+      target: {
+        calories: selectedDietPlan.targetCalories || 2000,
+        protein: selectedDietPlan.targetProtein || 150,
+        carbs: selectedDietPlan.targetCarbs || 200,
+        fats: selectedDietPlan.targetFats || 65,
+      },
+      waterIntake: day.waterIntake || 0,
+      dayNumber: day.dayNumber,
+    };
+  };
+
+  const nutritionData = getTodaysNutrition();
+
+  // Get current week data for calendar view
+  const getCurrentWeekData = () => {
+    if (!selectedWorkoutPlan?.weeks) return [];
+    const today = new Date();
+    const planStart = selectedWorkoutPlan.startDate ? new Date(selectedWorkoutPlan.startDate) : today;
+    const dayDiff = Math.floor((today.setHours(0,0,0,0) - planStart.setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
+    const weekNumber = Math.max(1, Math.min(selectedWorkoutPlan.weeks.length, Math.floor(dayDiff / 7) + 1));
+    const week = selectedWorkoutPlan.weeks.find((w) => w.weekNumber === weekNumber);
+    return week?.days || [];
+  };
+
+  const currentDayNumber = new Date().getDay() === 0 ? 7 : new Date().getDay();
+
+  // Handle water intake update
+  const handleWaterIntakeChange = async (newValue) => {
+    if (!selectedDietPlan || !nutritionData) return;
+    
+    try {
+      const dayToUpdate = selectedDietPlan.days.find(d => d.dayNumber === nutritionData.dayNumber);
+      if (dayToUpdate) {
+        await updateDayMutation.mutateAsync({
+          planId: selectedDietPlan._id,
+          dayNumber: nutritionData.dayNumber,
+          dayData: { ...dayToUpdate, waterIntake: newValue }
+        });
+      }
+    } catch (error) {
+      console.error("Failed to update water intake:", error);
+    }
+  };
 
   const [notificationPermission, setNotificationPermission] = useState(null);
   const [fcmToken, setFcmToken] = useState(null);
@@ -180,9 +272,18 @@ export default function HomeDashboard() {
         <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Today's Dashboard</h2>
         <div className="flex gap-2">
           <Button onClick={() => router.push("/ai-chat")}>
+            <Bot className="w-4 h-4 mr-2" />
             Ask AI Coach
           </Button>
         </div>
+      </div>
+
+      {/* Streak Counter - Top Priority */}
+      <div className="mb-6">
+        <StreakCounter 
+          workoutStreak={calculateWorkoutStreak()} 
+          nutritionStreak={calculateNutritionStreak()} 
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -221,9 +322,13 @@ export default function HomeDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Progress at a Glance</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              Progress Overview
+            </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {/* Stats Grid */}
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
                 <div className="text-xs text-gray-500">Workouts</div>
@@ -238,6 +343,20 @@ export default function HomeDashboard() {
                 <div className="text-xl font-semibold">{(workoutStats?.completionRate ?? selectedWorkoutPlan?.stats?.completionRate ?? 0)}%</div>
               </div>
             </div>
+
+            {/* Personal Records */}
+            <PersonalRecordsWidget 
+              records={selectedWorkoutPlan?.stats?.strongestLifts || []} 
+              limit={3}
+            />
+
+            {/* Weekly Calendar */}
+            {selectedWorkoutPlan && (
+              <WeeklyCalendarView 
+                weekDays={getCurrentWeekData()} 
+                currentDayNumber={currentDayNumber}
+              />
+            )}
           </CardContent>
         </Card>
       </div>
@@ -245,7 +364,7 @@ export default function HomeDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Today's Meals</CardTitle>
+            <CardTitle>Today's Nutrition</CardTitle>
           </CardHeader>
           <CardContent>
             {Array.isArray(dietPlanList) && dietPlanList.length > 0 && (
@@ -267,12 +386,59 @@ export default function HomeDashboard() {
 
             {!selectedDietPlan && (
               <div className="text-gray-600 dark:text-gray-300">
-                No active diet plan. Create one to see meals for today.
+                No active diet plan. Create one to track your nutrition.
                 <div className="mt-4"><Link href="/diet-plan"><Button>Create Diet Plan</Button></Link></div>
               </div>
             )}
 
-            {selectedDietPlan && <DietTodaySummary plan={selectedDietPlan} />}
+            {selectedDietPlan && nutritionData && (
+              <div className="space-y-6">
+                {/* Macro Progress Rings */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <MacroProgressRing 
+                    label="Calories"
+                    current={nutritionData.current.calories}
+                    target={nutritionData.target.calories}
+                    unit="kcal"
+                    color="blue"
+                  />
+                  <MacroProgressRing 
+                    label="Protein"
+                    current={nutritionData.current.protein}
+                    target={nutritionData.target.protein}
+                    unit="g"
+                    color="green"
+                  />
+                  <MacroProgressRing 
+                    label="Carbs"
+                    current={nutritionData.current.carbs}
+                    target={nutritionData.target.carbs}
+                    unit="g"
+                    color="orange"
+                  />
+                  <MacroProgressRing 
+                    label="Fats"
+                    current={nutritionData.current.fats}
+                    target={nutritionData.target.fats}
+                    unit="g"
+                    color="purple"
+                  />
+                </div>
+
+                {/* Water Intake */}
+                <WaterIntakeTracker 
+                  current={nutritionData.waterIntake}
+                  target={3}
+                  onChange={handleWaterIntakeChange}
+                />
+
+                {/* Meals Summary */}
+                <div>
+                  <h4 className="font-semibold mb-3 text-gray-900 dark:text-white">Today's Meals</h4>
+                  <DietTodaySummary plan={selectedDietPlan} />
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -282,9 +448,31 @@ export default function HomeDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <Button className="w-full" onClick={() => router.push("/ai-chat")}>Ask the AI Coach</Button>
-              {selectedWorkoutPlan && (<Button className="w-full" onClick={() => router.push(`/workout-plan/${selectedWorkoutPlan._id}`)}>Go to Workout Plan</Button>)}
-              {selectedDietPlan && (<Button className="w-full" onClick={() => router.push(`/diet-plan/${selectedDietPlan._id}`)}>Add a Meal</Button>)}
+              <Button className="w-full" onClick={() => router.push("/ai-chat")} variant="default">
+                <Bot className="w-4 h-4 mr-2" />
+                Ask AI Coach
+              </Button>
+              {selectedWorkoutPlan && (
+                <Button className="w-full" variant="outline" onClick={() => router.push(`/workout-plan/${selectedWorkoutPlan._id}`)}>
+                  <Calendar className="w-4 h-4 mr-2" />
+                  View Workout Plan
+                </Button>
+              )}
+              {selectedDietPlan && (
+                <Button className="w-full" variant="outline" onClick={() => router.push(`/diet-plan/${selectedDietPlan._id}`)}>
+                  Add Meal
+                </Button>
+              )}
+              {!selectedWorkoutPlan && (
+                <Button className="w-full" variant="outline" onClick={() => router.push("/workout-plan")}>
+                  Create Workout Plan
+                </Button>
+              )}
+              {!selectedDietPlan && (
+                <Button className="w-full" variant="outline" onClick={() => router.push("/diet-plan")}>
+                  Create Diet Plan
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
