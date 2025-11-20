@@ -119,17 +119,41 @@ const userProfileSchema = new mongoose.Schema({
     enum: ['Beginner', 'Intermediate', 'Advanced'],
     default: 'Beginner'
   },
-  height: {
+  gender: {
     type: String,
-    trim: true
+    enum: ['male', 'female', 'other'],
+    required: [true, 'Gender is required for health calculations']
+  },
+  activityLevel: {
+    type: String,
+    enum: [
+      'sedentary',
+      'lightly active',
+      'moderately active',
+      'very active',
+      'extra active'
+    ],
+    default: 'moderately active'
+  },
+  age: {
+    type: Number,
+    min: [10, 'Age must be at least 10'],
+    max: [120, 'Age cannot exceed 120']
+  },
+  height: {
+    type: Number,
+    min: [50, 'Height must be at least 50 cm'],
+    max: [300, 'Height cannot exceed 300 cm']
   },
   weight: {
-    type: String,
-    trim: true
+    type: Number,
+    min: [20, 'Weight must be at least 20 kg'],
+    max: [500, 'Weight cannot exceed 500 kg']
   },
   targetWeight: {
-    type: String,
-    trim: true
+    type: Number,
+    min: [20, 'Target weight must be at least 20 kg'],
+    max: [500, 'Target weight cannot exceed 500 kg']
   },
   bio: {
     type: String,
@@ -168,19 +192,6 @@ const userProfileSchema = new mongoose.Schema({
 userProfileSchema.pre('save', function(next) {
   this.updatedAt = new Date();
   next();
-});
-
-// Virtual for age calculation
-userProfileSchema.virtual('age').get(function() {
-  if (!this.birthDate) return null;
-  const today = new Date();
-  const birthDate = new Date(this.birthDate);
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  return age;
 });
 
 // Instance method to add achievement

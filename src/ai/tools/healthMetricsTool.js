@@ -9,7 +9,7 @@ import User from "../../models/userProfileModel";
 export class HealthMetricsTool extends Tool {
   name = "calculate_health_metrics";
   description =
-    "CRITICAL: Use this tool whenever a user asks about health metrics, BMI, calorie needs, BMR, or macro calculations. Input should be a JSON string with userId (required) and optionally weight, height, age, gender, activityLevel. Will use stored profile data if available. Returns comprehensive health metrics and personalized recommendations.";
+    "Calculate BMI, BMR, calories, and macros. Input: JSON with userId (required). Returns formatted health metrics.";
 
   async _call(metricsInput) {
     try {
@@ -30,20 +30,22 @@ export class HealthMetricsTool extends Tool {
       }
 
       // Use provided data or fall back to profile data
-      const userWeight =
-        weight || parseFloat(user.weight?.replace(/[^\d.]/g, "")) || null;
-      const userHeight =
-        height || parseFloat(user.height?.replace(/[^\d.]/g, "")) || null;
+      const userWeight = weight || user.weight || null;
+      const userHeight = height || user.height || null;
       const userAge =
         age ||
         user.age ||
         (user.birthDate ? calculateAge(user.birthDate) : null);
-      const userGender = gender || user.gender || "female"; // default assumption
-      const userActivity = activityLevel || "moderately active"; // reasonable default
+      const userGender = gender || user.gender || null;
+      const userActivity = activityLevel || user.activityLevel || "moderately active";
       const userGoal = goal || user.fitnessGoal || "Maintenance";
 
       if (!userWeight || !userHeight || !userAge) {
         return "Error: weight (kg), height (cm), and age are required for calculations. Please update your profile with this information.";
+      }
+
+      if (!userGender) {
+        return "Error: gender is required for accurate BMR calculations. Please update your profile with your gender information.";
       }
 
       // Calculate BMI

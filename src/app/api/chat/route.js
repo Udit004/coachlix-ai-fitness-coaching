@@ -54,6 +54,8 @@ if (process.env.LANGCHAIN_TRACING_V2 === "true" && process.env.LANGCHAIN_API_KEY
 }
 
 export async function POST(request) {
+  const requestStartTime = Date.now(); // Track request time
+  
   try {
     const {
       message,
@@ -228,11 +230,92 @@ export async function POST(request) {
       );
     }
 
+    // **FAST PATH: Direct tool execution for simple queries (bypass agent)**
+    // This saves ~4 seconds and ~3000 tokens by skipping the agent entirely
+    const lowerMessage = message.toLowerCase().trim();
+    
+    console.log(`🔍 Checking fast-path for: "${lowerMessage}"`);
+    
+    // Health metrics queries (BMI, BMR, calories, macros) - Very lenient matching
+    const isHealthQuery = 
+      /\b(bmi|bmr)\b/i.test(lowerMessage) || 
+      /\b(calorie|macro|tdee|maintenance)\b/i.test(lowerMessage) ||
+      /\b(health|metric|calculate)\b/i.test(lowerMessage);
+    
+    // Exclude if asking about plans/routines
+    const isComplexQuery = /\b(plan|workout|diet|meal|exercise|routine|schedule|week|day)\b/i.test(lowerMessage);
+    
+    if (isHealthQuery && !isComplexQuery) {
+      console.log("⚡ Fast-path TRIGGERED: Direct health metrics calculation");
+      try {
+        const healthTool = tools.find(t => t.name === 'calculate_health_metrics');
+        if (healthTool) {
+          const toolInput = JSON.stringify({ userId });
+          const toolResult = await healthTool._call(toolInput);
+          
+          await addToHistory(userId, [
+            { role: "user", content: message },
+            { role: "ai", content: toolResult }
+          ]);
+          
+          console.log(`⚡ Fast-path completed in ${Date.now() - requestStartTime}ms`);
+          
+          return NextResponse.json(
+            {
+              success: true,
+              response: toolResult,
+              conversationId: userId,
+              metrics: { tokens: 0, time: Date.now() - requestStartTime, fastPath: true }
+            },
+            { status: 200 }
+          );
+        }
+      } catch (error) {
+        console.error("Fast-path error:", error);
+      }
+    } else {
+      console.log(`❌ Fast-path NOT triggered. isHealth: ${isHealthQuery}, isComplex: ${isComplexQuery}`);
+    }
+    
+    // Nutrition lookup queries
+    if (/\b(nutrition|calories?|protein|carbs?|fat).*(in|of|for)\b/i.test(lowerMessage)) {
+      console.log("⚡ Fast-path: Direct nutrition lookup");
+      try {
+        const nutritionTool = tools.find(t => t.name === 'nutrition_lookup');
+        if (nutritionTool) {
+          // Extract food name (simple heuristic)
+          const foodMatch = lowerMessage.match(/(?:in|of|for)\s+(.+?)(?:\?|$)/i);
+          if (foodMatch) {
+            const foodName = foodMatch[1].trim();
+            const toolInput = JSON.stringify({ foodName, userId });
+            const toolResult = await nutritionTool._call(toolInput);
+            
+            await addToHistory(userId, [
+              { role: "user", content: message },
+              { role: "ai", content: toolResult }
+            ]);
+            
+            return NextResponse.json(
+              {
+                success: true,
+                response: toolResult,
+                conversationId: userId,
+                metrics: { tokens: 0, time: Date.now() - requestStartTime, fastPath: true }
+              },
+              { status: 200 }
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Fast-path error:", error);
+      }
+    }
+
     // **ENHANCED: Retrieve comprehensive user context with better error handling**
     console.log("🔍 Retrieving enhanced user context...");
     let userContext;
     try {
-      userContext = await getEnhancedUserContext(userId, message, 2500); // Increased context length
+      userContext = await getEnhancedUserContext(userId, message, 1500); // Optimized context length
       console.log("✅ Enhanced user context retrieved successfully");
       console.log(
         `📊 Context sections: ${
@@ -255,7 +338,7 @@ export async function POST(request) {
     let vectorSearchResults = [];
     try {
       // Use hybrid search for better results
-      vectorSearchResults = await hybridSearch(message, userId, 5); // Increased results
+      vectorSearchResults = await hybridSearch(message, userId, 3); // Optimized for lower tokens
       console.log(
         `✅ Vector search completed: ${vectorSearchResults.length} results found`
       );
@@ -293,7 +376,7 @@ export async function POST(request) {
     // **ENHANCED: Get persistent chat history from MongoDB with better error handling**
     let chatHistoryContext = "";
     try {
-      const recentHistory = await getRecentChatHistory(userId, 6); // Increased to 6 exchanges
+      const recentHistory = await getRecentChatHistory(userId, 2); // Minimal history for speed
       chatHistoryContext = formatChatHistoryForContext(recentHistory, 1000); // Increased context length
     } catch (error) {
       console.error("Error loading chat history:", error);
@@ -303,7 +386,7 @@ export async function POST(request) {
     // **ENHANCED: Format vector search results for context**
     let vectorContext = "";
     try {
-      vectorContext = formatVectorResultsForContext(vectorSearchResults, 1000); // Increased context length
+      vectorContext = formatVectorResultsForContext(vectorSearchResults, 600); // Optimized for lower tokens
     } catch (error) {
       console.error("Error formatting vector search results:", error);
     }
@@ -314,6 +397,8 @@ export async function POST(request) {
       userContextCombined: userContext.combined,
       chatHistoryContext,
       vectorContext,
+      userId,
+      query: message,
     });
 
     // **ENHANCED: Create enhanced agent with better configuration**
@@ -608,13 +693,14 @@ async function handleStreamingResponse(
             message,
             2500
           );
-          const vectorSearchResults = await hybridSearch(message, userId, 5);
+          const vectorSearchResults = await hybridSearch(message, userId, 3);
 
           // Build system prompt using centralized prompts module
           const fullSystemPrompt = buildStreamingSystemPrompt({
             plan: plan,
             profile,
             userContextCombined: userContext.combined,
+            userId,
           });
 
           // Create enhanced agent
@@ -722,6 +808,7 @@ async function handleStreamingResponse(
                 plan,
                 profile,
                 userContextCombined: userContext.combined,
+                userId,
               });
               const fallbackResponse = await llm.invoke([
                 new SystemMessage(fallbackSystemPrompt),
