@@ -106,6 +106,29 @@ export default function OverviewTab({
             )}
           </div>
 
+          {/* Dietary Preference */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Dietary Preference
+            </label>
+            {isEditing ? (
+              <select
+                value={data.dietaryPreference || "non-vegetarian"}
+                onChange={(e) => onInputChange("dietaryPreference", e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+              >
+                <option value="non-vegetarian">Non-Vegetarian</option>
+                <option value="vegetarian">Vegetarian</option>
+                <option value="vegan">Vegan</option>
+                <option value="eggetarian">Eggetarian</option>
+              </select>
+            ) : (
+              <p className="p-3 bg-gray-50 rounded-lg text-gray-900 capitalize">
+                {data.dietaryPreference || "non-vegetarian"}
+              </p>
+            )}
+          </div>
+
           {/* Gender */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -135,6 +135,11 @@ const userProfileSchema = new mongoose.Schema({
     ],
     default: 'moderately active'
   },
+  dietaryPreference: {
+    type: String,
+    enum: ['vegetarian', 'non-vegetarian', 'vegan', 'eggetarian'],
+    default: 'non-vegetarian'
+  },
   age: {
     type: Number,
     min: [10, 'Age must be at least 10'],

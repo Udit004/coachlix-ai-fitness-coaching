@@ -23,10 +23,14 @@ export function getSystemPrompt(plan) {
  * @returns {string} - Complete system prompt for streaming
  */
 export function generateStreamingSystemPrompt(userContext, userId) {
+  const dietaryInfo = userContext.profile?.dietaryPreference 
+    ? `\n🥗 DIETARY PREFERENCE: ${userContext.profile.dietaryPreference}\n   - Always suggest ${userContext.profile.dietaryPreference} meals and foods\n   - Respect this preference in all nutrition advice` 
+    : '';
+  
   return `You are Alex, a helpful fitness assistant.
 
 USER CONTEXT:
-${userContext.combined}
+${userContext.combined}${dietaryInfo}
 
 USER ID: ${userId}
 
