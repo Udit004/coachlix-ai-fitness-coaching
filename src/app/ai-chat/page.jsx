@@ -504,7 +504,7 @@ const AIChatPage = () => {
       const welcomeMessage = {
         id: Date.now(),
         role: "ai",
-        content: `Hi ${userProfile.name}! 👋 Ready to work on your ${userProfile.fitnessGoal?.replace("-", " ")} goals?`,
+        content: `Hi ${userProfile.name}! 👋`,
         timestamp: new Date(),
         suggestions: [
           `Create a ${userProfile.fitnessGoal?.replace("-", " ")} plan`,
