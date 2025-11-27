@@ -15,6 +15,64 @@ export function getSystemPrompt(plan) {
 }
 
 /**
+ * Detect if user is from India based on location
+ * @param {string} location - User's location (e.g., "Mumbai, India")
+ * @returns {boolean} - true if Indian, false otherwise
+ */
+function isIndianUser(location) {
+  if (!location) return true; // Default to Indian
+  
+  const locationLower = location.toLowerCase();
+  
+  // Check for Indian cities, states, and country name
+  const indianKeywords = [
+    'india', 'mumbai', 'delhi', 'bangalore', 'bengaluru', 'chennai', 'kolkata',
+    'hyderabad', 'pune', 'ahmedabad', 'jaipur', 'lucknow', 'bhopal', 'surat',
+    'kanpur', 'nagpur', 'indore', 'thane', 'visakhapatnam', 'patna', 'vadodara',
+    'kerala', 'tamil nadu', 'maharashtra', 'karnataka', 'gujarat', 'rajasthan',
+    'punjab', 'haryana', 'uttar pradesh', 'madhya pradesh', 'west bengal',
+    'andhra pradesh', 'telangana', 'bihar', 'odisha', 'goa'
+  ];
+  
+  return indianKeywords.some(keyword => locationLower.includes(keyword));
+}
+
+/**
+ * Get cultural food context based on user location
+ * @param {string} location - User's location
+ * @returns {string} - Cultural context for system prompt
+ */
+function getCulturalFoodContext(location) {
+  const isIndian = isIndianUser(location);
+  
+  if (isIndian) {
+    return `
+🍛 CULTURAL CONTEXT: Indian Cuisine
+- Suggest Indian meals: Roti/Chapati, Dal (Moong/Masoor/Toor), Rice, Paneer, Sabzi, Idli, Dosa, Upma, Poha, Paratha
+- Indian proteins: Paneer, Dal, Rajma, Chana, Eggs, Chicken, Fish
+- Use Indian cooking methods: Tadka, Curry, Tikka, Masala, Fried, Steamed
+- Recommend Indian meal timing: Breakfast (7-9 AM), Lunch (12-2 PM), Evening Snack/Chai (4-5 PM), Dinner (8-10 PM)
+- Use familiar ingredients: Atta (whole wheat flour), Ghee, Masoor Dal, Chana, Jeera, Haldi, Garam Masala, Dhaniya
+- Consider Indian portion sizes: 2-3 rotis, 1 katori dal, 1 bowl rice
+- Traditional combinations: Dal-Roti, Rice-Sambar, Idli-Sambar, Poha with chai
+- Indian beverages: Chai, Lassi, Nimbu Pani, Buttermilk (Chaas), Coconut Water
+- Regional variety: North Indian (Roti, Paneer), South Indian (Idli, Dosa), Bengali (Fish, Rice)`;
+  } else {
+    return `
+🌍 CULTURAL CONTEXT: International Cuisine
+- Suggest Western/International meals: Sandwich, Salad, Pasta, Oatmeal, Chicken Breast, Quinoa Bowl, Wraps
+- International proteins: Chicken, Turkey, Beef, Fish, Salmon, Tuna, Eggs, Greek Yogurt
+- Use international cooking methods: Grilled, Baked, Steamed, Sautéed, Roasted
+- Recommend standard meal timing: Breakfast (7-9 AM), Lunch (12-1 PM), Snack (3-4 PM), Dinner (6-8 PM)
+- Use common ingredients: Whole wheat bread, Olive oil, Quinoa, Brown rice, Broccoli, Spinach
+- Consider Western portion sizes: 4-6 oz protein, 1 cup grains, 2 cups vegetables
+- Meal combinations: Chicken with vegetables, Pasta with lean meat, Salad with grilled protein
+- Beverages: Coffee, Smoothies, Protein shakes, Green tea, Almond milk
+- Variety: Mediterranean, American, European styles`;
+  }
+}
+
+/**
  * Generate streaming system prompt with user context and tool usage rules
  * Used for TRUE streaming with function calling architecture
  * 
@@ -27,10 +85,14 @@ export function generateStreamingSystemPrompt(userContext, userId) {
     ? `\n🥗 DIETARY PREFERENCE: ${userContext.profile.dietaryPreference}\n   - Always suggest ${userContext.profile.dietaryPreference} meals and foods\n   - Respect this preference in all nutrition advice` 
     : '';
   
+  const culturalContext = getCulturalFoodContext(userContext.profile?.location);
+  
   return `You are Alex, a helpful fitness assistant.
 
 USER CONTEXT:
 ${userContext.combined}${dietaryInfo}
+
+${culturalContext}
 
 USER ID: ${userId}
 
@@ -39,6 +101,7 @@ CRITICAL INSTRUCTIONS:
 2. If user asks for multiple things in ONE message, you MUST call ALL necessary tools BEFORE responding
 3. NEVER respond without calling tools when specific data is requested
 4. NEVER say "I will fetch" or "Let me check" - just CALL the function
+5. ALWAYS suggest meals and foods matching the cultural context and dietary preference above
 
 TOOL USAGE RULES (MANDATORY):
 - User asks for "BMI and meals" → MUST call: calculate_health_metrics ONCE, then fetch_details(type: 'diet') ONCE
