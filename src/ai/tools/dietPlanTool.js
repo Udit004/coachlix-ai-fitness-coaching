@@ -69,7 +69,8 @@ export class CreateDietPlanTool extends Tool {
       console.log("✅ CreateDietPlanTool: User profile found");
 
       // Use provided data or fall back to calculated health metrics
-      const userGoal = goal || user.fitnessGoal || "Maintenance";
+      // Normalize goal to match DietPlan enum values
+      const userGoal = normalizeGoal(goal || user.fitnessGoal);
       const userWeight = user.weight || 70;
       const userHeight = user.height || 170;
       const userAge = user.age || calculateAge(user.birthDate) || 25;
@@ -296,7 +297,7 @@ export class UpdateDietPlanTool extends Tool {
       if (targetProtein) updates.targetProtein = targetProtein;
       if (targetCarbs) updates.targetCarbs = targetCarbs;
       if (targetFats) updates.targetFats = targetFats;
-      if (goal) updates.goal = goal;
+      if (goal) updates.goal = normalizeGoal(goal);
       if (isActive !== undefined) updates.isActive = isActive;
 
       // Handle day operations
@@ -372,6 +373,39 @@ export class UpdateDietPlanTool extends Tool {
 }
 
 // Helper functions
+
+/**
+ * Map various goal formats to valid DietPlan enum values
+ */
+function normalizeGoal(goal) {
+  if (!goal) return "Maintenance";
+  
+  const goalLower = goal.toLowerCase().trim();
+  
+  // Direct matches (case-insensitive)
+  if (goalLower === "weight loss") return "Weight Loss";
+  if (goalLower === "muscle gain") return "Muscle Gain";
+  if (goalLower === "maintenance" || goalLower === "maintain weight") return "Maintenance";
+  if (goalLower === "cutting") return "Cutting";
+  if (goalLower === "bulking") return "Bulking";
+  if (goalLower === "general health" || goalLower === "athletic performance") return "General Health";
+  
+  // Handle underscore format (muscle_gain -> Muscle Gain)
+  if (goalLower === "muscle_gain") return "Muscle Gain";
+  if (goalLower === "weight_loss") return "Weight Loss";
+  if (goalLower === "general_health") return "General Health";
+  
+  // Handle combined goals
+  if (goalLower.includes("weight loss") && goalLower.includes("muscle")) return "Weight Loss";
+  if (goalLower.includes("lose weight")) return "Weight Loss";
+  if (goalLower.includes("build muscle") || goalLower.includes("gain muscle")) return "Muscle Gain";
+  if (goalLower.includes("maintain")) return "Maintenance";
+  if (goalLower.includes("cut")) return "Cutting";
+  if (goalLower.includes("bulk")) return "Bulking";
+  
+  // Default fallback
+  return "Maintenance";
+}
 
 function calculateAge(birthDate) {
   const birth = new Date(birthDate);

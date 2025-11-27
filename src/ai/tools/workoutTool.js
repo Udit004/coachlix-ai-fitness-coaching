@@ -117,7 +117,8 @@ export class UpdateWorkoutPlanTool extends Tool {
 
       // Get user context for better plan creation
       const user = await User.findOne({ firebaseUid: userId }).lean();
-      const userGoal = goal || user?.fitnessGoal || "General Fitness";
+      // Normalize goal to match WorkoutPlan enum values
+      const userGoal = normalizeWorkoutGoal(goal || user?.fitnessGoal);
       const userExperience = difficulty || user?.experience || "Beginner";
 
       // Create workout plan structure
@@ -179,6 +180,42 @@ export class UpdateWorkoutPlanTool extends Tool {
 
 
 // Utility functions
+
+/**
+ * Map various goal formats to valid WorkoutPlan enum values
+ */
+function normalizeWorkoutGoal(goal) {
+  if (!goal) return "General Fitness";
+  
+  const goalLower = goal.toLowerCase().trim();
+  
+  // Direct matches (case-insensitive)
+  if (goalLower === "strength building" || goalLower === "strength") return "Strength Building";
+  if (goalLower === "weight loss" || goalLower === "lose weight") return "Weight Loss";
+  if (goalLower === "muscle gain" || goalLower === "build muscle") return "Muscle Gain";
+  if (goalLower === "endurance" || goalLower === "cardio") return "Endurance";
+  if (goalLower === "general fitness" || goalLower === "fitness") return "General Fitness";
+  if (goalLower === "athletic performance" || goalLower === "performance") return "Athletic Performance";
+  if (goalLower === "rehabilitation" || goalLower === "recovery") return "Rehabilitation";
+  
+  // Handle underscore format
+  if (goalLower === "muscle_gain") return "Muscle Gain";
+  if (goalLower === "weight_loss") return "Weight Loss";
+  if (goalLower === "strength_building") return "Strength Building";
+  if (goalLower === "general_fitness") return "General Fitness";
+  if (goalLower === "athletic_performance") return "Athletic Performance";
+  
+  // Handle combined or similar goals
+  if (goalLower.includes("weight loss") && goalLower.includes("muscle")) return "Weight Loss";
+  if (goalLower.includes("maintain")) return "General Fitness";
+  if (goalLower.includes("bulk") || goalLower.includes("mass")) return "Muscle Gain";
+  if (goalLower.includes("cut")) return "Weight Loss";
+  if (goalLower.includes("strength") || goalLower.includes("strong")) return "Strength Building";
+  if (goalLower.includes("athletic") || goalLower.includes("sport")) return "Athletic Performance";
+  
+  // Default fallback
+  return "General Fitness";
+}
 
 function formatExercisesToWeeks(exercises, experience) {
   // Dummy implementation: split exercises into weeks based on experience
