@@ -1,9 +1,11 @@
 // src/ai/index.js
-// filepath: src/ai/index.js
 // Central export point for all AI functionality
 
-// Agents
-export * from './agents';
+// FUNCTION CALLING ORCHESTRATOR (TRUE STREAMING with pause/resume) ✅
+// Uses Gemini's native .stream() API for real-time token streaming
+export {
+  processChatMessageWithFunctionCallingStreaming
+} from './orchestrator-function-calling';
 
 // Tools
 export * from './tools';
