@@ -5,6 +5,57 @@ import User from "../../models/userProfileModel";
 import WorkoutPlan from "../../models/WorkoutPlan";
 
 /**
+ * Tool for getting/retrieving workout plans
+ */
+export class GetWorkoutPlanTool extends Tool {
+  name = "get_workout_plan";
+  description =
+    "Retrieve workout plans. Input: JSON with userId. Returns user's active workout plans.";
+
+  async _call(input) {
+    try {
+      const data = JSON.parse(input);
+      const { userId } = data;
+
+      if (!userId) {
+        return "Error: userId is required to retrieve workout plans.";
+      }
+
+      await connectDB();
+
+      const existingPlans = await WorkoutPlan.find({ userId, isActive: true })
+        .select("name goal difficulty currentWeek stats duration workoutFrequency")
+        .limit(5)
+        .lean();
+
+      if (existingPlans.length === 0) {
+        return "No active workout plans found for this user.";
+      }
+
+      let plansList = "Your Current Workout Plans:\n\n";
+      existingPlans.forEach((plan, index) => {
+        plansList += `${index + 1}. ${plan.name}\n`;
+        plansList += `   Goal: ${plan.goal}\n`;
+        plansList += `   Difficulty: ${plan.difficulty}\n`;
+        plansList += `   Duration: ${plan.duration} weeks\n`;
+        plansList += `   Frequency: ${plan.workoutFrequency}x per week\n`;
+        plansList += `   Progress: Week ${plan.currentWeek} | ${
+          plan.stats?.completionRate || 0
+        }% complete\n`;
+        plansList += `   Workouts Done: ${
+          plan.stats?.totalWorkouts || 0
+        }\n\n`;
+      });
+
+      return plansList;
+    } catch (error) {
+      console.error("Error retrieving workout plans:", error);
+      return `Error retrieving workout plans: ${error.message}`;
+    }
+  }
+}
+
+/**
  * Enhanced tool for updating workout plans with context awareness
  */
 export class UpdateWorkoutPlanTool extends Tool {
