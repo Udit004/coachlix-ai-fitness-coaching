@@ -125,77 +125,7 @@ export class UpdateWorkoutPlanTool extends Tool {
   }
 }
 
-/**
- * Tool specifically for retrieving workout plan details and schedules
- */
-export class GetWorkoutPlanTool extends Tool {
-  name = "get_workout_plan";
-  description =
-    "Get user workout plans and schedules. Input: JSON with userId. Returns current workouts, exercises, progress.";
 
-  async _call(input) {
-    try {
-      console.log("🔍 GetWorkoutPlanTool called with input:", input);
-      
-      const data = JSON.parse(input);
-      const { userId } = data;
-
-      if (!userId) {
-        console.error("❌ GetWorkoutPlanTool: userId is required");
-        return "Error: userId is required to retrieve workout plans.";
-      }
-
-      console.log("🔍 GetWorkoutPlanTool: Connecting to database...");
-      await connectDB();
-      console.log("✅ GetWorkoutPlanTool: Database connected successfully");
-
-      // Get active workout plans
-      console.log("🔍 GetWorkoutPlanTool: Searching for workout plans for userId:", userId);
-      const activePlans = await WorkoutPlan.find({ userId, isActive: true })
-        .select("name goal difficulty currentWeek stats weeks description")
-        .lean();
-      
-      console.log("📊 GetWorkoutPlanTool: Found", activePlans.length, "active plans");
-
-      if (activePlans.length === 0) {
-        console.log("📝 GetWorkoutPlanTool: No active plans found, suggesting to create one");
-        return "No active workout plans found for this user. Would you like me to help you create one?";
-      }
-
-      console.log("📝 GetWorkoutPlanTool: Generating response for", activePlans.length, "plans");
-      let response = "Your Current Workout Plans:\n\n";
-      
-      for (const plan of activePlans) {
-        response += `📋 **${plan.name}**\n`;
-        response += `Goal: ${plan.goal}\n`;
-        response += `Difficulty: ${plan.difficulty}\n`;
-        response += `Current Week: ${plan.currentWeek}\n`;
-        response += `Progress: ${plan.stats?.completionRate || 0}% complete\n`;
-        response += `Total Workouts: ${plan.stats?.totalWorkouts || 0}\n`;
-        
-        if (plan.description) {
-          response += `Description: ${plan.description}\n`;
-        }
-
-        // Add weekly schedule if available
-        if (plan.weeks && plan.weeks.length > 0) {
-          response += `\n📅 **Weekly Schedule:**\n`;
-          plan.weeks.forEach((week, weekIndex) => {
-            response += `Week ${weekIndex + 1}: ${week.length} workouts\n`;
-          });
-        }
-
-        response += `\n---\n\n`;
-      }
-
-      console.log("✅ GetWorkoutPlanTool: Successfully generated response");
-      return response;
-    } catch (error) {
-      console.error("❌ GetWorkoutPlanTool error:", error);
-      return `Error retrieving workout plans: ${error.message}`;
-    }
-  }
-}
 
 // Utility functions
 
