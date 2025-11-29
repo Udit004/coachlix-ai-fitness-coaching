@@ -2,7 +2,7 @@
 // AI Context Caching with Redis
 // Optimized for 70-80% faster repeat requests
 
-import redis from '../../lib/redis.js';
+import { redis } from '../../lib/redis.js';
 
 // Cache TTL (Time To Live) in seconds
 const CACHE_TTL = {
@@ -34,7 +34,8 @@ export async function getCached(key) {
     const cached = await redis.get(key);
     if (!cached) return null;
     
-    return JSON.parse(cached);
+    // Upstash Redis already deserializes JSON automatically
+    return cached;
   } catch (error) {
     console.error(`Cache get error for key ${key}:`, error.message);
     return null;
@@ -52,7 +53,8 @@ export async function setCached(key, data, ttl) {
   if (!redis) return false;
   
   try {
-    await redis.setex(key, ttl, JSON.stringify(data));
+    // Upstash Redis handles JSON serialization automatically
+    await redis.setex(key, ttl, data);
     return true;
   } catch (error) {
     console.error(`Cache set error for key ${key}:`, error.message);
