@@ -197,6 +197,19 @@ const AIChatPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty array to run only once on mount
 
+  // Mobile keyboard fix - Lock body on mobile only for AI chat page
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      document.body.classList.add('ai-chat-mobile-lock');
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        document.body.classList.remove('ai-chat-mobile-lock');
+      }
+    };
+  }, []);
+
   // Enhanced loading sequence
   useEffect(() => {
     const initializeApp = async () => {
@@ -583,7 +596,7 @@ const AIChatPage = () => {
   }
 
   return (
-    <div className="fixed inset-0 top-16 bg-gray-900 flex flex-col overflow-hidden">
+    <div className="ai-chat-page bg-gray-900 flex flex-col">
       <Toaster
         position="top-center"
         toastOptions={{

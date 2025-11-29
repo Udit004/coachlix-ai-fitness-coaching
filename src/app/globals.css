@@ -40,22 +40,21 @@ html {
   overflow: auto;
 }
 
-/* Mobile-specific fixes for keyboard handling */
-@media (max-width: 1023px) {
-  html {
-    position: fixed;
-    width: 100%;
-    overflow: hidden;
-    overscroll-behavior: none;
-  }
+/* AI Chat Page - Mobile keyboard fix */
+.ai-chat-page {
+  position: fixed;
+  inset: 0;
+  top: 4rem;
+  overflow: hidden;
+}
 
-  body {
+@media (max-width: 1023px) {
+  .ai-chat-mobile-lock {
     position: fixed;
     width: 100%;
     height: 100%;
     overflow: hidden;
     overscroll-behavior: none;
-    -webkit-overflow-scrolling: touch;
   }
 }
 
