@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db";
 import User from "@/models/userProfileModel";
 import { verifyUserToken } from "@/lib/verifyUser";
 import { NotificationService } from "@/lib/notificationService";
-import cache from "@/lib/simpleCache";
+import { redis } from "@/lib/redis";
 import {
   analyzeProfileUpdate,
   generateNotificationContent,
@@ -45,13 +45,15 @@ export async function GET(request) {
 
     // Try to get from cache first
     const cacheKey = `user-profile:${userId}`;
-    const cachedProfile = cache.get(cacheKey);
+    const cachedProfile = await redis.get(cacheKey);
     if (cachedProfile) {
+      console.log('✅ Cache hit - returning cached profile');
       return NextResponse.json(
         { success: true, data: cachedProfile },
         { status: 200 }
       );
     }
+    console.log('❌ Cache miss - fetching from database');
 
     let user = await User.findOne({ firebaseUid: userId });
     console.log('👤 User found in DB:', user ? 'Yes' : 'No');
@@ -116,8 +118,9 @@ export async function GET(request) {
       recentActivities: user.recentActivities,
     };
 
-    // Cache the profile data
-    cache.set(cacheKey, profileData, 900); // 15 minutes
+    // Cache the profile data in Upstash Redis
+    await redis.setex(cacheKey, 900, JSON.stringify(profileData)); // 15 minutes
+    console.log('✅ Profile cached in Redis');
 
     // Use Next.js built-in caching as well
     const response = NextResponse.json(
@@ -236,7 +239,8 @@ export async function PUT(request) {
 
     // Invalidate cache after successful update
     const cacheKey = `user-profile:${userId}`;
-    cache.delete(cacheKey);
+    await redis.del(cacheKey);
+    console.log('🗑️ Cache invalidated after profile update');
 
     // Initialize notification tracking variables
     let notificationsSent = false;
@@ -429,7 +433,8 @@ export async function DELETE(request) {
 
     // Invalidate cache after successful deletion
     const cacheKey = `user-profile:${userId}`;
-    cache.delete(cacheKey);
+    await redis.del(cacheKey);
+    console.log('🗑️ Cache invalidated after profile deletion');
 
     // Send goodbye notification if user has FCM token
     if (deletedUser.pushToken) {
