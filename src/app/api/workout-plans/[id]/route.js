@@ -1,27 +1,16 @@
 // api/workout-plans/[id]/route.js - Individual workout plan operations with caching
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../../../lib/db";
+import { connectDB } from "@/lib/db";
 import WorkoutPlan from "@/models/WorkoutPlan";
-import User from "@/models/userProfileModel";
 import { verifyUserToken } from "@/lib/verifyUser";
-import { NotificationService } from "@/lib/notificationService";
-// Disabled simple in-memory cache for per-user plan to avoid stale reads across serverless instances
+import { redis } from "@/lib/redis";
 
 // GET /api/workout-plans/[id] - Get specific workout plan
 export async function GET(request, { params }) {
   try {
-    // Await params before destructuring
-    const { id: planId } = await params;
-    
-    // Verify authentication
-    const authHeader =
-      request.headers.get("Authorization") ||
-      request.headers.get("authorization");
+    const authHeader = request.headers.get("Authorization") || request.headers.get("authorization");
     if (!authHeader) {
-      return NextResponse.json(
-        { message: "Authorization header missing" },
-        { status: 401 }
-      );
+      return NextResponse.json({ message: "Authorization header missing" }, { status: 401 });
     }
 
     const user = await verifyUserToken(authHeader);
@@ -29,19 +18,30 @@ export async function GET(request, { params }) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+    // Await params (Next.js 15+)
+    const { id } = await params;
+    
+    // Try cache first
+    const cacheKey = `user:workout-plan:${user.uid}:${id}`;
+    try {
+      const cachedPlan = await redis.get(cacheKey);
+      if (cachedPlan) {
+        console.log(`✅ Cache HIT: Workout plan ${id}`);
+        return NextResponse.json({
+          success: true,
+          plan: cachedPlan,
+          cached: true,
+        });
+      }
+      console.log(`❌ Cache MISS: Fetching workout plan ${id} from DB`);
+    } catch (cacheError) {
+      console.error("Cache read error:", cacheError);
+    }
+
     await connectDB();
-
-    // Bypass server-side in-memory caching to ensure fresh data per request
-
-    // Find the workout plan
-    const plan = await WorkoutPlan.findOne({
-      _id: planId,
-      $or: [
-        { userId: user.uid }, // User's own plan
-        { isTemplate: true, isPublic: true } // Public template
-      ]
-    });
-
+    
+    const plan = await WorkoutPlan.findOne({ _id: id, userId: user.uid });
+    
     if (!plan) {
       return NextResponse.json(
         { message: "Workout plan not found or unauthorized" },
@@ -49,12 +49,19 @@ export async function GET(request, { params }) {
       );
     }
 
-    const response = NextResponse.json({
+    // Cache individual plan for 30 minutes
+    try {
+      await redis.setex(cacheKey, 1800, JSON.stringify(plan));
+      console.log(`💾 Cached individual workout plan ${id}`);
+    } catch (cacheError) {
+      console.error("Cache write error:", cacheError);
+    }
+
+    return NextResponse.json({
       success: true,
-      plan: plan.toObject(),
+      plan,
     });
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-    return response;
+    
   } catch (error) {
     console.error("Error fetching workout plan:", error);
     return NextResponse.json(
@@ -67,18 +74,9 @@ export async function GET(request, { params }) {
 // PUT /api/workout-plans/[id] - Update specific workout plan
 export async function PUT(request, { params }) {
   try {
-    // Await params before destructuring
-    const { id: planId } = await params;
-    
-    // Verify authentication
-    const authHeader =
-      request.headers.get("Authorization") ||
-      request.headers.get("authorization");
+    const authHeader = request.headers.get("Authorization") || request.headers.get("authorization");
     if (!authHeader) {
-      return NextResponse.json(
-        { message: "Authorization header missing" },
-        { status: 401 }
-      );
+      return NextResponse.json({ message: "Authorization header missing" }, { status: 401 });
     }
 
     const user = await verifyUserToken(authHeader);
@@ -86,14 +84,13 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+    const { id } = await params;
     await connectDB();
+    const body = await request.json();
 
-    const updateData = await request.json();
-
-    // Find and update the workout plan
     const updatedPlan = await WorkoutPlan.findOneAndUpdate(
-      { _id: planId, userId: user.uid },
-      { $set: { ...updateData, updatedAt: new Date() } },
+      { _id: id, userId: user.uid },
+      { $set: { ...body, updatedAt: new Date() } },
       { new: true, runValidators: true }
     );
 
@@ -104,46 +101,27 @@ export async function PUT(request, { params }) {
       );
     }
 
-    // Send notification for workout plan update
+    // Invalidate cache
     try {
-      const userData = await User.findOne({ firebaseUid: user.uid });
-      
-      if (userData && userData.pushToken) {
-        await NotificationService.sendCustomNotification(
-          userData.pushToken,
-          "Workout Plan Updated! 📝",
-          `Your "${updatedPlan.name}" workout plan has been successfully updated.`,
-          {
-            type: "workout_plan_updated",
-            planId: updatedPlan._id.toString(),
-            planName: updatedPlan.name,
-            goal: updatedPlan.goal,
-          }
-        );
-        
-        // Add activity to user's recent activities
-        await User.findOneAndUpdate(
-          { firebaseUid: user.uid },
-          {
-            $push: {
-              recentActivities: {
-                $each: [{
-                  type: "workout_plan_updated",
-                  description: `Updated workout plan: ${updatedPlan.name}`,
-                  timestamp: new Date(),
-                  details: {
-                    planName: updatedPlan.name,
-                    goal: updatedPlan.goal,
-                  }
-                }],
-                $slice: -10,
-              },
-            },
-          }
-        );
+      const listPattern = `user:workout-plans-list:${user.uid}:*`;
+      const listKeys = await redis.keys(listPattern);
+      if (listKeys && listKeys.length > 0) {
+        await Promise.all(listKeys.map(key => redis.del(key)));
       }
-    } catch (notificationError) {
-      console.error("Failed to send workout plan update notification:", notificationError);
+      
+      const planKey = `user:workout-plan:${user.uid}:${id}`;
+      await redis.del(planKey);
+      
+      // Clear session caches
+      const sessionPattern = `user:workout-session:${user.uid}:${id}:*`;
+      const sessionKeys = await redis.keys(sessionPattern);
+      if (sessionKeys && sessionKeys.length > 0) {
+        await Promise.all(sessionKeys.map(key => redis.del(key)));
+      }
+      
+      console.log(`🗑️ Invalidated cache for workout plan ${id}`);
+    } catch (cacheError) {
+      console.error("Cache invalidation error:", cacheError);
     }
 
     return NextResponse.json({
@@ -164,18 +142,9 @@ export async function PUT(request, { params }) {
 // DELETE /api/workout-plans/[id] - Delete specific workout plan
 export async function DELETE(request, { params }) {
   try {
-    // Await params before destructuring
-    const { id: planId } = await params;
-    
-    // Verify authentication
-    const authHeader =
-      request.headers.get("Authorization") ||
-      request.headers.get("authorization");
+    const authHeader = request.headers.get("Authorization") || request.headers.get("authorization");
     if (!authHeader) {
-      return NextResponse.json(
-        { message: "Authorization header missing" },
-        { status: 401 }
-      );
+      return NextResponse.json({ message: "Authorization header missing" }, { status: 401 });
     }
 
     const user = await verifyUserToken(authHeader);
@@ -183,64 +152,39 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+    const { id } = await params;
     await connectDB();
 
-    // Find the plan first to get its name for notification
-    const planToDelete = await WorkoutPlan.findOne({ _id: planId, userId: user.uid });
-    
-    if (!planToDelete) {
+    const deletedPlan = await WorkoutPlan.findOneAndDelete({ _id: id, userId: user.uid });
+
+    if (!deletedPlan) {
       return NextResponse.json(
         { message: "Workout plan not found or unauthorized" },
         { status: 404 }
       );
     }
 
-    // Delete the workout plan
-    await WorkoutPlan.findOneAndDelete({ _id: planId, userId: user.uid });
-
-    // Invalidate cache for this specific workout plan
-    const cacheKey = `workout-plan:${planId}:${user.uid}`;
-    cache.delete(cacheKey);
-
-    // Send notification for workout plan deletion
+    // Invalidate cache
     try {
-      const userData = await User.findOne({ firebaseUid: user.uid });
-      
-      if (userData && userData.pushToken) {
-        await NotificationService.sendCustomNotification(
-          userData.pushToken,
-          "Workout Plan Deleted 🗑️",
-          `Your "${planToDelete.name}" workout plan has been deleted.`,
-          {
-            type: "workout_plan_deleted",
-            planName: planToDelete.name,
-            goal: planToDelete.goal,
-          }
-        );
-        
-        // Add activity to user's recent activities
-        await User.findOneAndUpdate(
-          { firebaseUid: user.uid },
-          {
-            $push: {
-              recentActivities: {
-                $each: [{
-                  type: "workout_plan_deleted",
-                  description: `Deleted workout plan: ${planToDelete.name}`,
-                  timestamp: new Date(),
-                  details: {
-                    planName: planToDelete.name,
-                    goal: planToDelete.goal,
-                  }
-                }],
-                $slice: -10,
-              },
-            },
-          }
-        );
+      const listPattern = `user:workout-plans-list:${user.uid}:*`;
+      const listKeys = await redis.keys(listPattern);
+      if (listKeys && listKeys.length > 0) {
+        await Promise.all(listKeys.map(key => redis.del(key)));
       }
-    } catch (notificationError) {
-      console.error("Failed to send workout plan deletion notification:", notificationError);
+      
+      const planKey = `user:workout-plan:${user.uid}:${id}`;
+      await redis.del(planKey);
+      
+      // Clear all session caches
+      const sessionPattern = `user:workout-session:${user.uid}:${id}:*`;
+      const sessionKeys = await redis.keys(sessionPattern);
+      if (sessionKeys && sessionKeys.length > 0) {
+        await Promise.all(sessionKeys.map(key => redis.del(key)));
+      }
+      
+      console.log(`🗑️ Invalidated cache for deleted workout plan ${id}`);
+    } catch (cacheError) {
+      console.error("Cache invalidation error:", cacheError);
     }
 
     return NextResponse.json({
