@@ -9,8 +9,8 @@ const PlanSelector = ({
 }) => {
   if (variant === "mobile") {
     return (
-      <div className={`lg:hidden bg-white rounded-xl p-4 border border-gray-100 shadow-sm ${className}`}>
-        <h3 className="font-medium text-gray-900 mb-3">Training Focus</h3>
+      <div className={`lg:hidden bg-gray-800/80 rounded-xl p-4 border border-gray-700 shadow-sm ${className}`}>
+        <h3 className="font-medium text-white mb-3">Training Focus</h3>
         <div className="grid grid-cols-2 gap-2">
           {plans.map((plan) => {
             const IconComponent = plan.icon;
@@ -20,8 +20,8 @@ const PlanSelector = ({
                 onClick={() => setSelectedPlan(plan.id)}
                 className={`flex items-center space-x-2 p-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   selectedPlan === plan.id
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700 hover:text-white'
                 }`}
               >
                 <IconComponent className="h-4 w-4" />

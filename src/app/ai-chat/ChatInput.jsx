@@ -277,35 +277,35 @@ const ChatInput = ({
 
   return (
     <>
-      <div className="border-t border-gray-700 p-3 sm:p-6 bg-gray-800/50 backdrop-blur-sm">
+      <div className="border-t border-gray-700 p-2 sm:p-3 bg-gray-800/50 backdrop-blur-sm">
         {/* File attachments preview */}
         {attachedFiles.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-2">
+          <div className="mb-2 flex flex-wrap gap-2">
             {attachedFiles.map((file) => {
               const IconComponent = getFileIcon(file.type);
               return (
                 <div
                   key={file.id}
-                  className="flex items-center space-x-2 bg-gray-700/50 rounded-lg px-3 py-2 text-sm max-w-xs border border-gray-600"
+                  className="flex items-center space-x-2 bg-gray-700/50 rounded-lg px-2 py-1.5 text-sm max-w-xs border border-gray-600"
                 >
                   {file.preview ? (
                     <img
                       src={file.preview}
                       alt={file.name}
-                      className="w-8 h-8 object-cover rounded"
+                      className="w-6 h-6 object-cover rounded"
                     />
                   ) : (
-                    <IconComponent className="h-4 w-4 text-gray-400" />
+                    <IconComponent className="h-3.5 w-3.5 text-gray-400" />
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-gray-200 truncate">{file.name}</p>
-                    <p className="text-gray-400 text-xs">{formatFileSize(file.size)}</p>
+                    <p className="text-gray-200 truncate text-xs">{file.name}</p>
+                    <p className="text-gray-400 text-[10px]">{formatFileSize(file.size)}</p>
                   </div>
                   <button
                     onClick={() => removeFile(file.id)}
-                    className="text-gray-400 hover:text-gray-200 ml-2"
+                    className="text-gray-400 hover:text-gray-200 ml-1"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
               );
@@ -334,7 +334,7 @@ const ChatInput = ({
                     ? "Listening... Speak now!" 
                     : "Ask about workouts, diet plans, badminton training..."
               }
-              className={`w-full resize-none rounded-xl sm:rounded-2xl border px-3 sm:px-4 py-2 sm:py-3 pr-20 sm:pr-24 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-32 min-h-[44px] sm:min-h-[48px] bg-gray-800/90 backdrop-blur-sm text-gray-200 placeholder-gray-500 shadow-sm text-sm sm:text-base transition-all duration-200 ${
+              className={`w-full resize-none rounded-lg sm:rounded-xl border px-3 sm:px-4 py-2 sm:py-2.5 pr-16 sm:pr-20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-32 min-h-[40px] sm:min-h-[44px] bg-gray-800/90 backdrop-blur-sm text-gray-200 placeholder-gray-500 shadow-sm text-sm sm:text-base transition-all duration-200 ${
                 isDragging
                   ? 'border-blue-500 ring-2 ring-blue-400/50 bg-blue-900/30'
                   : isListening 
@@ -344,16 +344,16 @@ const ChatInput = ({
               rows={1}
               disabled={isTyping}
               style={{
-                fontSize: '16px',
-                lineHeight: '1.5',
+                fontSize: '14px',
+                lineHeight: '1.4',
                 color: '#e5e7eb'
               }}
             />
             
-            <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 flex items-center space-x-1 sm:space-x-2">
+            <div className="absolute bottom-2 right-2 flex items-center space-x-1">
               <button
                 onClick={handleFileSelect}
-                className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-700"
+                className="p-1.5 text-gray-400 hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-700"
                 title="Attach file"
               >
                 <Paperclip className="h-4 w-4" />
@@ -361,7 +361,7 @@ const ChatInput = ({
               <button
                 onClick={handleSpeechToggle}
                 disabled={!isSupported || isTyping}
-                className={`p-1.5 sm:p-2 transition-colors rounded-lg relative ${
+                className={`p-1.5 transition-colors rounded-lg relative ${
                   isListening 
                     ? 'text-red-400 hover:text-red-300 hover:bg-red-900/30 animate-pulse' 
                     : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
@@ -383,28 +383,30 @@ const ChatInput = ({
           <button
             onClick={handleSendWithFiles}
             disabled={(!inputValue.trim() && attachedFiles.length === 0) || isTyping}
-            className="flex-shrink-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2.5 sm:p-3 rounded-xl sm:rounded-2xl hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+            className="flex-shrink-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 sm:p-2.5 rounded-lg sm:rounded-xl hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
           >
-            <Send className="h-4 w-4 sm:h-5 sm:w-5" />
+            <Send className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
           </button>
         </div>
         
-        <div className="flex items-center justify-between mt-2 sm:mt-3 text-xs text-gray-400">
-          <div className="flex items-center space-x-2">
-            <Sparkles className="h-3 w-3 text-blue-400" />
-            <span className="text-xs sm:text-sm">
-              {isDragging 
-                ? 'Drop files to attach' 
-                : isListening 
-                  ? 'Listening...' 
-                  : 'Powered by Gemini AI'}
-            </span>
+        <div className="flex items-center justify-between mt-1.5 sm:mt-2 text-xs text-gray-400">
+          <div className="flex items-center space-x-1.5">
+            {(isDragging || isListening) && (
+              <>
+                <Sparkles className="h-3 w-3 text-blue-400" />
+                <span className="text-[11px] sm:text-xs">
+                  {isDragging 
+                    ? 'Drop files to attach' 
+                    : 'Listening...'}
+                </span>
+              </>
+            )}
           </div>
           <div className="flex items-center space-x-2">
             {(speechError || permissionError) && (
-              <span className="text-red-400 text-xs">{speechError || permissionError}</span>
+              <span className="text-red-400 text-[10px]">{speechError || permissionError}</span>
             )}
-            <span className="hidden md:inline text-xs">
+            <span className="hidden md:inline text-[11px]">
               {attachedFiles.length > 0 && `${attachedFiles.length} file${attachedFiles.length > 1 ? 's' : ''} attached • `}
               Press Enter to send, Shift + Enter for new line
             </span>

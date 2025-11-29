@@ -187,6 +187,16 @@ const AIChatPage = () => {
     },
   ];
 
+  // Set sidebar open by default on desktop
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isDesktop = window.innerWidth >= 1024;
+      // Only set it once on mount
+      setSidebarOpen(isDesktop);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty array to run only once on mount
+
   // Enhanced loading sequence
   useEffect(() => {
     const initializeApp = async () => {
@@ -573,7 +583,7 @@ const AIChatPage = () => {
   }
 
   return (
-    <div className="h-screen bg-gray-900 flex flex-col">
+    <div className="fixed inset-0 bg-gray-900 flex flex-col">
       <Toaster
         position="top-center"
         toastOptions={{
@@ -600,37 +610,13 @@ const AIChatPage = () => {
         </Suspense>
       )}
 
-      {/* Chat Header with Suspense */}
-      <Suspense fallback={<ComponentLoading type="header" />}>
-        <ChatHeader
-          plans={plans}
-          selectedPlan={selectedPlan}
-          setSelectedPlan={setSelectedPlan}
-          sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
-          clearChat={clearChat}
-          userProfile={userProfile}
-          onNewChat={handleNewChat}
-          onToggleHistory={() => setShowHistory(!showHistory)}
-          showHistory={showHistory}
-          isNewChat={isNewChat}
-          onLoad={() => handleComponentLoad("header")}
-        />
-      </Suspense>
-
       {/* Main Chat Layout with Enhanced Loading */}
-      <div className="flex-1 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2 sm:py-6 h-full flex flex-col">
-          <div className="flex gap-2 sm:gap-6 flex-1 min-h-0">
-            {/* Enhanced Sidebar with Suspense - Only load when open or on desktop */}
-            {(sidebarOpen || typeof window !== 'undefined' && window.innerWidth >= 1024) && (
-              <div
-                className={`${
-                  sidebarOpen
-                    ? "fixed inset-0 z-50 bg-gray-900 lg:relative lg:inset-auto"
-                    : "hidden lg:block"
-                } w-full lg:w-80 flex-shrink-0 overflow-y-auto lg:h-full p-4 lg:p-0`}
-              >
+      <div className="flex-1 overflow-hidden pt-14 sm:pt-16">
+        <div className="w-full h-full px-1 sm:px-3 py-1 sm:py-3 flex flex-col">
+          <div className="flex gap-1 sm:gap-4 flex-1 min-h-0">
+            {/* Enhanced Sidebar with Suspense - Always visible on desktop, toggle on mobile */}
+            {sidebarOpen && (
+              <div className="fixed top-14 sm:top-16 left-0 bottom-0 z-50 lg:relative lg:top-0 lg:z-0 lg:inset-auto w-full lg:w-80 flex-shrink-0 overflow-hidden">
                 <Suspense fallback={<ComponentLoading type="sidebar" />}>
                   <ChatSidebar
                     plans={plans}
@@ -646,7 +632,7 @@ const AIChatPage = () => {
             )}
 
             {/* Chat Container with Suspense */}
-            <div className="flex-1 min-h-0 min-w-0">
+            <div className="flex-1 h-full overflow-hidden">
               <Suspense fallback={<ComponentLoading type="chat" />}>
                 <ChatContainer
                   messages={messages}
@@ -668,6 +654,12 @@ const AIChatPage = () => {
                   onStreamingComplete={(content) => {
                     console.log("Streaming completed:", content);
                   }}
+                  plans={plans}
+                  selectedPlan={selectedPlan}
+                  setSelectedPlan={setSelectedPlan}
+                  isNewChat={isNewChat}
+                  sidebarOpen={sidebarOpen}
+                  setSidebarOpen={setSidebarOpen}
                 />
               </Suspense>
             </div>

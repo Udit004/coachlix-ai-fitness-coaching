@@ -267,7 +267,7 @@ const ChatMessage = ({
         <div className={`${message.role === "user" ? "text-right" : "text-left"}`}>
             {/* Message Content */}
             <div
-              className={`inline-block p-3 md:p-5 rounded-xl md:rounded-2xl shadow-sm transition-all duration-300 ${
+              className={`inline-block p-2.5 md:p-4 rounded-xl md:rounded-2xl shadow-sm transition-all duration-300 ${
                 message.role === "user"
                   ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
                   : message.isError
@@ -302,23 +302,6 @@ const ChatMessage = ({
                   </span>
                 )}
               </div>
-
-              {/* AI Enhancement Indicator - Only show when NOT streaming */}
-              {!isStreaming && message.role === "ai" && !message.isError && message.content && (
-                <div className="flex items-center mt-2 md:mt-3 pt-2 md:pt-3 border-t border-gray-700 text-[10px] md:text-xs text-gray-400">
-                  <div className="flex items-center space-x-1.5 md:space-x-2">
-                    <Sparkles className="h-2.5 w-2.5 md:h-3 md:w-3 text-blue-500" />
-                    <span className="font-medium">
-                      Personalized for {userProfile?.name || "you"}
-                    </span>
-                    <div className="hidden md:flex items-center space-x-1 ml-2">
-                      <Zap className="h-3 w-3 text-yellow-500" />
-                      <Target className="h-3 w-3 text-green-500" />
-                      <Trophy className="h-3 w-3 text-purple-500" />
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Message Actions - Only show when NOT streaming */}

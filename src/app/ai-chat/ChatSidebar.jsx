@@ -210,7 +210,7 @@ const ChatSidebar = ({
     }
 
     return (
-      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+      <div className="flex-1 min-h-0 top-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
         <div className="p-4 space-y-4 lg:space-y-6">
           {/* Personalized Welcome Card */}
           <Suspense fallback={<ComponentSkeleton height="h-20" />}>
@@ -310,10 +310,10 @@ const ChatSidebar = ({
         className={`
         ${
           sidebarOpen
-            ? "fixed inset-y-0 left-0 z-50 w-80 bg-white shadow-2xl transform translate-x-0"
-            : "hidden lg:block lg:relative lg:inset-auto lg:w-80 lg:bg-transparent lg:shadow-none"
+            ? "fixed top-16 bottom-0 left-0 z-50 w-80 bg-gray-900 shadow-2xl transform translate-x-0 lg:relative lg:top-0"
+            : "hidden lg:block lg:relative lg:inset-auto lg:w-80 lg:bg-gray-900 lg:shadow-none"
         } 
-        transition-all duration-300 ease-in-out h-full flex flex-col
+        transition-all duration-300 ease-in-out h-full flex flex-col overflow-hidden
       `}
       >
         {/* Enhanced Mobile Header */}
@@ -374,7 +374,7 @@ const ChatSidebar = ({
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">{renderTabContent()}</div>
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">{renderTabContent()}</div>
       </div>
     </>
   );
