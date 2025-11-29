@@ -22,7 +22,9 @@ export async function buildMinimalContext(userId, message = '') {
     console.log('[MinimalContext] Building context for userId:', userId);
     
     // Load only essential user profile data (cached)
-    const profile = await getBasicUserProfile(userId);
+    const profileData = await getBasicUserProfile(userId);
+    const profile = typeof profileData === 'string' ? profileData : profileData.text;
+    const rawProfile = typeof profileData === 'object' ? profileData.rawProfile : null;
     
     // Check if message hints at specific data needs
     const needsDiet = /\b(diet|food|meal|eat|calorie|nutrition|macro)\b/i.test(message);
@@ -64,7 +66,8 @@ export async function buildMinimalContext(userId, message = '') {
     });
     
     return {
-      profile,
+      profile: rawProfile, // Return raw profile object for access to fields
+      profileText: profile, // Keep text version for display
       diet: dietSummary,
       workout: workoutSummary,
       combined,
@@ -74,7 +77,8 @@ export async function buildMinimalContext(userId, message = '') {
   } catch (error) {
     console.error('[MinimalContext] Error:', error);
     return {
-      profile: 'Error loading profile',
+      profile: null,
+      profileText: 'Error loading profile',
       diet: null,
       workout: null,
       combined: 'User context unavailable',
@@ -91,10 +95,10 @@ async function getBasicUserProfile(userId) {
   return getCachedProfile(userId, async () => {
     try {
       const user = await User.findOne({ firebaseUid: userId })
-        .select('name age gender height weight targetWeight fitnessGoal experience dietaryPreference allergies')
+        .select('name age gender height weight targetWeight fitnessGoal experience dietaryPreference allergies location')
         .lean();
       
-      if (!user) return 'No profile found';
+      if (!user) return { text: 'No profile found', rawProfile: null };
       
       let profile = `Name: ${user.name || 'User'}\n`;
       
@@ -110,11 +114,12 @@ async function getBasicUserProfile(userId) {
         profile += `Allergies: ${user.allergies.join(', ')}\n`;
       }
       
-      return profile;
+      // Return both formatted text and raw user object
+      return { text: profile, rawProfile: user };
       
     } catch (error) {
       console.error('[BasicProfile] Error:', error);
-      return 'Error loading profile';
+      return { text: 'Error loading profile', rawProfile: null };
     }
   });
 }

@@ -73,6 +73,12 @@ export class CreateDietPlanTool extends Tool {
       const userLocation = user.location || '';
       console.log(`🥗 CreateDietPlanTool: User dietary preference: ${userDietaryPreference}`);
       console.log(`🌍 CreateDietPlanTool: User location: ${userLocation}`);
+      console.log(`📊 CreateDietPlanTool: Full user data:`, {
+        name: user.name,
+        dietaryPreference: user.dietaryPreference,
+        location: user.location,
+        fitnessGoal: user.fitnessGoal
+      });
 
       // Use provided data or fall back to calculated health metrics
       // Normalize goal to match DietPlan enum values
@@ -160,6 +166,12 @@ export class CreateDietPlanTool extends Tool {
 
       console.log("✅ CreateDietPlanTool: Diet plan created successfully with ID:", dietPlan._id);
 
+      // Validate the diet plan for safety and effectiveness
+      const validation = validateDietPlan(dietPlan, user);
+      if (validation.warnings.length > 0) {
+        console.warn("⚠️ Diet plan validation warnings:", validation.warnings);
+      }
+
       // Update user's recent activities
       await User.findOneAndUpdate(
         { firebaseUid: userId },
@@ -177,7 +189,7 @@ export class CreateDietPlanTool extends Tool {
 
       console.log("✅ CreateDietPlanTool: User activity updated");
 
-      const response = `Successfully created your diet plan "${dietPlan.name}"! 🎉\n\n` +
+      let response = `Successfully created your diet plan "${dietPlan.name}"! 🎉\n\n` +
         `📋 Plan Details:\n` +
         `• Goal: ${userGoal}\n` +
         `• Duration: ${planDuration} days\n` +
@@ -187,8 +199,18 @@ export class CreateDietPlanTool extends Tool {
         `  - Carbs: ${carbTarget}g\n` +
         `  - Fats: ${fatTarget}g\n\n` +
         `Your personalized meal plan includes ${days.length} days of carefully balanced meals. ` +
-        `Each day has ${days[0]?.meals?.length || 3} meals designed to help you achieve your ${userGoal} goals!\n\n` +
-        `💡 Tip: Stay consistent and track your meals for best results!`;
+        `Each day has ${days[0]?.meals?.length || 3} meals designed to help you achieve your ${userGoal} goals!\n\n`;
+      
+      // Add validation warnings if any
+      if (validation.warnings.length > 0) {
+        response += `⚠️ Important Notes:\n`;
+        validation.warnings.forEach(warning => {
+          response += `• ${warning}\n`;
+        });
+        response += '\n';
+      }
+      
+      response += `💡 Tip: Stay consistent and track your meals for best results!`;
 
       console.log("✅ CreateDietPlanTool: Response generated successfully");
       return response;
@@ -473,9 +495,98 @@ function isIndianUser(location) {
   return indianKeywords.some(keyword => locationLower.includes(keyword));
 }
 
+/**
+ * Validate diet plan for safety and nutritional adequacy
+ * @param {Object} dietPlan - The diet plan to validate
+ * @param {Object} userProfile - User's profile with weight, height, age, gender
+ * @returns {Object} - { isValid: boolean, warnings: string[] }
+ */
+function validateDietPlan(dietPlan, userProfile) {
+  const warnings = [];
+  const weight = userProfile.weight || 70;
+  const height = userProfile.height || 170;
+  const age = userProfile.age || calculateAge(userProfile.birthDate) || 25;
+  const gender = userProfile.gender || 'male';
+  
+  // Calculate BMR using Mifflin-St Jeor
+  let bmr;
+  if (gender?.toLowerCase() === 'male') {
+    bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+  } else {
+    bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+  }
+  
+  // Validation 1: Calories should not be below 80% of BMR (unsafe)
+  if (dietPlan.targetCalories < bmr * 0.8) {
+    warnings.push(`Calorie intake (${dietPlan.targetCalories} kcal) is below recommended minimum. Consider increasing to at least ${Math.round(bmr * 0.8)} kcal.`);
+  }
+  
+  // Validation 2: Protein adequacy (should be at least 1.2g per kg)
+  const proteinPerKg = dietPlan.targetProtein / weight;
+  if (proteinPerKg < 1.2) {
+    warnings.push(`Protein intake (${proteinPerKg.toFixed(1)}g/kg) is low. Aim for at least 1.6g/kg (${Math.round(weight * 1.6)}g total) for better results.`);
+  }
+  
+  // Validation 3: Check if protein is too high (>3g/kg may be excessive)
+  if (proteinPerKg > 3.0) {
+    warnings.push(`Protein intake (${proteinPerKg.toFixed(1)}g/kg) is very high. Consider reducing to 2.2g/kg (${Math.round(weight * 2.2)}g) unless advised by a professional.`);
+  }
+  
+  // Validation 4: Fat should be at least 20% of calories (hormone health)
+  const fatCalories = dietPlan.targetFats * 9;
+  const fatPercentage = (fatCalories / dietPlan.targetCalories) * 100;
+  if (fatPercentage < 20) {
+    warnings.push(`Fat intake (${fatPercentage.toFixed(0)}%) is low. Aim for at least 20-25% of calories for hormone health.`);
+  }
+  
+  // Validation 5: Carbs should not be too low (unless intentional keto)
+  const carbCalories = dietPlan.targetCarbs * 4;
+  const carbPercentage = (carbCalories / dietPlan.targetCalories) * 100;
+  if (carbPercentage < 15 && !dietPlan.goal?.toLowerCase().includes('keto')) {
+    warnings.push(`Carb intake (${carbPercentage.toFixed(0)}%) is very low. This may affect energy levels and workout performance.`);
+  }
+  
+  // Validation 6: Check meal distribution if days are available
+  if (dietPlan.days && dietPlan.days.length > 0) {
+    const firstDay = dietPlan.days[0];
+    if (firstDay.meals && firstDay.meals.length > 0) {
+      const mealCalories = firstDay.meals.map(m => m.totalCalories);
+      const maxMealCalories = Math.max(...mealCalories);
+      const maxMealPercentage = (maxMealCalories / dietPlan.targetCalories) * 100;
+      
+      if (maxMealPercentage > 50) {
+        warnings.push(`One meal contains ${maxMealPercentage.toFixed(0)}% of daily calories. Consider distributing calories more evenly across meals.`);
+      }
+    }
+  }
+  
+  // Validation 7: Duration check
+  if (dietPlan.duration > 90) {
+    warnings.push(`Plan duration (${dietPlan.duration} days) is very long. Consider breaking it into phases with periodic adjustments.`);
+  }
+  
+  console.log(`🔍 Validation complete: ${warnings.length} warnings found`);
+  
+  return {
+    isValid: warnings.length === 0,
+    warnings,
+    bmr: Math.round(bmr),
+    proteinPerKg: proteinPerKg.toFixed(1),
+    fatPercentage: fatPercentage.toFixed(0),
+    carbPercentage: carbPercentage.toFixed(0)
+  };
+}
+
 function generateFoodItems(mealType, calories, protein, carbs, fats, goal, restrictions, dietaryPreference = 'non-vegetarian', userLocation = '') {
   const items = [];
   const isIndian = isIndianUser(userLocation);
+  
+  console.log(`\n🍽️ generateFoodItems called:`);
+  console.log(`  - Meal Type: ${mealType}`);
+  console.log(`  - Dietary Preference: ${dietaryPreference}`);
+  console.log(`  - Location: ${userLocation}`);
+  console.log(`  - Is Indian: ${isIndian}`);
+  console.log(`  - Target: ${calories} kcal, ${protein}g protein`);
   
   // Sample food database based on meal type and goal
   // Each food item is tagged with dietary types AND region
@@ -582,17 +693,55 @@ function generateFoodItems(mealType, calories, protein, carbs, fats, goal, restr
     availableFoods = foodDatabase[mealType] || foodDatabase["Snacks"];
   }
   
-  // Randomly select 1-2 food items that fit the calorie budget
-  const numItems = mealType === "Snacks" ? 1 : Math.random() > 0.5 ? 2 : 1;
+  // SMART SELECTION: Choose foods that match macro targets
+  const numItems = mealType === "Snacks" ? 1 : (Math.random() > 0.6 ? 2 : 1);
   const selectedItems = [];
   
-  for (let i = 0; i < numItems && i < availableFoods.length; i++) {
-    const randomIndex = Math.floor(Math.random() * availableFoods.length);
-    const selectedFood = { ...availableFoods[randomIndex] };
-    // Remove the 'types' field from the final item (internal use only)
+  // Score each food based on how well it matches the target macros
+  const scoredFoods = availableFoods.map(food => {
+    // Calculate how close this food is to target ratios
+    const calorieMatch = Math.abs(food.calories - (calories / numItems)) / calories;
+    const proteinMatch = Math.abs(food.protein - (protein / numItems)) / protein;
+    const carbMatch = Math.abs(food.carbs - (carbs / numItems)) / carbs;
+    const fatMatch = Math.abs(food.fats - (fats / numItems)) / fats;
+    
+    // Lower score is better (closer to target)
+    const score = calorieMatch + proteinMatch + carbMatch + fatMatch;
+    
+    // Prioritize high-protein foods for muscle gain goals
+    const proteinBonus = goal?.toLowerCase().includes('muscle') || goal?.toLowerCase().includes('bulk') 
+      ? (food.protein / food.calories) * 0.5 // Bonus for high protein-to-calorie ratio
+      : 0;
+    
+    return {
+      ...food,
+      matchScore: score - proteinBonus
+    };
+  });
+  
+  // Sort by match score and select best matches
+  scoredFoods.sort((a, b) => a.matchScore - b.matchScore);
+  
+  // Select top foods with some randomness to add variety
+  for (let i = 0; i < numItems && i < scoredFoods.length; i++) {
+    // Select from top 5 matches to maintain variety
+    const topMatches = scoredFoods.slice(0, Math.min(5, scoredFoods.length));
+    const randomIndex = Math.floor(Math.random() * topMatches.length);
+    const selectedFood = { ...topMatches[randomIndex] };
+    
+    // Remove internal fields
     delete selectedFood.types;
+    delete selectedFood.region;
+    delete selectedFood.matchScore;
+    
     selectedItems.push(selectedFood);
+    
+    // Remove selected food to avoid duplicates
+    const indexToRemove = scoredFoods.indexOf(topMatches[randomIndex]);
+    scoredFoods.splice(indexToRemove, 1);
   }
+  
+  console.log(`✅ Selected ${selectedItems.length} foods:`, selectedItems.map(f => f.name).join(', '));
 
   return selectedItems;
 }
