@@ -5,12 +5,18 @@ import DietPlan from "@/models/DietPlan";
 import User from "@/models/userProfileModel";
 import { verifyUserToken } from "@/lib/verifyUser";
 import { NotificationService } from "@/lib/notificationService";
-// Disabled simple in-memory cache for per-user lists to avoid stale reads across serverless instances
+import { redis } from "@/lib/redis";
+
+// Cache TTL configurations
+const CACHE_TTL = {
+  PLAN_LIST: 300,      // 5 minutes - List ko kam time
+  PLAN_DETAIL: 1800,   // 30 minutes - Detail ko zyada time
+  PLAN_SUMMARY: 600,   // 10 minutes - Summary medium time
+};
 
 // GET /api/diet-plans - Get all diet plans for user
 export async function GET(request) {
   try {
-    // Verify authentication
     const authHeader =
       request.headers.get("Authorization") ||
       request.headers.get("authorization");
@@ -28,22 +34,39 @@ export async function GET(request) {
 
     await connectDB();
 
-    // Parse query parameters
     const { searchParams } = new URL(request.url);
     const active = searchParams.get("active");
     const goal = searchParams.get("goal");
     const limit = searchParams.get("limit");
     const sort = searchParams.get("sort");
 
-    // Bypass server-side in-memory caching to ensure fresh data per request
+    // Cache key based on filters
+    const cacheKey = `user:diet-plans-list:${user.uid}:${active || 'all'}:${goal || 'all'}:${sort || 'default'}`;
+    
+    try {
+      // Try cache first - Pehle cache check karo
+      const cachedList = await redis.get(cacheKey);
+      if (cachedList) {
+        console.log(`✅ Cache HIT: Diet plans list for ${user.uid}`);
+        return NextResponse.json({
+          success: true,
+          plans: cachedList,
+          count: cachedList.length,
+          cached: true,
+        });
+      }
+      console.log(`❌ Cache MISS: Fetching from DB for ${user.uid}`);
+    } catch (cacheError) {
+      console.error("Cache read error:", cacheError);
+      // Continue to DB if cache fails
+    }
 
     // Build query
     let query = { userId: user.uid };
     if (active === "true") query.isActive = true;
     if (goal) query.goal = goal;
 
-    // Build sort object
-    let sortObj = { createdAt: -1 }; // default
+    let sortObj = { createdAt: -1 };
     if (sort) {
       switch (sort) {
         case "-createdAt":
@@ -61,20 +84,28 @@ export async function GET(request) {
       }
     }
 
-    // Execute query
     let queryBuilder = DietPlan.find(query).sort(sortObj);
     if (limit) queryBuilder = queryBuilder.limit(parseInt(limit));
 
     const plans = await queryBuilder.exec();
+
+    // Cache the list - List ko cache karo
+    try {
+      await redis.setex(cacheKey, CACHE_TTL.PLAN_LIST, JSON.stringify(plans));
+      console.log(`💾 Cached diet plans list for ${user.uid}`);
+    } catch (cacheError) {
+      console.error("Cache write error:", cacheError);
+    }
 
     const response = NextResponse.json({
       success: true,
       plans,
       count: plans.length,
     });
-    // Ensure no HTTP-level caching for authenticated resources
+    
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     return response;
+    
   } catch (error) {
     console.error("Error fetching diet plans:", error);
     return NextResponse.json(
@@ -84,10 +115,9 @@ export async function GET(request) {
   }
 }
 
-// POST /api/diet-plans - Create new diet plan with notifications
+// POST /api/diet-plans - Create new diet plan
 export async function POST(request) {
   try {
-    // Verify authentication
     const authHeader =
       request.headers.get("Authorization") ||
       request.headers.get("authorization");
@@ -107,7 +137,6 @@ export async function POST(request) {
 
     const body = await request.json();
 
-    // Validate required fields
     const {
       name,
       goal,
@@ -130,7 +159,6 @@ export async function POST(request) {
 
     const days = body.days || [];
 
-    // Validate that the number of days matches the duration
     if (days.length !== duration) {
       return NextResponse.json(
         {
@@ -140,7 +168,6 @@ export async function POST(request) {
       );
     }
 
-    // Create new diet plan
     const dietPlan = new DietPlan({
       userId: user.uid,
       name: name.trim(),
@@ -159,17 +186,25 @@ export async function POST(request) {
 
     const savedPlan = await dietPlan.save();
 
-    // No in-memory cache to invalidate; responses are non-cached
+    // Invalidate cache - Saari related cache clear karo
+    try {
+      const pattern = `user:diet-plans-list:${user.uid}:*`;
+      // Redis pattern matching ke liye keys command
+      const keys = await redis.keys(pattern);
+      if (keys && keys.length > 0) {
+        await Promise.all(keys.map(key => redis.del(key)));
+        console.log(`🗑️ Invalidated ${keys.length} cache entries for user ${user.uid}`);
+      }
+    } catch (cacheError) {
+      console.error("Cache invalidation error:", cacheError);
+    }
 
-    // Initialize notification tracking
     let notificationSent = false;
     let userData = null;
 
-    // Send notification for diet plan creation
     try {
       console.log("📋 Diet plan created, checking for push token...");
       
-      // Get user's push token
       userData = await User.findOne({ firebaseUid: user.uid });
       
       if (userData && userData.pushToken) {
@@ -190,7 +225,6 @@ export async function POST(request) {
         console.log("✅ Diet plan creation notification sent successfully");
         notificationSent = true;
         
-        // Add activity to user's recent activities
         await User.findOneAndUpdate(
           { firebaseUid: user.uid },
           {
@@ -206,7 +240,7 @@ export async function POST(request) {
                     targetCalories: targetCalories,
                   }
                 }],
-                $slice: -10, // Keep only last 10 activities
+                $slice: -10,
               },
             },
           }
@@ -216,7 +250,6 @@ export async function POST(request) {
       }
     } catch (notificationError) {
       console.error("❌ Failed to send diet plan creation notification:", notificationError);
-      // Don't break the creation if notification fails
     }
 
     return NextResponse.json({
@@ -245,10 +278,9 @@ export async function POST(request) {
   }
 }
 
-// PUT /api/diet-plans - Update diet plan with notifications
+// PUT /api/diet-plans - Update diet plan
 export async function PUT(request) {
   try {
-    // Verify authentication
     const authHeader =
       request.headers.get("Authorization") ||
       request.headers.get("authorization");
@@ -276,7 +308,6 @@ export async function PUT(request) {
       );
     }
 
-    // Ensure consistency between duration and days array
     if (updateData.duration && updateData.days) {
       if (updateData.duration !== updateData.days.length) {
         return NextResponse.json(
@@ -296,7 +327,6 @@ export async function PUT(request) {
         );
     }
 
-    // Find and update the diet plan
     const updatedPlan = await DietPlan.findOneAndUpdate(
       { _id: planId, userId: user.uid },
       { $set: { ...updateData, updatedAt: new Date() } },
@@ -310,17 +340,30 @@ export async function PUT(request) {
       );
     }
 
-    // No in-memory cache to invalidate; responses are non-cached
+    // Invalidate both list and individual plan cache
+    try {
+      // Clear list cache
+      const listPattern = `user:diet-plans-list:${user.uid}:*`;
+      const listKeys = await redis.keys(listPattern);
+      if (listKeys && listKeys.length > 0) {
+        await Promise.all(listKeys.map(key => redis.del(key)));
+      }
+      
+      // Clear individual plan cache
+      const planKey = `user:diet-plan:${user.uid}:${planId}`;
+      await redis.del(planKey);
+      
+      console.log(`🗑️ Invalidated cache for plan ${planId}`);
+    } catch (cacheError) {
+      console.error("Cache invalidation error:", cacheError);
+    }
 
-    // Initialize notification tracking
     let notificationSent = false;
     let userData = null;
 
-    // Send notification for diet plan update
     try {
       console.log("📋 Diet plan updated, checking for push token...");
       
-      // Get user's push token
       userData = await User.findOne({ firebaseUid: user.uid });
       
       if (userData && userData.pushToken) {
@@ -341,7 +384,6 @@ export async function PUT(request) {
         console.log("✅ Diet plan update notification sent successfully");
         notificationSent = true;
         
-        // Add activity to user's recent activities
         await User.findOneAndUpdate(
           { firebaseUid: user.uid },
           {
@@ -386,10 +428,9 @@ export async function PUT(request) {
   }
 }
 
-// DELETE /api/diet-plans - Delete diet plan with notifications
+// DELETE /api/diet-plans - Delete diet plan
 export async function DELETE(request) {
   try {
-    // Verify authentication
     const authHeader =
       request.headers.get("Authorization") ||
       request.headers.get("authorization");
@@ -417,7 +458,6 @@ export async function DELETE(request) {
       );
     }
 
-    // Find the plan first to get its name for notification
     const planToDelete = await DietPlan.findOne({ _id: planId, userId: user.uid });
     
     if (!planToDelete) {
@@ -427,20 +467,32 @@ export async function DELETE(request) {
       );
     }
 
-    // Delete the diet plan
     const deletedPlan = await DietPlan.findOneAndDelete({ _id: planId, userId: user.uid });
 
-    // No in-memory cache to invalidate; responses are non-cached
+    // Invalidate cache
+    try {
+      // Clear list cache
+      const listPattern = `user:diet-plans-list:${user.uid}:*`;
+      const listKeys = await redis.keys(listPattern);
+      if (listKeys && listKeys.length > 0) {
+        await Promise.all(listKeys.map(key => redis.del(key)));
+      }
+      
+      // Clear individual plan cache
+      const planKey = `user:diet-plan:${user.uid}:${planId}`;
+      await redis.del(planKey);
+      
+      console.log(`🗑️ Invalidated cache for deleted plan ${planId}`);
+    } catch (cacheError) {
+      console.error("Cache invalidation error:", cacheError);
+    }
 
-    // Initialize notification tracking
     let notificationSent = false;
     let userData = null;
 
-    // Send notification for diet plan deletion
     try {
       console.log("📋 Diet plan deleted, checking for push token...");
       
-      // Get user's push token
       userData = await User.findOne({ firebaseUid: user.uid });
       
       if (userData && userData.pushToken) {
@@ -460,7 +512,6 @@ export async function DELETE(request) {
         console.log("✅ Diet plan deletion notification sent successfully");
         notificationSent = true;
         
-        // Add activity to user's recent activities
         await User.findOneAndUpdate(
           { firebaseUid: user.uid },
           {

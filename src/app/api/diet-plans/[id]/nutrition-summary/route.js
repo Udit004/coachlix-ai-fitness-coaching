@@ -4,6 +4,7 @@ import DietPlan from "@/models/DietPlan";
 import { verifyUserToken } from "@/lib/verifyUser";
 
 export async function GET(request, { params }) {
+  const resolveparam = await params;
   try {
     const authHeader =
       request.headers.get("Authorization") ||
@@ -23,7 +24,7 @@ export async function GET(request, { params }) {
     await connectDB();
 
     const dietPlan = await DietPlan.findOne({
-      _id: params.id,
+      _id: resolveparam.id,
       userId: user.uid,
     });
 
