@@ -3,9 +3,11 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   History, 
   Plus, 
-  MessageCircle, 
   Calendar,
   Clock,
+  AlertCircle
+} from './icons';
+import { 
   Trash2,
   Search,
   Filter,
@@ -14,8 +16,8 @@ import {
   Pin,
   Archive,
   RefreshCw,
-  AlertCircle
-} from 'lucide-react';
+  MessageCircle
+} from 'lucide-react'; // Keep less common icons from lucide
 import { useInView } from 'react-intersection-observer';
 import useChatHistoryStore from '@/stores/useChatHistoryStore';
 import { useAuthContext } from '@/auth/AuthContext';

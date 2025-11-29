@@ -2,13 +2,13 @@
 import React, { useState } from "react";
 import {
   Menu,
-  Settings,
   Plus,
   History,
-  Trash2,
   ChevronDown,
+  Settings,
   MoreVertical,
-} from "lucide-react";
+  Trash2,
+} from "./icons";
 
 const ChatHeader = ({
   plans,

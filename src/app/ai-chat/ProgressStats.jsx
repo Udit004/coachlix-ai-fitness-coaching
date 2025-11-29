@@ -2,12 +2,10 @@ import React from 'react';
 import { 
   Activity, 
   Clock, 
-  Flame, 
-  Droplets, 
-  Moon, 
   Heart,
   Target
-} from 'lucide-react';
+} from './icons';
+import { Flame, Droplets, Moon } from 'lucide-react'; // Keep these from lucide as they're not commonly used
 
 const ProgressStats = ({ userProfile }) => {
   const getPersonalizedStats = () => {

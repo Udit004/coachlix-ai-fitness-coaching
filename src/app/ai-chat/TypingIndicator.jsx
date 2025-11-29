@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot, Sparkles } from 'lucide-react';
+import { Bot, Sparkles } from './icons';
 
 const TypingIndicator = ({ userProfile }) => {
   const getTypingMessage = () => {

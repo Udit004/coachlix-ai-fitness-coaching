@@ -12,25 +12,28 @@ import {
   Menu,
   History,
   Plus,
-  MessageCircle,
-  Settings,
   User,
-  TrendingUp,
   Sparkles,
+  Settings,
   ChevronRight,
-} from "lucide-react";
+} from "./icons";
 import { useRouter } from "next/navigation";
-import WelcomeCard from "./WelcomeCard";
-import PlanSelector from "./PlanSelector";
-import QuickActions from "./QuickActions";
-import ProgressStats from "./ProgressStats";
-import GoalProgress from "./GoalProgress";
 import useChatStore from "@/stores/useChatStore";
 import useChatHistoryStore from "@/stores/useChatHistoryStore";
 import { useAuthContext } from "@/auth/AuthContext";
 
-// Lazy load the ChatHistory component for better performance
-const ChatHistory = lazy(() => import("./ChatHistory"));
+// Lazy load sidebar components for better performance
+const WelcomeCard = lazy(() => import(/* webpackChunkName: "sidebar-welcome" */ "./WelcomeCard"));
+const PlanSelector = lazy(() => import(/* webpackChunkName: "sidebar-plan" */ "./PlanSelector"));
+const QuickActions = lazy(() => import(/* webpackChunkName: "sidebar-actions" */ "./QuickActions"));
+const ProgressStats = lazy(() => import(/* webpackChunkName: "sidebar-stats" */ "./ProgressStats"));
+const GoalProgress = lazy(() => import(/* webpackChunkName: "sidebar-goals" */ "./GoalProgress"));
+const ChatHistory = lazy(() => import(/* webpackChunkName: "chat-history" */ "./ChatHistory"));
+
+// Minimal loading skeleton for sidebar components
+const ComponentSkeleton = ({ height = "h-24" }) => (
+  <div className={`${height} bg-gray-100 rounded-lg animate-pulse`}></div>
+);
 
 // Loading component for ChatHistory
 const ChatHistoryLoading = () => (
@@ -210,16 +213,20 @@ const ChatSidebar = ({
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         <div className="p-4 space-y-4 lg:space-y-6">
           {/* Personalized Welcome Card */}
-          <WelcomeCard userProfile={userProfile} />
+          <Suspense fallback={<ComponentSkeleton height="h-20" />}>
+            <WelcomeCard userProfile={userProfile} />
+          </Suspense>
 
           {/* Mobile Plan Selector */}
           <div className="lg:hidden">
-            <PlanSelector
-              plans={plans}
-              selectedPlan={selectedPlan}
-              setSelectedPlan={setSelectedPlan}
-              variant="mobile"
-            />
+            <Suspense fallback={<ComponentSkeleton height="h-16" />}>
+              <PlanSelector
+                plans={plans}
+                selectedPlan={selectedPlan}
+                setSelectedPlan={setSelectedPlan}
+                variant="mobile"
+              />
+            </Suspense>
           </div>
 
           {/* Quick Stats */}
@@ -232,11 +239,13 @@ const ChatSidebar = ({
           />
 
           {/* Personalized Quick Actions */}
-          <QuickActions
-            userProfile={userProfile}
-            handleSuggestionClick={handleSuggestionClick}
-            quickActions={quickActions}
-          />
+          <Suspense fallback={<ComponentSkeleton height="h-32" />}>
+            <QuickActions
+              userProfile={userProfile}
+              handleSuggestionClick={handleSuggestionClick}
+              quickActions={quickActions}
+            />
+          </Suspense>
 
           {/* Progress Stats
           <ProgressStats userProfile={userProfile} />

@@ -22,12 +22,15 @@ const ChatContainer = ({
   streamingContent = "",
   onStreamingComplete = null,
 }) => {
+  const messagesEndRefInternal = useRef(null);
+  const actualMessagesEndRef = messagesEndRef || messagesEndRefInternal;
+
   useEffect(() => {
     scrollToBottom();
-  }, [messages, streamingContent]);
+  }, [messages.length, streamingContent]); // Only scroll when message count changes or streaming updates
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    actualMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
@@ -54,7 +57,7 @@ const ChatContainer = ({
         {/* Typing Indicator - Only show if no streaming message */}
         {isTyping && !streamingMessageId && <TypingIndicator userProfile={userProfile} />}
 
-        <div ref={messagesEndRef} />
+        <div ref={actualMessagesEndRef} />
       </div>
 
       {/* Chat Input - Fixed at Bottom */}
@@ -74,4 +77,14 @@ const ChatContainer = ({
   );
 };
 
-export default ChatContainer;
+// Memoize to prevent unnecessary re-renders
+export default React.memo(ChatContainer, (prevProps, nextProps) => {
+  return (
+    prevProps.messages.length === nextProps.messages.length &&
+    prevProps.isTyping === nextProps.isTyping &&
+    prevProps.inputValue === nextProps.inputValue &&
+    prevProps.streamingMessageId === nextProps.streamingMessageId &&
+    prevProps.streamingContent === nextProps.streamingContent &&
+    prevProps.isRecording === nextProps.isRecording
+  );
+});

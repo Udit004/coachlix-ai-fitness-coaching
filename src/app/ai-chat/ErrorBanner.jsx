@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, X } from 'lucide-react';
+import { AlertCircle, X } from './icons';
 
 const ErrorBanner = ({ error, onClose }) => {
   if (!error) return null;

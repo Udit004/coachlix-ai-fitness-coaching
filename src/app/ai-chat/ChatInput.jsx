@@ -11,7 +11,7 @@ import {
   Image,
   File,
   Upload
-} from 'lucide-react';
+} from './icons';
 import useSpeechRecognition from '../../hooks/useSpeechRecognition';
 import SpeechPermissionModal from '../../components/SpeechPermissionModal';
 

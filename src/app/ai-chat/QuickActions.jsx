@@ -4,7 +4,7 @@ import {
   Apple, 
   Calendar, 
   Target
-} from 'lucide-react';
+} from './icons';
 
 const QuickActions = ({ 
   userProfile, 

@@ -1,4 +1,4 @@
-// page.jsx - Enhanced version with improved loading and ChatHistory
+// page.jsx - Optimized version with proper code splitting
 "use client";
 import React, { useState, useRef, useEffect, Suspense, lazy } from "react";
 import useUserProfileStore from "@/stores/useUserProfileStore";
@@ -6,6 +6,7 @@ import useChatStore from "@/stores/useChatStore";
 import useChatHistoryStore from "@/stores/useChatHistoryStore";
 import { toast, Toaster } from "react-hot-toast";
 import axios from "axios";
+// Import only necessary icons from centralized registry
 import {
   Activity,
   Dumbbell,
@@ -18,21 +19,20 @@ import {
   Plus,
   History,
   AlertCircle,
-} from "lucide-react";
+} from "./icons";
 import { useAuthContext } from "../../auth/AuthContext";
 
-// Lazy loaded components for better performance
-const ChatHeader = lazy(() => import("./ChatHeader"));
-const ChatSidebar = lazy(() => import("./ChatSidebar"));
-const ChatContainer = lazy(() => import("./ChatContainer"));
-const ErrorBanner = lazy(() => import("./ErrorBanner"));
+// Lazy loaded components with webpack chunk names for better debugging
+const ChatHeader = lazy(() => import(/* webpackChunkName: "chat-header" */ "./ChatHeader"));
+const ChatSidebar = lazy(() => import(/* webpackChunkName: "chat-sidebar" */ "./ChatSidebar"));
+const ChatContainer = lazy(() => import(/* webpackChunkName: "chat-container" */ "./ChatContainer"));
+const ErrorBanner = lazy(() => import(/* webpackChunkName: "error-banner" */ "./ErrorBanner"));
 
-// Enhanced loading components
-import EnhancedLoading, {
-  ProfileLoading,
-  ChatLoading,
-  InitializingLoading,
-} from "./EnhancedLoading";
+// Lazy load loading components to reduce initial bundle
+const EnhancedLoading = lazy(() => import(/* webpackChunkName: "enhanced-loading" */ "./EnhancedLoading"));
+const ProfileLoading = lazy(() => import(/* webpackChunkName: "enhanced-loading" */ "./EnhancedLoading").then(m => ({ default: m.ProfileLoading })));
+const ChatLoading = lazy(() => import(/* webpackChunkName: "enhanced-loading" */ "./EnhancedLoading").then(m => ({ default: m.ChatLoading })));
+const InitializingLoading = lazy(() => import(/* webpackChunkName: "enhanced-loading" */ "./EnhancedLoading").then(m => ({ default: m.InitializingLoading })));
 
 // Loading fallbacks for lazy components
 const ComponentLoading = ({ type = "default" }) => (
@@ -521,10 +521,21 @@ const AIChatPage = () => {
 
   // Show different loading states based on initialization stage
   if (authLoading || initializingStage !== "ready") {
+    // Minimal fallback for loading components themselves
+    const LoadingFallback = () => (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+
     switch (initializingStage) {
       case "initial":
       case "initializing":
-        return <InitializingLoading />;
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <InitializingLoading />
+          </Suspense>
+        );
       case "profile":
         return <ProfileLoading />;
       case "chat":
@@ -553,7 +564,11 @@ const AIChatPage = () => {
           </div>
         );
       default:
-        return <EnhancedLoading stage={initializingStage} />;
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <EnhancedLoading stage={initializingStage} />
+          </Suspense>
+        );
     }
   }
 
@@ -607,26 +622,28 @@ const AIChatPage = () => {
       <div className="flex-1 overflow-hidden">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2 sm:py-6 h-full flex flex-col">
           <div className="flex gap-2 sm:gap-6 flex-1 min-h-0">
-            {/* Enhanced Sidebar with Suspense */}
-            <div
-              className={`${
-                sidebarOpen
-                  ? "fixed inset-0 z-50 bg-white lg:relative lg:inset-auto lg:bg-transparent"
-                  : "hidden lg:block"
-              } w-full lg:w-80 flex-shrink-0 overflow-y-auto lg:h-full p-4 lg:p-0`}
-            >
-              <Suspense fallback={<ComponentLoading type="sidebar" />}>
-                <ChatSidebar
-                  plans={plans}
-                  selectedPlan={selectedPlan}
-                  setSelectedPlan={setSelectedPlan}
-                  handleSuggestionClick={handleSuggestionClick}
-                  userProfile={userProfile}
-                  quickActions={quickActions}
-                  onLoad={() => handleComponentLoad("sidebar")}
-                />
-              </Suspense>
-            </div>
+            {/* Enhanced Sidebar with Suspense - Only load when open or on desktop */}
+            {(sidebarOpen || typeof window !== 'undefined' && window.innerWidth >= 1024) && (
+              <div
+                className={`${
+                  sidebarOpen
+                    ? "fixed inset-0 z-50 bg-white lg:relative lg:inset-auto lg:bg-transparent"
+                    : "hidden lg:block"
+                } w-full lg:w-80 flex-shrink-0 overflow-y-auto lg:h-full p-4 lg:p-0`}
+              >
+                <Suspense fallback={<ComponentLoading type="sidebar" />}>
+                  <ChatSidebar
+                    plans={plans}
+                    selectedPlan={selectedPlan}
+                    setSelectedPlan={setSelectedPlan}
+                    handleSuggestionClick={handleSuggestionClick}
+                    userProfile={userProfile}
+                    quickActions={quickActions}
+                    onLoad={() => handleComponentLoad("sidebar")}
+                  />
+                </Suspense>
+              </div>
+            )}
 
             {/* Chat Container with Suspense */}
             <div className="flex-1 min-h-0 min-w-0">

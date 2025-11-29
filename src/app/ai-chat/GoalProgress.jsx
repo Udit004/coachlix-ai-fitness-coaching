@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy } from 'lucide-react';
+import { Trophy } from './icons';
 
 const GoalProgress = ({ userProfile }) => {
   const getGoalData = () => {

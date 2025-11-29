@@ -1,199 +1,145 @@
-// components/LoadingStates/EnhancedLoading.jsx
+// components/LoadingStates/EnhancedLoading.jsx - Simplified & Responsive
 import React, { useState, useEffect } from 'react';
 import { 
   Dumbbell, 
-  Activity, 
-  Heart, 
-  Target, 
-  Zap,
-  Brain,
-  Sparkles
-} from 'lucide-react';
+  Sparkles,
+  Calendar,
+  Apple,
+  Target
+} from './icons';
 
 const LoadingMessages = [
-  "Waking up your AI trainer...",
-  "Analyzing your fitness profile...",
-  "Preparing personalized insights...",
-  "Loading your workout data...",
-  "Setting up your dashboard...",
-  "Almost ready to start training..."
+  "Setting up your AI coach...",
+  "Loading your profile...",
+  "Almost ready..."
 ];
-
-const LoadingSubtexts = [
-  "Crafting the perfect fitness experience",
-  "Tailoring workouts to your goals", 
-  "Optimizing your training plan",
-  "Syncing your progress data",
-  "Preparing smart recommendations",
-  "Getting everything ready..."
-];
-
-const FloatingIcon = ({ Icon, delay, position }) => (
-  <div 
-    className={`absolute ${position} animate-bounce opacity-30`}
-    style={{ animationDelay: `${delay}ms`, animationDuration: '2s' }}
-  >
-    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-      <Icon className="w-4 h-4 text-white" />
-    </div>
-  </div>
-);
-
-const PulseRing = ({ delay, size = "w-20 h-20" }) => (
-  <div 
-    className={`absolute inset-0 ${size} mx-auto rounded-full border-2 border-white/30 animate-ping`}
-    style={{ animationDelay: `${delay}ms`, animationDuration: '2s' }}
-  />
-);
-
-const ProgressBar = ({ progress }) => (
-  <div className="w-40 h-1.5 bg-white/20 rounded-full overflow-hidden">
-    <div 
-      className="h-full bg-gradient-to-r from-white/60 to-white/90 rounded-full transition-all duration-300 ease-out"
-      style={{ width: `${progress}%` }}
-    />
-  </div>
-);
-
-const ThinkingDots = () => (
-  <div className="flex justify-center items-center space-x-1">
-    <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce" />
-    <div 
-      className="w-2 h-2 bg-white/60 rounded-full animate-bounce" 
-      style={{ animationDelay: '0.1s' }}
-    />
-    <div 
-      className="w-2 h-2 bg-white/60 rounded-full animate-bounce" 
-      style={{ animationDelay: '0.2s' }}
-    />
-  </div>
-);
 
 const EnhancedLoading = ({ stage = 'initial', progress = 0, message = '' }) => {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [currentProgress, setCurrentProgress] = useState(0);
 
-  // Cycle through loading messages
+  // Faster message cycling
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentMessageIndex((prev) => (prev + 1) % LoadingMessages.length);
-    }, 2000);
+    }, 1200);
 
     return () => clearInterval(interval);
   }, []);
 
-  // Simulate progress
+  // Faster progress
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentProgress((prev) => {
         if (prev >= 95) return prev;
-        return prev + Math.random() * 3;
+        return prev + Math.random() * 8;
       });
-    }, 200);
+    }, 100);
 
     return () => clearInterval(interval);
   }, []);
 
   const displayProgress = progress || currentProgress;
   const displayMessage = message || LoadingMessages[currentMessageIndex];
-  const displaySubtext = LoadingSubtexts[currentMessageIndex];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-700 to-indigo-800 flex items-center justify-center px-4 relative overflow-hidden">
-      {/* Animated Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-20 left-20 w-32 h-32 bg-white rounded-full mix-blend-overlay animate-pulse" />
-        <div className="absolute top-40 right-32 w-24 h-24 bg-white rounded-full mix-blend-overlay animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute bottom-32 left-40 w-28 h-28 bg-white rounded-full mix-blend-overlay animate-pulse" style={{ animationDelay: '2s' }} />
-        <div className="absolute bottom-20 right-20 w-20 h-20 bg-white rounded-full mix-blend-overlay animate-pulse" style={{ animationDelay: '0.5s' }} />
+    <div className="min-h-screen bg-gray-900 flex flex-col md:flex-row">
+      {/* Left Sidebar - Hidden on mobile, visible on md+ */}
+      <div className="hidden md:flex md:w-72 lg:w-80 bg-gray-800/50 border-r border-gray-700 p-4 lg:p-6 flex-col">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <Dumbbell className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <div className="h-2.5 lg:h-3 bg-gray-700 rounded w-28 lg:w-32 mb-1.5"></div>
+              <div className="h-2 bg-gray-700/50 rounded w-20 lg:w-24"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex space-x-3 mb-4 border-b border-gray-700 pb-2">
+          <div className="flex items-center space-x-1.5 text-blue-400 border-b-2 border-blue-400 pb-2">
+            <div className="w-3 h-3 bg-blue-500/20 rounded"></div>
+            <span className="text-xs lg:text-sm font-medium">Dashboard</span>
+          </div>
+          <div className="flex items-center space-x-1.5 text-gray-400">
+            <div className="w-3 h-3 bg-gray-700 rounded"></div>
+            <span className="text-xs lg:text-sm">History</span>
+          </div>
+        </div>
+
+        {/* User Profile Card */}
+        <div className="bg-gray-800/80 rounded-lg lg:rounded-xl p-3 lg:p-4 mb-4 border border-gray-700">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg lg:rounded-xl flex items-center justify-center">
+              <span className="text-white font-bold text-base lg:text-lg">U</span>
+            </div>
+            <div className="flex-1">
+              <div className="h-2.5 bg-gray-700 rounded w-24 mb-1.5"></div>
+              <div className="h-2 bg-gray-700/50 rounded w-16"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="flex-1">
+          <h3 className="text-gray-400 text-xs lg:text-sm font-medium mb-2">Quick Actions</h3>
+          <div className="space-y-1.5">
+            {[
+              { icon: Dumbbell, text: "Create workout plan" },
+              { icon: Apple, text: "Design nutrition plan" },
+              { icon: Calendar, text: "Weekly schedule" },
+              { icon: Target, text: "Set fitness goals" }
+            ].map((action, idx) => (
+              <div key={idx} className="flex items-center space-x-2.5 p-2.5 rounded-lg bg-gray-800/50 border border-gray-700/50">
+                <action.icon className="w-3.5 h-3.5 text-gray-400" />
+                <span className="text-xs lg:text-sm text-gray-300">{action.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Floating Icons */}
-      <FloatingIcon Icon={Activity} delay={0} position="top-1/4 left-1/4" />
-      <FloatingIcon Icon={Heart} delay={500} position="top-1/3 right-1/4" />
-      <FloatingIcon Icon={Target} delay={1000} position="bottom-1/3 left-1/3" />
-      <FloatingIcon Icon={Zap} delay={1500} position="bottom-1/4 right-1/3" />
+      {/* Main Content Area - Full width on mobile, flex-1 on desktop */}
+      <div className="flex-1 flex items-center justify-center p-6 md:p-8">
+        <div className="text-center max-w-sm">
+          {/* Loading Animation */}
+          <div className="relative mb-6 md:mb-8">
+            <div className="w-16 h-16 md:w-20 md:h-20 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl">
+              <Sparkles className="w-8 h-8 md:w-10 md:h-10 text-white animate-pulse" style={{ animationDuration: '1.2s' }} />
+            </div>
+            <div className="absolute inset-0 w-16 h-16 md:w-20 md:h-20 mx-auto rounded-xl md:rounded-2xl bg-blue-500/20 animate-ping" style={{ animationDuration: '1.2s' }}></div>
+          </div>
 
-      <div className="text-center max-w-md mx-auto relative z-10">
-        {/* Main AI Avatar with Enhanced Animations */}
-        <div className="relative mb-8">
-          {/* Pulse Rings */}
-          <PulseRing delay={0} />
-          <PulseRing delay={500} size="w-24 h-24" />
-          <PulseRing delay={1000} size="w-28 h-28" />
+          {/* Loading Message */}
+          <h2 className="text-xl md:text-2xl font-bold text-white mb-3">
+            {displayMessage}
+          </h2>
           
-          {/* Main Avatar */}
-          <div className="relative w-20 h-20 mx-auto bg-gradient-to-br from-white to-gray-100 rounded-full flex items-center justify-center shadow-2xl">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center relative overflow-hidden">
-              {stage === 'thinking' ? (
-                <Brain className="w-8 h-8 text-white animate-pulse" />
-              ) : (
-                <Dumbbell className="w-8 h-8 text-white" />
-              )}
-              
-              {/* Sparkle Effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+          {/* Progress Bar */}
+          <div className="mb-4 md:mb-6">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-xs text-gray-400">Loading</span>
+              <span className="text-xs text-gray-400">{Math.round(displayProgress)}%</span>
+            </div>
+            <div className="w-full max-w-xs md:max-w-md h-1.5 bg-gray-700 rounded-full overflow-hidden mx-auto">
+              <div 
+                className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all duration-150"
+                style={{ width: `${displayProgress}%` }}
+              />
             </div>
           </div>
 
-          {/* Floating Sparkles */}
-          <div className="absolute -top-2 -right-2">
-            <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
-          </div>
-          <div className="absolute -bottom-1 -left-2">
-            <Sparkles className="w-3 h-3 text-pink-300 animate-pulse" style={{ animationDelay: '0.5s' }} />
-          </div>
-        </div>
-
-        {/* Enhanced Thinking Animation */}
-        <div className="flex justify-center items-center mb-6">
-          <div className="bg-white/10 backdrop-blur-md rounded-full px-6 py-3 shadow-lg border border-white/20">
-            <ThinkingDots />
-          </div>
-        </div>
-
-        {/* Dynamic Status Messages */}
-        <div className="space-y-3 mb-8">
-          <h3 className="text-xl font-bold text-white transition-all duration-500 ease-in-out">
-            {displayMessage}
-          </h3>
-          <p className="text-blue-100 text-sm animate-pulse transition-all duration-500">
-            {displaySubtext}
-          </p>
-        </div>
-
-        {/* Enhanced Progress Bar */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs text-blue-100">Loading</span>
-            <span className="text-xs text-blue-100">{Math.round(displayProgress)}%</span>
-          </div>
-          <ProgressBar progress={displayProgress} />
-        </div>
-
-        {/* Feature Preview Cards */}
-        <div className="grid grid-cols-2 gap-3 mb-6 opacity-60">
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-            <Target className="w-5 h-5 text-white mx-auto mb-1" />
-            <p className="text-xs text-blue-100">Smart Goals</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-            <Activity className="w-5 h-5 text-white mx-auto mb-1" />
-            <p className="text-xs text-blue-100">AI Workouts</p>
-          </div>
-        </div>
-
-        {/* Loading Tips */}
-        <div className="text-center">
-          <p className="text-xs text-blue-200/80 italic">
-            "Your AI trainer is getting smarter every day"
+          {/* Subtitle */}
+          <p className="text-gray-400 text-xs md:text-sm flex items-center justify-center space-x-2">
+            <Sparkles className="w-3 h-3" />
+            <span>Powered by Gemini AI</span>
           </p>
         </div>
       </div>
-
-      {/* Corner Decorations */}
-      <div className="absolute top-4 right-4 w-12 h-12 border-2 border-white/20 rounded-full animate-spin" style={{ animationDuration: '8s' }} />
-      <div className="absolute bottom-4 left-4 w-8 h-8 border-2 border-white/20 rounded-full animate-spin" style={{ animationDuration: '6s' }} />
     </div>
   );
 };

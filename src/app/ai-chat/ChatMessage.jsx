@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   User,
   Bot,
@@ -11,20 +11,19 @@ import {
   Zap,
   Target,
   Trophy,
-  Star,
-  Loader2,
-} from "lucide-react";
+} from "./icons";
 import { toast } from "react-hot-toast";
 
 const ChatMessage = ({ 
   message, 
   handleSuggestionClick, 
   userProfile,
-  isStreaming = false, // New prop to indicate if this message is currently streaming
+  isStreaming = false,
 }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const formatMessageContent = (content) => {
+  // Memoize expensive formatting function properly
+  const formatMessageContent = useCallback((content) => {
     // Convert markdown-style formatting to HTML with enhanced styling
     let formattedContent = content
       // Bold text with enhanced styling
@@ -130,9 +129,10 @@ const ChatMessage = ({
     formattedContent = enhanceEmojis(formattedContent);
 
     return formattedContent;
-  };
+  }, []);
 
-  const enhanceEmojis = (content) => {
+  // Memoize emoji enhancement
+  const enhanceEmojis = useCallback((content) => {
     const emojiMap = {
       "💪": '<span class="text-lg inline-block transform hover:scale-110 transition-transform duration-200">💪</span>',
       "🔥": '<span class="text-lg inline-block transform hover:scale-110 transition-transform duration-200">🔥</span>',
@@ -154,9 +154,15 @@ const ChatMessage = ({
     });
 
     return content;
-  };
+  }, []);
 
-  const formatTime = (date) => {
+  // Memoize the formatted content to avoid re-computing on every render
+  const formattedContent = useMemo(
+    () => formatMessageContent(message.content || ""),
+    [message.content, formatMessageContent]
+  );
+
+  const formatTime = useCallback((date) => {
     if (!date) return ""; // handle undefined/null
 
     // Ensure we always work with a Date object
@@ -170,14 +176,14 @@ const ChatMessage = ({
       minute: "2-digit",
       hour12: true,
     });
-  };
-
-  const copyToClipboard = (text) => {
+  }, []);
+  
+  const copyToClipboard = useCallback((text) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard!");
-  };
+  }, []);
 
-  const getPersonalizedAvatar = () => {
+  const getPersonalizedAvatar = useMemo(() => {
     if (message.role === "user") {
       if (userProfile?.name) {
         return (
@@ -208,9 +214,9 @@ const ChatMessage = ({
         )}
       </div>
     );
-  };
+  }, [message.role, message.isError, userProfile?.name]);
 
-  const getPersonalizedSuggestions = () => {
+  const getPersonalizedSuggestions = useMemo(() => {
     if (!message.suggestions) return [];
 
     // Add personalized suggestions based on user profile
@@ -245,7 +251,7 @@ const ChatMessage = ({
     }
 
     return suggestions;
-  };
+  }, [message.suggestions, message.role, userProfile?.fitnessGoal]);
 
   return (
     <div
@@ -283,7 +289,7 @@ const ChatMessage = ({
                     letterSpacing: "0.01em",
                   }}
                   dangerouslySetInnerHTML={{
-                    __html: formatMessageContent(message.content),
+                    __html: formattedContent,
                   }}
                 />
                 
@@ -355,7 +361,7 @@ const ChatMessage = ({
             {/* Personalized AI Suggestions - Only show when NOT streaming and has suggestions */}
             {!isStreaming &&
               message.role === "ai" &&
-              getPersonalizedSuggestions().length > 0 && (
+              getPersonalizedSuggestions.length > 0 && (
                 <div className="mt-3 md:mt-4">
                   {/* Toggle Button */}
                   <button
@@ -367,7 +373,7 @@ const ChatMessage = ({
                       {showSuggestions ? "Hide" : "Show"} follow-up suggestions
                     </span>
                     <span className="text-[10px] md:text-xs bg-blue-200/50 px-1.5 py-0.5 rounded-full">
-                      {getPersonalizedSuggestions().length}
+                      {getPersonalizedSuggestions.length}
                     </span>
                     <svg
                       className={`h-3 w-3 transition-transform duration-200 ${
@@ -390,7 +396,7 @@ const ChatMessage = ({
                   {showSuggestions && (
                     <div className="mt-2 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
                       <div className="flex flex-wrap gap-1.5 md:gap-2">
-                        {getPersonalizedSuggestions().map((suggestion, index) => (
+                        {getPersonalizedSuggestions.map((suggestion, index) => (
                           <button
                             key={index}
                             onClick={() => {
@@ -419,4 +425,12 @@ const ChatMessage = ({
   );
 };
 
-export default ChatMessage;
+// Memoize the entire component to prevent unnecessary re-renders
+export default React.memo(ChatMessage, (prevProps, nextProps) => {
+  return (
+    prevProps.message.id === nextProps.message.id &&
+    prevProps.message.content === nextProps.message.content &&
+    prevProps.isStreaming === nextProps.isStreaming &&
+    prevProps.userProfile?.name === nextProps.userProfile?.name
+  );
+});
