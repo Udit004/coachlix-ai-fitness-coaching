@@ -271,8 +271,8 @@ const ChatMessage = ({
                 message.role === "user"
                   ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
                   : message.isError
-                  ? "bg-red-50 text-red-900 border border-red-200"
-                  : "bg-white text-gray-800 border border-gray-100 shadow-md"
+                  ? "bg-red-900/50 text-red-200 border border-red-800"
+                  : "bg-gray-800/80 text-gray-200 border border-gray-700 shadow-md"
               }`}
             >
               <div
@@ -305,7 +305,7 @@ const ChatMessage = ({
 
               {/* AI Enhancement Indicator - Only show when NOT streaming */}
               {!isStreaming && message.role === "ai" && !message.isError && message.content && (
-                <div className="flex items-center mt-2 md:mt-3 pt-2 md:pt-3 border-t border-gray-100 text-[10px] md:text-xs text-gray-500">
+                <div className="flex items-center mt-2 md:mt-3 pt-2 md:pt-3 border-t border-gray-700 text-[10px] md:text-xs text-gray-400">
                   <div className="flex items-center space-x-1.5 md:space-x-2">
                     <Sparkles className="h-2.5 w-2.5 md:h-3 md:w-3 text-blue-500" />
                     <span className="font-medium">
@@ -324,7 +324,7 @@ const ChatMessage = ({
             {/* Message Actions - Only show when NOT streaming */}
             {!isStreaming && (
               <div
-                className={`flex items-center mt-2 md:mt-3 space-x-1.5 md:space-x-2 text-[10px] md:text-xs text-gray-400 ${
+                className={`flex items-center mt-2 md:mt-3 space-x-1.5 md:space-x-2 text-[10px] md:text-xs text-gray-500 ${
                   message.role === "user" ? "justify-end" : "justify-start"
                 }`}
               >
@@ -335,23 +335,23 @@ const ChatMessage = ({
                 {message.role === "ai" && !message.isError && (
                   <div className="flex items-center space-x-0.5 md:space-x-1 ml-2 md:ml-3">
                     <button
-                      className="p-1 md:p-1.5 hover:bg-gray-100 rounded-md md:rounded-lg transition-colors duration-200"
+                      className="p-1 md:p-1.5 hover:bg-gray-700 rounded-md md:rounded-lg transition-colors duration-200"
                       title="Helpful response"
                     >
-                      <ThumbsUp className="h-2.5 w-2.5 md:h-3 md:w-3 hover:text-green-600" />
+                      <ThumbsUp className="h-2.5 w-2.5 md:h-3 md:w-3 hover:text-green-400" />
                     </button>
                     <button
-                      className="p-1 md:p-1.5 hover:bg-gray-100 rounded-md md:rounded-lg transition-colors duration-200"
+                      className="p-1 md:p-1.5 hover:bg-gray-700 rounded-md md:rounded-lg transition-colors duration-200"
                       title="Not helpful"
                     >
-                      <ThumbsDown className="h-2.5 w-2.5 md:h-3 md:w-3 hover:text-red-500" />
+                      <ThumbsDown className="h-2.5 w-2.5 md:h-3 md:w-3 hover:text-red-400" />
                     </button>
                     <button
                       onClick={() => copyToClipboard(message.content)}
-                      className="p-1 md:p-1.5 hover:bg-gray-100 rounded-md md:rounded-lg transition-colors duration-200"
+                      className="p-1 md:p-1.5 hover:bg-gray-700 rounded-md md:rounded-lg transition-colors duration-200"
                       title="Copy message"
                     >
-                      <Copy className="h-2.5 w-2.5 md:h-3 md:w-3 hover:text-blue-500" />
+                      <Copy className="h-2.5 w-2.5 md:h-3 md:w-3 hover:text-blue-400" />
                     </button>
                   </div>
                 )}
@@ -366,13 +366,13 @@ const ChatMessage = ({
                   {/* Toggle Button */}
                   <button
                     onClick={() => setShowSuggestions(!showSuggestions)}
-                    className="group flex items-center space-x-2 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-700 text-xs md:text-sm rounded-lg border border-blue-200/50 transition-all duration-200 hover:shadow-sm"
+                    className="group flex items-center space-x-2 px-3 py-1.5 bg-gray-800/80 hover:bg-gray-700 text-blue-400 text-xs md:text-sm rounded-lg border border-gray-700 transition-all duration-200 hover:shadow-sm"
                   >
                     <Sparkles className="h-3 w-3 md:h-3.5 md:w-3.5" />
                     <span className="font-medium">
                       {showSuggestions ? "Hide" : "Show"} follow-up suggestions
                     </span>
-                    <span className="text-[10px] md:text-xs bg-blue-200/50 px-1.5 py-0.5 rounded-full">
+                    <span className="text-[10px] md:text-xs bg-blue-900/50 px-1.5 py-0.5 rounded-full text-blue-300">
                       {getPersonalizedSuggestions.length}
                     </span>
                     <svg
@@ -403,9 +403,9 @@ const ChatMessage = ({
                               handleSuggestionClick(suggestion);
                               setShowSuggestions(false); // Auto-hide after selection
                             }}
-                            className="group relative px-2.5 py-1.5 md:px-4 md:py-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 text-xs md:text-sm rounded-lg md:rounded-xl hover:from-blue-100 hover:to-indigo-100 transition-all duration-300 border border-blue-200/50 shadow-sm hover:shadow-md active:scale-95 md:hover:-translate-y-0.5 md:hover:scale-[1.02] font-medium overflow-hidden"
+                            className="group relative px-2.5 py-1.5 md:px-4 md:py-2.5 bg-gray-800/80 text-blue-400 text-xs md:text-sm rounded-lg md:rounded-xl hover:bg-gray-700 transition-all duration-300 border border-gray-700 shadow-sm hover:shadow-md active:scale-95 md:hover:-translate-y-0.5 md:hover:scale-[1.02] font-medium overflow-hidden"
                           >
-                            <div className="absolute inset-0 bg-gradient-to-r from-blue-400/0 to-indigo-400/0 group-hover:from-blue-400/5 group-hover:to-indigo-400/5 transition-all duration-300"></div>
+                            <div className="absolute inset-0 bg-gradient-to-r from-blue-400/0 to-indigo-400/0 group-hover:from-blue-400/10 group-hover:to-indigo-400/10 transition-all duration-300"></div>
                             <div className="relative flex items-center space-x-1">
                               <Sparkles className="h-2.5 w-2.5 md:h-3 md:w-3 opacity-60 group-hover:opacity-100 transition-opacity duration-200" />
                               <span className="group-hover:font-semibold transition-all duration-200 line-clamp-1">

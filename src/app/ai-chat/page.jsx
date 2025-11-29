@@ -542,15 +542,15 @@ const AIChatPage = () => {
         return <ChatLoading />;
       case "error":
         return (
-          <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center px-4">
+          <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
             <div className="text-center max-w-md mx-auto">
-              <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-                <AlertCircle className="w-8 h-8 text-red-500" />
+              <div className="w-16 h-16 mx-auto mb-4 bg-red-900/50 rounded-full flex items-center justify-center border border-red-700">
+                <AlertCircle className="w-8 h-8 text-red-400" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              <h3 className="text-xl font-semibold text-white mb-2">
                 Oops! Something went wrong
               </h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-400 mb-4">
                 We're having trouble loading your AI trainer. Please try
                 refreshing the page.
               </p>
@@ -573,7 +573,7 @@ const AIChatPage = () => {
   }
 
   return (
-    <div className="h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col">
+    <div className="h-screen bg-gray-900 flex flex-col">
       <Toaster
         position="top-center"
         toastOptions={{
@@ -627,7 +627,7 @@ const AIChatPage = () => {
               <div
                 className={`${
                   sidebarOpen
-                    ? "fixed inset-0 z-50 bg-white lg:relative lg:inset-auto lg:bg-transparent"
+                    ? "fixed inset-0 z-50 bg-gray-900 lg:relative lg:inset-auto"
                     : "hidden lg:block"
                 } w-full lg:w-80 flex-shrink-0 overflow-y-auto lg:h-full p-4 lg:p-0`}
               >

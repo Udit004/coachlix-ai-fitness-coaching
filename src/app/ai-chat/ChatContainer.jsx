@@ -34,7 +34,7 @@ const ChatContainer = ({
   };
 
   return (
-    <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 flex flex-col h-full max-h-full overflow-hidden">
+    <div className="bg-gray-800/50 rounded-lg sm:rounded-xl shadow-sm border border-gray-700 flex flex-col h-full max-h-full overflow-hidden">
       {/* Chat Messages - Scrollable Area */}
       <div className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4">
         {messages.map((message, index) => {
@@ -61,7 +61,7 @@ const ChatContainer = ({
       </div>
 
       {/* Chat Input - Fixed at Bottom */}
-      <div className="flex-shrink-0 border-t border-gray-100 p-2 sm:p-4 bg-white rounded-b-lg sm:rounded-b-xl">
+      <div className="flex-shrink-0 border-t border-gray-700 p-2 sm:p-4 bg-gray-800/50 rounded-b-lg sm:rounded-b-xl">
         <ChatInput
           inputValue={inputValue}
           setInputValue={setInputValue}

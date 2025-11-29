@@ -30,7 +30,7 @@ const WelcomeCard = ({ userProfile }) => {
   }
 
   return (
-    <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+    <div className="bg-gray-800/80 rounded-xl p-4 border border-gray-700 shadow-sm">
       <div className="flex items-center space-x-3">
         <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
           <span className="text-white font-semibold text-sm">
@@ -38,8 +38,8 @@ const WelcomeCard = ({ userProfile }) => {
           </span>
         </div>
         <div className="flex-1">
-          <h3 className="font-medium text-gray-900">{userProfile.name || 'User'}</h3>
-          <p className="text-sm text-blue-600 mt-1">
+          <h3 className="font-medium text-white">{userProfile.name || 'User'}</h3>
+          <p className="text-sm text-blue-400 mt-1">
             {getMotivationalMessage()}
           </p>
         </div>

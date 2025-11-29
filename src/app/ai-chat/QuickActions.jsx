@@ -45,8 +45,8 @@ const QuickActions = ({
   };
 
   return (
-    <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-100 shadow-sm">
-      <h3 className="font-medium text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">Quick Actions</h3>
+    <div className="bg-gray-800/80 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-700 shadow-sm">
+      <h3 className="font-medium text-white mb-2 sm:mb-3 text-sm sm:text-base">Quick Actions</h3>
       <div className="space-y-1.5 sm:space-y-2">
         {getQuickActions().map((action, index) => {
           const IconComponent = action.icon;
@@ -54,7 +54,7 @@ const QuickActions = ({
             <button
               key={index}
               onClick={() => handleSuggestionClick(action.text)}
-              className={`w-full flex items-center space-x-2 sm:space-x-3 p-2 sm:p-3 rounded-lg text-gray-700 transition-all duration-200 ${action.color}`}
+              className={`w-full flex items-center space-x-2 sm:space-x-3 p-2 sm:p-3 rounded-lg text-gray-300 transition-all duration-200 bg-gray-700/50 hover:bg-gray-700 border border-gray-600`}
             >
               <IconComponent className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span className="font-medium text-xs sm:text-sm text-left">{action.text}</span>

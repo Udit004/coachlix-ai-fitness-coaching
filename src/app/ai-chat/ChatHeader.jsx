@@ -35,14 +35,14 @@ const ChatHeader = ({
   };
 
   return (
-    <header className="sticky top-16 z-40 bg-white border-b border-gray-200 shadow-sm px-2 sm:px-4 py-3">
+    <header className="sticky top-16 z-40 bg-gray-800 border-b border-gray-700 shadow-sm px-2 sm:px-4 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2">
         {/* Left side - Menu + Plan Selector */}
         <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
           {/* Mobile menu button */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+            className="lg:hidden p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -51,7 +51,7 @@ const ChatHeader = ({
           <div className="relative min-w-[150px]">
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center space-x-3 px-3 py-2 sm:px-4 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 rounded-lg border border-gray-200 transition-all duration-200 w-full"
+              className="flex items-center space-x-3 px-3 py-2 sm:px-4 bg-gray-800/80 hover:bg-gray-700 rounded-lg border border-gray-700 transition-all duration-200 w-full"
             >
               {IconComponent && (
                 <div
@@ -60,11 +60,11 @@ const ChatHeader = ({
                   <IconComponent className="w-3 h-3 text-white" />
                 </div>
               )}
-              <span className="font-medium text-gray-800 flex-1 text-left truncate text-sm sm:text-base">
+              <span className="font-medium text-white flex-1 text-left truncate text-sm sm:text-base">
                 {currentPlan?.name || "Select Plan"}
               </span>
               <ChevronDown
-                className={`w-4 h-4 text-gray-900 transition-transform duration-200 ${
+                className={`w-4 h-4 text-gray-300 transition-transform duration-200 ${
                   isDropdownOpen ? "rotate-180" : ""
                 }`}
               />
@@ -72,7 +72,7 @@ const ChatHeader = ({
 
             {/* Dropdown menu */}
             {isDropdownOpen && (
-              <div className="absolute top-full left-0 mt-1 w-56 sm:w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+              <div className="absolute top-full left-0 mt-1 w-56 sm:w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50">
                 <div className="p-2 space-y-1">
                   {plans.map((plan) => {
                     const PlanIcon = plan.icon;
@@ -82,8 +82,8 @@ const ChatHeader = ({
                         onClick={() => handlePlanSelect(plan.id)}
                         className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md transition-colors text-sm ${
                           selectedPlan === plan.id
-                            ? "bg-blue-50 text-blue-700 border border-blue-200"
-                            : "bg-white text-gray-900 hover:bg-gray-50"
+                            ? "bg-blue-900/50 text-blue-400 border border-blue-700"
+                            : "bg-gray-800 text-gray-300 hover:bg-gray-700"
                         }`}
                       >
                         <div
@@ -104,12 +104,12 @@ const ChatHeader = ({
         {/* Center - Chat Status */}
         <div className="hidden lg:flex items-center space-x-2 flex-shrink-0">
           {isNewChat ? (
-            <div className="flex items-center space-x-2 text-purple-600">
+            <div className="flex items-center space-x-2 text-purple-400">
               <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
               <span className="text-sm font-medium">New Chat</span>
             </div>
           ) : (
-            <div className="flex items-center space-x-2 text-blue-600">
+            <div className="flex items-center space-x-2 text-blue-400">
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
               <span className="text-sm font-medium">Continuing Chat</span>
             </div>
@@ -131,8 +131,8 @@ const ChatHeader = ({
             onClick={onToggleHistory}
             className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium ${
               showHistory
-                ? "bg-gray-800 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
             }`}
             title="Toggle chat history"
           >
@@ -143,7 +143,7 @@ const ChatHeader = ({
           {!isNewChat && (
             <button
               onClick={clearChat}
-              className="flex items-center space-x-2 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-sm font-medium"
+              className="flex items-center space-x-2 px-3 py-2 bg-red-900/50 text-red-400 rounded-lg hover:bg-red-900/70 text-sm font-medium border border-red-800"
               title="Clear current chat"
             >
               <Trash2 className="w-4 h-4" />
@@ -152,7 +152,7 @@ const ChatHeader = ({
           )}
 
           <button
-            className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg"
+            className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg"
             title="Settings"
           >
             <Settings className="w-5 h-5" />
@@ -163,33 +163,33 @@ const ChatHeader = ({
         <div className="sm:hidden">
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg"
+            className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg"
           >
             <MoreVertical className="w-5 h-5" />
           </button>
           {isMobileMenuOpen && (
-            <div className="absolute right-2 top-14 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+            <div className="absolute right-2 top-14 w-44 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50">
               <button
                 onClick={onNewChat}
-                className="w-full px-4 py-2 text-left text-gray-800 hover:bg-gray-100 hover:text-gray-900 text-sm"
+                className="w-full px-4 py-2 text-left text-gray-300 hover:bg-gray-700 hover:text-white text-sm"
               >
                 New Chat
               </button>
               <button
                 onClick={onToggleHistory}
-                className="w-full px-4 py-2 text-left text-gray-800 hover:bg-gray-100 hover:text-gray-900 text-sm"
+                className="w-full px-4 py-2 text-left text-gray-300 hover:bg-gray-700 hover:text-white text-sm"
               >
                 History
               </button>
               {!isNewChat && (
                 <button
                   onClick={clearChat}
-                  className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-100 hover:text-red-700 text-sm"
+                  className="w-full px-4 py-2 text-left text-red-400 hover:bg-red-900/50 hover:text-red-300 text-sm"
                 >
                   Clear Chat
                 </button>
               )}
-              <button className="w-full px-4 py-2 text-left text-gray-800 hover:bg-gray-100 hover:text-gray-900 text-sm">
+              <button className="w-full px-4 py-2 text-left text-gray-300 hover:bg-gray-700 hover:text-white text-sm">
                 Settings
               </button>
             </div>

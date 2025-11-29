@@ -277,7 +277,7 @@ const ChatInput = ({
 
   return (
     <>
-      <div className="border-t border-gray-200/50 p-3 sm:p-6 bg-white/50 backdrop-blur-sm">
+      <div className="border-t border-gray-700 p-3 sm:p-6 bg-gray-800/50 backdrop-blur-sm">
         {/* File attachments preview */}
         {attachedFiles.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
@@ -286,7 +286,7 @@ const ChatInput = ({
               return (
                 <div
                   key={file.id}
-                  className="flex items-center space-x-2 bg-gray-100 rounded-lg px-3 py-2 text-sm max-w-xs"
+                  className="flex items-center space-x-2 bg-gray-700/50 rounded-lg px-3 py-2 text-sm max-w-xs border border-gray-600"
                 >
                   {file.preview ? (
                     <img
@@ -295,15 +295,15 @@ const ChatInput = ({
                       className="w-8 h-8 object-cover rounded"
                     />
                   ) : (
-                    <IconComponent className="h-4 w-4 text-gray-600" />
+                    <IconComponent className="h-4 w-4 text-gray-400" />
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-gray-900 truncate">{file.name}</p>
-                    <p className="text-gray-500 text-xs">{formatFileSize(file.size)}</p>
+                    <p className="text-gray-200 truncate">{file.name}</p>
+                    <p className="text-gray-400 text-xs">{formatFileSize(file.size)}</p>
                   </div>
                   <button
                     onClick={() => removeFile(file.id)}
-                    className="text-gray-400 hover:text-gray-600 ml-2"
+                    className="text-gray-400 hover:text-gray-200 ml-2"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -315,7 +315,7 @@ const ChatInput = ({
 
         <div 
           className={`flex items-end space-x-2 sm:space-x-4 ${
-            isDragging ? 'bg-blue-50 border-2 border-dashed border-blue-300 rounded-xl p-4' : ''
+            isDragging ? 'bg-blue-900/20 border-2 border-dashed border-blue-500 rounded-xl p-4' : ''
           }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -334,26 +334,26 @@ const ChatInput = ({
                     ? "Listening... Speak now!" 
                     : "Ask about workouts, diet plans, badminton training..."
               }
-              className={`w-full resize-none rounded-xl sm:rounded-2xl border px-3 sm:px-4 py-2 sm:py-3 pr-20 sm:pr-24 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-32 min-h-[44px] sm:min-h-[48px] bg-white/90 backdrop-blur-sm text-gray-900 placeholder-gray-500 shadow-sm text-sm sm:text-base transition-all duration-200 ${
+              className={`w-full resize-none rounded-xl sm:rounded-2xl border px-3 sm:px-4 py-2 sm:py-3 pr-20 sm:pr-24 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-32 min-h-[44px] sm:min-h-[48px] bg-gray-800/90 backdrop-blur-sm text-gray-200 placeholder-gray-500 shadow-sm text-sm sm:text-base transition-all duration-200 ${
                 isDragging
-                  ? 'border-blue-400 ring-2 ring-blue-200 bg-blue-50/50'
+                  ? 'border-blue-500 ring-2 ring-blue-400/50 bg-blue-900/30'
                   : isListening 
-                    ? 'border-red-400 ring-2 ring-red-200 bg-red-50/50' 
-                    : 'border-gray-300'
+                    ? 'border-red-500 ring-2 ring-red-400/50 bg-red-900/30' 
+                    : 'border-gray-700'
               }`}
               rows={1}
               disabled={isTyping}
               style={{
                 fontSize: '16px',
                 lineHeight: '1.5',
-                color: '#1f2937'
+                color: '#e5e7eb'
               }}
             />
             
             <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 flex items-center space-x-1 sm:space-x-2">
               <button
                 onClick={handleFileSelect}
-                className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
+                className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-700"
                 title="Attach file"
               >
                 <Paperclip className="h-4 w-4" />
@@ -363,8 +363,8 @@ const ChatInput = ({
                 disabled={!isSupported || isTyping}
                 className={`p-1.5 sm:p-2 transition-colors rounded-lg relative ${
                   isListening 
-                    ? 'text-red-500 hover:text-red-600 hover:bg-red-50 animate-pulse' 
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                    ? 'text-red-400 hover:text-red-300 hover:bg-red-900/30 animate-pulse' 
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
                 } ${!isSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title={isSupported ? (isListening ? 'Stop recording' : 'Start voice input') : 'Speech not supported'}
               >
@@ -389,9 +389,9 @@ const ChatInput = ({
           </button>
         </div>
         
-        <div className="flex items-center justify-between mt-2 sm:mt-3 text-xs text-gray-500">
+        <div className="flex items-center justify-between mt-2 sm:mt-3 text-xs text-gray-400">
           <div className="flex items-center space-x-2">
-            <Sparkles className="h-3 w-3 text-blue-500" />
+            <Sparkles className="h-3 w-3 text-blue-400" />
             <span className="text-xs sm:text-sm">
               {isDragging 
                 ? 'Drop files to attach' 
@@ -402,7 +402,7 @@ const ChatInput = ({
           </div>
           <div className="flex items-center space-x-2">
             {(speechError || permissionError) && (
-              <span className="text-red-500 text-xs">{speechError || permissionError}</span>
+              <span className="text-red-400 text-xs">{speechError || permissionError}</span>
             )}
             <span className="hidden md:inline text-xs">
               {attachedFiles.length > 0 && `${attachedFiles.length} file${attachedFiles.length > 1 ? 's' : ''} attached • `}

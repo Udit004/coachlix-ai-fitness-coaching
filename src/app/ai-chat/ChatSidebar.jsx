@@ -97,15 +97,15 @@ const ChatHistoryLoading = () => (
 // Simple RecentChatsPreview - removed Zustand dependency to avoid infinite loops
 const RecentChatsPreview = React.memo(({ onViewAll, onSelectChat }) => {
   return (
-    <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-4 border border-purple-100">
+    <div className="bg-gray-800/80 rounded-xl p-4 border border-gray-700">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center space-x-2">
-          <History className="w-4 h-4 text-purple-600" />
-          <h3 className="font-medium text-purple-900">Recent Chats</h3>
+          <History className="w-4 h-4 text-purple-400" />
+          <h3 className="font-medium text-white">Recent Chats</h3>
         </div>
         <button
           onClick={onViewAll}
-          className="flex items-center space-x-1 text-xs text-purple-600 hover:text-purple-800 font-medium transition-colors"
+          className="flex items-center space-x-1 text-xs text-purple-400 hover:text-purple-300 font-medium transition-colors"
         >
           <span>View All</span>
           <ChevronRight className="w-3 h-3" />
@@ -254,20 +254,20 @@ const ChatSidebar = ({
           {/* <GoalProgress userProfile={userProfile} />  */}
 
           {/* Settings Preview */}
-          <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl p-4 border border-gray-100">
+          <div className="bg-gray-800/80 rounded-xl p-4 border border-gray-700">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <User className="w-4 h-4 text-gray-600" />
-                <h3 className="font-medium text-gray-900">Profile</h3>
+                <User className="w-4 h-4 text-gray-400" />
+                <h3 className="font-medium text-white">Profile</h3>
               </div>
-              <button onClick={() => router.push("/profile")} className="p-1 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">
+              <button onClick={() => router.push("/profile")} className="p-1 text-gray-400 hover:text-white transition-colors cursor-pointer">
                 <Settings className="w-4 h-4" />
               </button>
             </div>
 
             {userProfile && (
-              <div className="mt-3 text-sm text-gray-600">
-                <p className="font-medium text-gray-900">{userProfile.name}</p>
+              <div className="mt-3 text-sm text-gray-400">
+                <p className="font-medium text-white">{userProfile.name}</p>
                 <p className="capitalize">
                   {userProfile.fitnessGoal?.replace("-", " ")} goal
                 </p>
@@ -277,18 +277,18 @@ const ChatSidebar = ({
         </div>
 
         {/* Mobile Footer */}
-        <div className="lg:hidden sticky bottom-0 p-4 border-t border-gray-200 bg-white">
+        <div className="lg:hidden sticky bottom-0 p-4 border-t border-gray-700 bg-gray-800">
           <button
             onClick={() => setSidebarOpen(false)}
-            className="w-full p-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center space-x-2"
+            className="w-full p-3 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors flex items-center justify-center space-x-2"
           >
             <X className="h-4 w-4" />
             <span>Close Menu</span>
           </button>
 
           <div className="text-center mt-3">
-            <p className="text-xs text-gray-500 mb-1">AI Fitness Coach v1.0</p>
-            <p className="text-xs text-gray-400">Powered by Gemini AI</p>
+            <p className="text-xs text-gray-400 mb-1">AI Fitness Coach v1.0</p>
+            <p className="text-xs text-gray-500">Powered by Gemini AI</p>
           </div>
         </div>
       </div>
@@ -317,19 +317,19 @@ const ChatSidebar = ({
       `}
       >
         {/* Enhanced Mobile Header */}
-        <div className="lg:hidden flex-shrink-0 sticky top-0 bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm z-10">
+        <div className="lg:hidden flex-shrink-0 sticky top-0 bg-gray-800/95 backdrop-blur-md border-b border-gray-700 px-4 py-3 flex items-center justify-between shadow-sm z-10">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center shadow-sm">
               <Menu className="h-4 w-4 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">AI Coach</h2>
-              <p className="text-xs text-gray-500">Your fitness companion</p>
+              <h2 className="text-lg font-semibold text-white">AI Coach</h2>
+              <p className="text-xs text-gray-400">Your fitness companion</p>
             </div>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+            className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors border border-gray-700"
             aria-label="Close sidebar"
           >
             <X className="h-5 w-5" />
@@ -337,13 +337,13 @@ const ChatSidebar = ({
         </div>
 
         {/* Enhanced Tab Navigation */}
-        <div className="flex-shrink-0 flex border-b border-gray-200 bg-white/95 backdrop-blur-sm sticky top-[73px] lg:top-0 z-10">
+        <div className="flex-shrink-0 flex border-b border-gray-700 bg-gray-800/95 backdrop-blur-sm sticky top-[73px] lg:top-0 z-10">
           <button
             onClick={() => setActiveTab("menu")}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 relative ${
               activeTab === "menu"
-                ? "text-blue-600 bg-blue-50/80"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                ? "text-blue-400 bg-blue-900/30"
+                : "text-gray-400 hover:text-white hover:bg-gray-700/50"
             }`}
           >
             <div className="flex items-center justify-center space-x-2">
@@ -359,8 +359,8 @@ const ChatSidebar = ({
             onClick={() => setActiveTab("history")}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 relative ${
               activeTab === "history"
-                ? "text-blue-600 bg-blue-50/80"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                ? "text-blue-400 bg-blue-900/30"
+                : "text-gray-400 hover:text-white hover:bg-gray-700/50"
             }`}
           >
             <div className="flex items-center justify-center space-x-2">
