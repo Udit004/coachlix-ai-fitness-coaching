@@ -352,60 +352,68 @@ export default function WorkoutPlansPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="flex gap-2 mb-8 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm flex-1 sm:p-6 sm:rounded-xl">
-            <div className="flex flex-col items-center text-center">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg sm:p-3 mb-2">
-                <Dumbbell className="h-4 w-4 text-blue-600 dark:text-blue-400 sm:h-6 sm:w-6" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6 sm:gap-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg flex-shrink-0">
+                <Dumbbell className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-1">
-                Total Plans
-              </p>
-              <p className="text-lg font-semibold text-gray-900 dark:text-white sm:text-2xl">
-                {stats.totalPlans}
-              </p>
+              <div className="min-w-0 flex-1">
+                <p className="text-gray-600 dark:text-gray-400 text-xs mb-0.5 truncate">
+                  Total Plans
+                </p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">
+                  {stats.totalPlans}
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm flex-1 sm:p-6 sm:rounded-xl">
-            <div className="flex flex-col items-center text-center">
-              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg sm:p-3 mb-2">
-                <Target className="h-4 w-4 text-green-600 dark:text-green-400 sm:h-6 sm:w-6" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg flex-shrink-0">
+                <Target className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
-              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-1">
-                Active Plans
-              </p>
-              <p className="text-lg font-semibold text-gray-900 dark:text-white sm:text-2xl">
-                {stats.activePlans}
-              </p>
+              <div className="min-w-0 flex-1">
+                <p className="text-gray-600 dark:text-gray-400 text-xs mb-0.5 truncate">
+                  Active Plans
+                </p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">
+                  {stats.activePlans}
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm flex-1 sm:p-6 sm:rounded-xl">
-            <div className="flex flex-col items-center text-center">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg sm:p-3 mb-2">
-                <Clock className="h-4 w-4 text-purple-600 dark:text-purple-400 sm:h-6 sm:w-6" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg flex-shrink-0">
+                <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
-              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-1">
-                Avg Duration (weeks)
-              </p>
-              <p className="text-lg font-semibold text-gray-900 dark:text-white sm:text-2xl">
-                {stats.averageDuration}
-              </p>
+              <div className="min-w-0 flex-1">
+                <p className="text-gray-600 dark:text-gray-400 text-xs mb-0.5 truncate">
+                  Avg Duration
+                </p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">
+                  {stats.averageDuration}w
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm flex-1 sm:p-6 sm:rounded-xl">
-            <div className="flex flex-col items-center text-center">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg sm:p-3 mb-2">
-                <Trophy className="h-4 w-4 text-orange-600 dark:text-orange-400 sm:h-6 sm:w-6" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg flex-shrink-0">
+                <Trophy className="h-5 w-5 text-orange-600 dark:text-orange-400" />
               </div>
-              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-1">
-                Total Workouts
-              </p>
-              <p className="text-lg font-semibold text-gray-900 dark:text-white sm:text-2xl">
-                {stats.totalWorkouts}
-              </p>
+              <div className="min-w-0 flex-1">
+                <p className="text-gray-600 dark:text-gray-400 text-xs mb-0.5 truncate">
+                  Total Workouts
+                </p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">
+                  {stats.totalWorkouts}
+                </p>
+              </div>
             </div>
           </div>
         </div>
