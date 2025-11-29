@@ -68,9 +68,11 @@ export class CreateDietPlanTool extends Tool {
 
       console.log("✅ CreateDietPlanTool: User profile found");
 
-      // Get user's dietary preference
+      // Get user's dietary preference and location
       const userDietaryPreference = user.dietaryPreference || 'non-vegetarian';
+      const userLocation = user.location || '';
       console.log(`🥗 CreateDietPlanTool: User dietary preference: ${userDietaryPreference}`);
+      console.log(`🌍 CreateDietPlanTool: User location: ${userLocation}`);
 
       // Use provided data or fall back to calculated health metrics
       // Normalize goal to match DietPlan enum values
@@ -131,7 +133,7 @@ export class CreateDietPlanTool extends Tool {
       for (let i = 1; i <= planDuration; i++) {
         days.push({
           dayNumber: i,
-          meals: generateMealsForDay(calories, proteinTarget, carbTarget, fatTarget, userGoal, dietaryRestrictions, userDietaryPreference),
+          meals: generateMealsForDay(calories, proteinTarget, carbTarget, fatTarget, userGoal, dietaryRestrictions, userDietaryPreference, userLocation),
           waterIntake: 2.5, // Default 2.5 liters
           notes: `Day ${i} - Stay consistent with your nutrition!`
         });
@@ -422,7 +424,7 @@ function calculateAge(birthDate) {
   return age;
 }
 
-function generateMealsForDay(calories, protein, carbs, fats, goal, restrictions = [], dietaryPreference = 'non-vegetarian') {
+function generateMealsForDay(calories, protein, carbs, fats, goal, restrictions = [], dietaryPreference = 'non-vegetarian', userLocation = '') {
   const meals = [];
   
   // Distribute calories across meals (Breakfast: 30%, Lunch: 35%, Dinner: 25%, Snacks: 10%)
@@ -441,7 +443,7 @@ function generateMealsForDay(calories, protein, carbs, fats, goal, restrictions 
 
     meals.push({
       type,
-      items: generateFoodItems(type, mealCalories, mealProtein, mealCarbs, mealFats, goal, restrictions, dietaryPreference),
+      items: generateFoodItems(type, mealCalories, mealProtein, mealCarbs, mealFats, goal, restrictions, dietaryPreference, userLocation),
       totalCalories: mealCalories,
       totalProtein: mealProtein,
       totalCarbs: mealCarbs,
@@ -452,73 +454,131 @@ function generateMealsForDay(calories, protein, carbs, fats, goal, restrictions 
   return meals;
 }
 
-function generateFoodItems(mealType, calories, protein, carbs, fats, goal, restrictions, dietaryPreference = 'non-vegetarian') {
+/**
+ * Detect if user is from India based on location
+ */
+function isIndianUser(location) {
+  if (!location) return true; // Default to Indian
+  
+  const locationLower = location.toLowerCase();
+  const indianKeywords = [
+    'india', 'mumbai', 'delhi', 'bangalore', 'bengaluru', 'chennai', 'kolkata',
+    'hyderabad', 'pune', 'ahmedabad', 'jaipur', 'lucknow', 'bhopal', 'surat',
+    'kanpur', 'nagpur', 'indore', 'thane', 'visakhapatnam', 'patna', 'vadodara',
+    'kerala', 'tamil nadu', 'maharashtra', 'karnataka', 'gujarat', 'rajasthan',
+    'punjab', 'haryana', 'uttar pradesh', 'madhya pradesh', 'west bengal',
+    'andhra pradesh', 'telangana', 'bihar', 'odisha', 'goa'
+  ];
+  
+  return indianKeywords.some(keyword => locationLower.includes(keyword));
+}
+
+function generateFoodItems(mealType, calories, protein, carbs, fats, goal, restrictions, dietaryPreference = 'non-vegetarian', userLocation = '') {
   const items = [];
+  const isIndian = isIndianUser(userLocation);
   
   // Sample food database based on meal type and goal
-  // Each food item is tagged with dietary types
+  // Each food item is tagged with dietary types AND region
   const foodDatabase = {
     "Breakfast": [
-      { name: "Oatmeal with berries", calories: 300, protein: 10, carbs: 55, fats: 5, quantity: "1 cup", types: ['vegetarian', 'vegan', 'eggetarian'] },
-      { name: "Greek yogurt with honey", calories: 200, protein: 20, carbs: 25, fats: 3, quantity: "200g", types: ['vegetarian', 'eggetarian'] },
-      { name: "Scrambled eggs with toast", calories: 350, protein: 25, carbs: 30, fats: 15, quantity: "2 eggs + 2 slices", types: ['eggetarian'] },
-      { name: "Protein smoothie", calories: 250, protein: 30, carbs: 20, fats: 5, quantity: "1 serving", types: ['vegetarian', 'vegan', 'eggetarian'] },
-      { name: "Whole grain pancakes", calories: 400, protein: 15, carbs: 65, fats: 8, quantity: "3 pancakes", types: ['vegetarian', 'eggetarian'] },
-      { name: "Chicken sausage with toast", calories: 380, protein: 28, carbs: 32, fats: 14, quantity: "2 sausages + 2 slices", types: ['non-vegetarian'] },
-      { name: "Tofu scramble with vegetables", calories: 280, protein: 22, carbs: 28, fats: 12, quantity: "1 serving", types: ['vegetarian', 'vegan'] },
-      { name: "Idli with sambar", calories: 250, protein: 8, carbs: 48, fats: 4, quantity: "4 idlis", types: ['vegetarian', 'vegan'] },
-      { name: "Poha with peanuts", calories: 270, protein: 7, carbs: 50, fats: 6, quantity: "1 bowl", types: ['vegetarian', 'vegan'] },
-      { name: "Boiled eggs with whole wheat toast", calories: 320, protein: 24, carbs: 30, fats: 12, quantity: "2 eggs + 2 slices", types: ['eggetarian'] }
+      { name: "Oatmeal with berries", calories: 300, protein: 10, carbs: 55, fats: 5, quantity: "1 cup", types: ['vegetarian', 'vegan', 'eggetarian'], region: 'international' },
+      { name: "Greek yogurt with honey", calories: 200, protein: 20, carbs: 25, fats: 3, quantity: "200g", types: ['vegetarian', 'eggetarian'], region: 'international' },
+      { name: "Scrambled eggs with toast", calories: 350, protein: 25, carbs: 30, fats: 15, quantity: "2 eggs + 2 slices", types: ['eggetarian'], region: 'international' },
+      { name: "Protein smoothie", calories: 250, protein: 30, carbs: 20, fats: 5, quantity: "1 serving", types: ['vegetarian', 'vegan', 'eggetarian'], region: 'both' },
+      { name: "Whole grain pancakes", calories: 400, protein: 15, carbs: 65, fats: 8, quantity: "3 pancakes", types: ['vegetarian', 'eggetarian'], region: 'international' },
+      { name: "Chicken sausage with toast", calories: 380, protein: 28, carbs: 32, fats: 14, quantity: "2 sausages + 2 slices", types: ['non-vegetarian'], region: 'international' },
+      { name: "Tofu scramble with vegetables", calories: 280, protein: 22, carbs: 28, fats: 12, quantity: "1 serving", types: ['vegetarian', 'vegan'], region: 'both' },
+      { name: "Idli with sambar", calories: 250, protein: 8, carbs: 48, fats: 4, quantity: "4 idlis", types: ['vegetarian', 'vegan'], region: 'indian' },
+      { name: "Poha with peanuts", calories: 270, protein: 7, carbs: 50, fats: 6, quantity: "1 bowl", types: ['vegetarian', 'vegan'], region: 'indian' },
+      { name: "Paratha with curd", calories: 320, protein: 8, carbs: 45, fats: 12, quantity: "2 parathas", types: ['vegetarian', 'eggetarian'], region: 'indian' },
+      { name: "Upma with vegetables", calories: 240, protein: 6, carbs: 42, fats: 8, quantity: "1 bowl", types: ['vegetarian', 'vegan'], region: 'indian' },
+      { name: "Egg bhurji with roti", calories: 340, protein: 22, carbs: 35, fats: 14, quantity: "2 eggs + 2 roti", types: ['eggetarian'], region: 'indian' },
+      { name: "Masala dosa", calories: 350, protein: 9, carbs: 58, fats: 10, quantity: "1 dosa", types: ['vegetarian', 'vegan'], region: 'indian' },
+      { name: "Chicken keema with pav", calories: 380, protein: 28, carbs: 35, fats: 15, quantity: "1 serving", types: ['non-vegetarian'], region: 'indian' },
+      { name: "Boiled eggs with whole wheat toast", calories: 320, protein: 24, carbs: 30, fats: 12, quantity: "2 eggs + 2 slices", types: ['eggetarian'], region: 'both' }
     ],
     "Lunch": [
-      { name: "Grilled chicken salad", calories: 450, protein: 40, carbs: 30, fats: 18, quantity: "1 large bowl", types: ['non-vegetarian'] },
-      { name: "Quinoa bowl with vegetables", calories: 400, protein: 15, carbs: 60, fats: 12, quantity: "1 bowl", types: ['vegetarian', 'vegan'] },
-      { name: "Tuna sandwich", calories: 380, protein: 35, carbs: 40, fats: 10, quantity: "1 sandwich", types: ['non-vegetarian'] },
-      { name: "Brown rice with grilled fish", calories: 500, protein: 45, carbs: 50, fats: 15, quantity: "1 plate", types: ['non-vegetarian'] },
-      { name: "Veggie wrap with hummus", calories: 350, protein: 12, carbs: 55, fats: 10, quantity: "1 wrap", types: ['vegetarian', 'vegan'] },
-      { name: "Dal tadka with rice", calories: 420, protein: 18, carbs: 65, fats: 10, quantity: "1 plate", types: ['vegetarian', 'vegan'] },
-      { name: "Paneer tikka with roti", calories: 480, protein: 28, carbs: 45, fats: 20, quantity: "1 serving", types: ['vegetarian', 'eggetarian'] },
-      { name: "Chickpea curry with rice", calories: 390, protein: 16, carbs: 62, fats: 9, quantity: "1 bowl", types: ['vegetarian', 'vegan'] },
-      { name: "Egg curry with rice", calories: 460, protein: 26, carbs: 54, fats: 16, quantity: "1 plate", types: ['eggetarian'] },
-      { name: "Chicken biryani", calories: 520, protein: 32, carbs: 58, fats: 18, quantity: "1 plate", types: ['non-vegetarian'] }
+      { name: "Grilled chicken salad", calories: 450, protein: 40, carbs: 30, fats: 18, quantity: "1 large bowl", types: ['non-vegetarian'], region: 'international' },
+      { name: "Quinoa bowl with vegetables", calories: 400, protein: 15, carbs: 60, fats: 12, quantity: "1 bowl", types: ['vegetarian', 'vegan'], region: 'international' },
+      { name: "Tuna sandwich", calories: 380, protein: 35, carbs: 40, fats: 10, quantity: "1 sandwich", types: ['non-vegetarian'], region: 'international' },
+      { name: "Brown rice with grilled fish", calories: 500, protein: 45, carbs: 50, fats: 15, quantity: "1 plate", types: ['non-vegetarian'], region: 'international' },
+      { name: "Veggie wrap with hummus", calories: 350, protein: 12, carbs: 55, fats: 10, quantity: "1 wrap", types: ['vegetarian', 'vegan'], region: 'international' },
+      { name: "Dal tadka with rice and roti", calories: 420, protein: 18, carbs: 65, fats: 10, quantity: "1 plate", types: ['vegetarian', 'vegan'], region: 'indian' },
+      { name: "Paneer tikka with roti", calories: 480, protein: 28, carbs: 45, fats: 20, quantity: "1 serving", types: ['vegetarian', 'eggetarian'], region: 'indian' },
+      { name: "Chole bhature", calories: 520, protein: 16, carbs: 75, fats: 18, quantity: "1 serving", types: ['vegetarian', 'vegan'], region: 'indian' },
+      { name: "Rajma chawal", calories: 440, protein: 18, carbs: 70, fats: 10, quantity: "1 plate", types: ['vegetarian', 'vegan'], region: 'indian' },
+      { name: "Kadhi chawal", calories: 400, protein: 12, carbs: 68, fats: 10, quantity: "1 plate", types: ['vegetarian', 'eggetarian'], region: 'indian' },
+      { name: "Egg curry with rice", calories: 460, protein: 26, carbs: 54, fats: 16, quantity: "1 plate", types: ['eggetarian'], region: 'indian' },
+      { name: "Chicken biryani", calories: 520, protein: 32, carbs: 58, fats: 18, quantity: "1 plate", types: ['non-vegetarian'], region: 'indian' },
+      { name: "Fish curry with rice", calories: 480, protein: 38, carbs: 52, fats: 16, quantity: "1 plate", types: ['non-vegetarian'], region: 'indian' },
+      { name: "Mutton rogan josh with rice", calories: 550, protein: 35, carbs: 48, fats: 24, quantity: "1 plate", types: ['non-vegetarian'], region: 'indian' }
     ],
     "Dinner": [
-      { name: "Baked salmon with sweet potato", calories: 550, protein: 45, carbs: 40, fats: 22, quantity: "1 fillet + 1 medium potato", types: ['non-vegetarian'] },
-      { name: "Chicken stir-fry with vegetables", calories: 450, protein: 40, carbs: 35, fats: 18, quantity: "1 plate", types: ['non-vegetarian'] },
-      { name: "Lean beef with broccoli", calories: 480, protein: 50, carbs: 25, fats: 20, quantity: "6oz beef + 2 cups broccoli", types: ['non-vegetarian'] },
-      { name: "Turkey meatballs with pasta", calories: 520, protein: 38, carbs: 55, fats: 16, quantity: "1 serving", types: ['non-vegetarian'] },
-      { name: "Tofu curry with rice", calories: 420, protein: 20, carbs: 60, fats: 12, quantity: "1 bowl", types: ['vegetarian', 'vegan'] },
-      { name: "Lentil soup with whole grain bread", calories: 380, protein: 22, carbs: 58, fats: 8, quantity: "1 bowl + 2 slices", types: ['vegetarian', 'vegan'] },
-      { name: "Vegetable stir-fry with tofu", calories: 360, protein: 24, carbs: 42, fats: 14, quantity: "1 plate", types: ['vegetarian', 'vegan'] },
-      { name: "Rajma with rice", calories: 410, protein: 18, carbs: 68, fats: 8, quantity: "1 bowl", types: ['vegetarian', 'vegan'] },
-      { name: "Egg fried rice", calories: 470, protein: 22, carbs: 62, fats: 16, quantity: "1 plate", types: ['eggetarian'] },
-      { name: "Grilled fish with vegetables", calories: 440, protein: 42, carbs: 28, fats: 18, quantity: "1 serving", types: ['non-vegetarian'] }
+      { name: "Baked salmon with sweet potato", calories: 550, protein: 45, carbs: 40, fats: 22, quantity: "1 fillet + 1 medium potato", types: ['non-vegetarian'], region: 'international' },
+      { name: "Chicken stir-fry with vegetables", calories: 450, protein: 40, carbs: 35, fats: 18, quantity: "1 plate", types: ['non-vegetarian'], region: 'international' },
+      { name: "Lean beef with broccoli", calories: 480, protein: 50, carbs: 25, fats: 20, quantity: "6oz beef + 2 cups broccoli", types: ['non-vegetarian'], region: 'international' },
+      { name: "Turkey meatballs with pasta", calories: 520, protein: 38, carbs: 55, fats: 16, quantity: "1 serving", types: ['non-vegetarian'], region: 'international' },
+      { name: "Tofu curry with rice", calories: 420, protein: 20, carbs: 60, fats: 12, quantity: "1 bowl", types: ['vegetarian', 'vegan'], region: 'both' },
+      { name: "Lentil soup with whole grain bread", calories: 380, protein: 22, carbs: 58, fats: 8, quantity: "1 bowl + 2 slices", types: ['vegetarian', 'vegan'], region: 'international' },
+      { name: "Vegetable stir-fry with tofu", calories: 360, protein: 24, carbs: 42, fats: 14, quantity: "1 plate", types: ['vegetarian', 'vegan'], region: 'both' },
+      { name: "Mixed dal with roti", calories: 380, protein: 16, carbs: 60, fats: 8, quantity: "2 roti + 1 bowl dal", types: ['vegetarian', 'vegan'], region: 'indian' },
+      { name: "Palak paneer with roti", calories: 420, protein: 22, carbs: 48, fats: 18, quantity: "1 serving", types: ['vegetarian', 'eggetarian'], region: 'indian' },
+      { name: "Rajma with rice", calories: 410, protein: 18, carbs: 68, fats: 8, quantity: "1 bowl", types: ['vegetarian', 'vegan'], region: 'indian' },
+      { name: "Egg fried rice", calories: 470, protein: 22, carbs: 62, fats: 16, quantity: "1 plate", types: ['eggetarian'], region: 'both' },
+      { name: "Grilled fish with vegetables", calories: 440, protein: 42, carbs: 28, fats: 18, quantity: "1 serving", types: ['non-vegetarian'], region: 'international' },
+      { name: "Chicken tikka with roti and salad", calories: 460, protein: 40, carbs: 42, fats: 16, quantity: "1 serving", types: ['non-vegetarian'], region: 'indian' },
+      { name: "Fish tikka with rice", calories: 480, protein: 42, carbs: 48, fats: 14, quantity: "1 plate", types: ['non-vegetarian'], region: 'indian' },
+      { name: "Chicken curry with roti", calories: 500, protein: 38, carbs: 50, fats: 18, quantity: "2 roti + curry", types: ['non-vegetarian'], region: 'indian' }
     ],
     "Snacks": [
-      { name: "Apple with almond butter", calories: 180, protein: 5, carbs: 20, fats: 9, quantity: "1 apple + 2 tbsp", types: ['vegetarian', 'vegan', 'eggetarian'] },
-      { name: "Protein bar", calories: 200, protein: 20, carbs: 25, fats: 5, quantity: "1 bar", types: ['vegetarian', 'vegan', 'eggetarian'] },
-      { name: "Mixed nuts", calories: 160, protein: 6, carbs: 8, fats: 14, quantity: "1 oz", types: ['vegetarian', 'vegan', 'eggetarian'] },
-      { name: "Cottage cheese with fruit", calories: 150, protein: 15, carbs: 18, fats: 3, quantity: "1 cup", types: ['vegetarian', 'eggetarian'] },
-      { name: "Rice cakes with peanut butter", calories: 190, protein: 8, carbs: 22, fats: 8, quantity: "2 cakes + 1 tbsp", types: ['vegetarian', 'vegan', 'eggetarian'] },
-      { name: "Boiled chickpeas", calories: 170, protein: 9, carbs: 28, fats: 3, quantity: "1 cup", types: ['vegetarian', 'vegan'] },
-      { name: "Greek yogurt", calories: 140, protein: 18, carbs: 10, fats: 4, quantity: "1 cup", types: ['vegetarian', 'eggetarian'] },
-      { name: "Hard boiled eggs", calories: 155, protein: 13, carbs: 1, fats: 11, quantity: "2 eggs", types: ['eggetarian'] },
-      { name: "Chicken salad", calories: 220, protein: 24, carbs: 8, fats: 11, quantity: "1 cup", types: ['non-vegetarian'] }
+      { name: "Apple with almond butter", calories: 180, protein: 5, carbs: 20, fats: 9, quantity: "1 apple + 2 tbsp", types: ['vegetarian', 'vegan', 'eggetarian'], region: 'both' },
+      { name: "Protein bar", calories: 200, protein: 20, carbs: 25, fats: 5, quantity: "1 bar", types: ['vegetarian', 'vegan', 'eggetarian'], region: 'both' },
+      { name: "Mixed nuts (almonds, cashews)", calories: 160, protein: 6, carbs: 8, fats: 14, quantity: "1 oz", types: ['vegetarian', 'vegan', 'eggetarian'], region: 'both' },
+      { name: "Cottage cheese with fruit", calories: 150, protein: 15, carbs: 18, fats: 3, quantity: "1 cup", types: ['vegetarian', 'eggetarian'], region: 'international' },
+      { name: "Rice cakes with peanut butter", calories: 190, protein: 8, carbs: 22, fats: 8, quantity: "2 cakes + 1 tbsp", types: ['vegetarian', 'vegan', 'eggetarian'], region: 'international' },
+      { name: "Roasted chana (chickpeas)", calories: 170, protein: 9, carbs: 28, fats: 3, quantity: "1 cup", types: ['vegetarian', 'vegan'], region: 'indian' },
+      { name: "Masala peanuts", calories: 180, protein: 8, carbs: 12, fats: 14, quantity: "1 oz", types: ['vegetarian', 'vegan'], region: 'indian' },
+      { name: "Sprouts salad", calories: 120, protein: 8, carbs: 20, fats: 2, quantity: "1 bowl", types: ['vegetarian', 'vegan'], region: 'indian' },
+      { name: "Dahi (curd) with fruits", calories: 140, protein: 10, carbs: 18, fats: 4, quantity: "1 bowl", types: ['vegetarian', 'eggetarian'], region: 'indian' },
+      { name: "Samosa (1 small)", calories: 200, protein: 5, carbs: 28, fats: 8, quantity: "1 piece", types: ['vegetarian', 'vegan'], region: 'indian' },
+      { name: "Greek yogurt", calories: 140, protein: 18, carbs: 10, fats: 4, quantity: "1 cup", types: ['vegetarian', 'eggetarian'], region: 'international' },
+      { name: "Hard boiled eggs", calories: 155, protein: 13, carbs: 1, fats: 11, quantity: "2 eggs", types: ['eggetarian'], region: 'both' },
+      { name: "Chicken salad", calories: 220, protein: 24, carbs: 8, fats: 11, quantity: "1 cup", types: ['non-vegetarian'], region: 'international' },
+      { name: "Chicken tikka pieces", calories: 200, protein: 28, carbs: 4, fats: 9, quantity: "100g", types: ['non-vegetarian'], region: 'indian' }
     ]
   };
 
   // Select appropriate items based on meal type
   let availableFoods = foodDatabase[mealType] || foodDatabase["Snacks"];
   
-  // Filter foods based on dietary preference
+  console.log(`🔍 Filtering foods - Preference: ${dietaryPreference}, Region: ${isIndian ? 'Indian' : 'International'}`);
+  
+  // Filter foods based on BOTH dietary preference AND region
   availableFoods = availableFoods.filter(food => {
-    if (!food.types) return true; // Include if no type specified (backward compatibility)
-    return food.types.includes(dietaryPreference);
+    // Check dietary preference
+    const matchesDiet = food.types && food.types.includes(dietaryPreference);
+    
+    // Check region (include 'both' for foods that work in any region)
+    const matchesRegion = food.region === 'both' || 
+                         (isIndian && food.region === 'indian') || 
+                         (!isIndian && food.region === 'international');
+    
+    return matchesDiet && matchesRegion;
   });
   
-  // If no foods match preference, log warning and use all foods
+  console.log(`✅ Found ${availableFoods.length} matching foods for ${mealType}`);
+  
+  // If no foods match both criteria, try relaxing region requirement
   if (availableFoods.length === 0) {
-    console.warn(`⚠️ No foods found for ${dietaryPreference} preference in ${mealType}, using all foods`);
+    console.warn(`⚠️ No foods found for ${dietaryPreference} + ${isIndian ? 'Indian' : 'International'} in ${mealType}, relaxing region filter...`);
+    availableFoods = (foodDatabase[mealType] || foodDatabase["Snacks"]).filter(food => {
+      return food.types && food.types.includes(dietaryPreference);
+    });
+  }
+  
+  // Last resort: use all foods
+  if (availableFoods.length === 0) {
+    console.warn(`⚠️ Still no foods found, using all foods as fallback`);
     availableFoods = foodDatabase[mealType] || foodDatabase["Snacks"];
   }
   
