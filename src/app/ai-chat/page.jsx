@@ -583,7 +583,7 @@ const AIChatPage = () => {
   }
 
   return (
-    <div className="fixed inset-0 bg-gray-900 flex flex-col">
+    <div className="h-screen bg-gray-900 flex flex-col overflow-hidden">
       <Toaster
         position="top-center"
         toastOptions={{
@@ -611,7 +611,7 @@ const AIChatPage = () => {
       )}
 
       {/* Main Chat Layout with Enhanced Loading */}
-      <div className="flex-1 overflow-hidden pt-14 sm:pt-16">
+      <div className="flex-1 min-h-0 overflow-hidden pt-14 sm:pt-16">
         <div className="w-full h-full px-1 sm:px-3 py-1 sm:py-3 flex flex-col">
           <div className="flex gap-1 sm:gap-4 flex-1 min-h-0">
             {/* Enhanced Sidebar with Suspense - Always visible on desktop, toggle on mobile */}
