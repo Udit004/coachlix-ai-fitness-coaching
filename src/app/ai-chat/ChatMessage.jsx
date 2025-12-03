@@ -338,6 +338,15 @@ const ChatMessage = ({
                     </button>
                   </div>
                 )}
+                {message.role === "user" && (
+                  <button
+                    onClick={() => copyToClipboard(message.content)}
+                    className="p-1 md:p-1.5 hover:bg-gray-700 rounded-md md:rounded-lg transition-colors duration-200 ml-2 md:ml-3 cursor-pointer"
+                    title="Copy message"
+                  >
+                    <Copy className="h-2.5 w-2.5 md:h-3 md:w-3 hover:text-blue-400" />
+                  </button>
+                )}
               </div>
             )}
 

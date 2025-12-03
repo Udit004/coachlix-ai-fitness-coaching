@@ -26,7 +26,7 @@ const ChatHeader = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-16 z-40 bg-gray-800 border-b border-gray-700 shadow-sm px-2 sm:px-4 py-3">
+    <header className="sticky top-16 z-30 bg-gray-800 border-b border-gray-700 shadow-sm px-2 sm:px-4 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2">
         {/* Left side - Menu button only */}
         <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
@@ -106,7 +106,7 @@ const ChatHeader = ({
             <MoreVertical className="w-5 h-5" />
           </button>
           {isMobileMenuOpen && (
-            <div className="absolute right-2 top-14 w-44 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50">
+            <div className="absolute right-2 top-14 w-44 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-40">
               <button
                 onClick={onNewChat}
                 className="w-full px-4 py-2 text-left text-gray-300 hover:bg-gray-700 hover:text-white text-sm"
@@ -138,7 +138,7 @@ const ChatHeader = ({
       {/* Backdrop for mobile menu */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40"
+          className="fixed inset-0 z-30"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
