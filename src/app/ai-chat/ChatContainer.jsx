@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from "react";
 import ChatMessage from "./ChatMessage";
 import TypingIndicator from "./TypingIndicator";
 import ChatInput from "./ChatInput";
-import { ChevronDown, Menu } from "./icons";
+import { ChevronDown, Menu, Plus } from "./icons";
 
 const ChatContainer = ({
   messages,
@@ -28,6 +28,7 @@ const ChatContainer = ({
   isNewChat = false,
   sidebarOpen = false,
   setSidebarOpen = () => {},
+  onNewChat = () => {},
 }) => {
   const messagesEndRefInternal = useRef(null);
   const actualMessagesEndRef = messagesEndRef || messagesEndRefInternal;
@@ -118,19 +119,32 @@ const ChatContainer = ({
           </div>
           </div>
 
-          {/* Chat Status */}
-          <div className="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0">
-            {isNewChat ? (
-              <div className="flex items-center space-x-1.5">
-                <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></div>
-                <span className="text-xs text-purple-400 font-medium hidden sm:inline">New Chat</span>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-1.5">
-                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                <span className="text-xs text-blue-400 font-medium hidden sm:inline">Active</span>
-              </div>
-            )}
+          {/* New Chat Button & Chat Status */}
+          <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+            {/* New Chat Button */}
+            <button
+              onClick={onNewChat}
+              className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md group cursor-pointer"
+              title="Start new chat"
+            >
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:rotate-90 transition-transform duration-200" />
+              <span className="text-xs sm:text-sm font-medium hidden sm:inline">New</span>
+            </button>
+
+            {/* Chat Status */}
+            <div className="flex items-center space-x-1.5">
+              {isNewChat ? (
+                <div className="flex items-center space-x-1.5">
+                  <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-purple-400 font-medium hidden lg:inline">New Chat</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-1.5">
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                  <span className="text-xs text-blue-400 font-medium hidden lg:inline">Active</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

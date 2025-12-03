@@ -29,10 +29,10 @@ const ChatMessage = ({
       // Bold text with enhanced styling
       .replace(
         /\*\*(.*?)\*\*/g,
-        '<strong class="font-semibold text-gray-900 bg-yellow-50 px-1 rounded">$1</strong>'
+        '<strong class="font-semibold text-white bg-blue-900/50 px-1 rounded">$1</strong>'
       )
       // Italic text
-      .replace(/\*(.*?)\*/g, '<em class="italic text-gray-700">$1</em>')
+      .replace(/\*(.*?)\*/g, '<em class="italic text-gray-300">$1</em>')
       // Code blocks with syntax highlighting effect
       .replace(
         /```([\s\S]*?)```/g,
@@ -41,30 +41,30 @@ const ChatMessage = ({
       // Inline code with better styling
       .replace(
         /`(.*?)`/g,
-        '<code class="bg-gray-100 text-gray-800 px-2 py-1 rounded-md text-sm font-mono border border-gray-200">$1</code>'
+        '<code class="bg-gray-700 text-blue-300 px-2 py-1 rounded-md text-sm font-mono border border-gray-600">$1</code>'
       )
       // Enhanced headers with icons and styling
       .replace(
         /^#{3}\s+(.*)$/gm,
-        '<h3 class="text-lg font-semibold mt-6 mb-3 text-gray-800 flex items-center"><span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>$1</h3>'
+        '<h3 class="text-lg font-semibold mt-6 mb-3 text-white flex items-center"><span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>$1</h3>'
       )
       .replace(
         /^#{2}\s+(.*)$/gm,
-        '<h2 class="text-xl font-semibold mt-6 mb-3 text-gray-800 flex items-center"><span class="w-3 h-3 bg-blue-600 rounded-full mr-2"></span>$1</h2>'
+        '<h2 class="text-xl font-semibold mt-6 mb-3 text-white flex items-center"><span class="w-3 h-3 bg-blue-600 rounded-full mr-2"></span>$1</h2>'
       )
       .replace(
         /^#{1}\s+(.*)$/gm,
-        '<h1 class="text-2xl font-bold mt-6 mb-4 text-gray-900 flex items-center"><span class="w-4 h-4 bg-blue-700 rounded-full mr-2"></span>$1</h1>'
+        '<h1 class="text-2xl font-bold mt-6 mb-4 text-white flex items-center"><span class="w-4 h-4 bg-blue-700 rounded-full mr-2"></span>$1</h1>'
       )
-      // Enhanced bullet points with custom icons
+      // Enhanced bullet points with custom icons and gradient effects
       .replace(
         /^[-•]\s+(.*)$/gm,
-        '<li class="flex items-start mb-2 ml-2"><span class="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3"></span><span class="text-gray-700">$1</span></li>'
+        '<li class="flex items-start mb-3 ml-2 group hover:translate-x-1 transition-transform duration-200"><span class="flex-shrink-0 w-2.5 h-2.5 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full mt-2 mr-3 shadow-sm group-hover:shadow-md group-hover:scale-110 transition-all"></span><span class="text-gray-200 leading-relaxed">$1</span></li>'
       )
-      // Enhanced numbered lists
+      // Enhanced numbered lists with circular badges
       .replace(
         /^(\d+)\.\s+(.*)$/gm,
-        '<li class="flex items-start mb-2 ml-2"><span class="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold flex items-center justify-center mt-0.5 mr-3">$1</span><span class="text-gray-700">$2</span></li>'
+        '<li class="flex items-start mb-3 ml-2 group hover:translate-x-1 transition-transform duration-200"><span class="flex-shrink-0 w-7 h-7 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full text-xs font-bold flex items-center justify-center mt-0.5 mr-3 shadow-md group-hover:shadow-lg group-hover:scale-110 transition-all">$1</span><span class="text-gray-200 leading-relaxed">$2</span></li>'
       )
       // Special formatting for tips and notes
       .replace(
@@ -99,7 +99,7 @@ const ChatMessage = ({
       // Quote blocks
       .replace(
         /^>\s+(.*)$/gm,
-        '<blockquote class="border-l-4 border-gray-300 pl-4 py-2 my-3 bg-gray-50 italic text-gray-600 rounded-r-lg">$1</blockquote>'
+        '<blockquote class="border-l-4 border-blue-500 pl-4 py-2 my-3 bg-gray-700/50 italic text-gray-300 rounded-r-lg">$1</blockquote>'
       )
       // Enhanced links (if any)
       .replace(

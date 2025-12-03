@@ -673,6 +673,7 @@ const AIChatPage = () => {
                   isNewChat={isNewChat}
                   sidebarOpen={sidebarOpen}
                   setSidebarOpen={setSidebarOpen}
+                  onNewChat={handleNewChat}
                 />
               </Suspense>
             </div>
