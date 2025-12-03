@@ -624,12 +624,12 @@ const AIChatPage = () => {
       )}
 
       {/* Main Chat Layout with Enhanced Loading */}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0">
         <div className="w-full h-full px-1 sm:px-3 py-1 sm:py-3 flex flex-col">
           <div className="flex gap-1 sm:gap-4 flex-1 min-h-0">
             {/* Enhanced Sidebar with Suspense - Always visible on desktop, toggle on mobile */}
             {sidebarOpen && (
-              <div className="fixed top-16 left-0 bottom-0 z-50 lg:relative lg:top-0 lg:z-0 lg:inset-auto w-full lg:w-80 flex-shrink-0 overflow-hidden">
+              <div className="fixed top-16 left-0 bottom-0 z-40 lg:relative lg:top-0 lg:z-0 lg:inset-auto w-full lg:w-80 flex-shrink-0">
                 <Suspense fallback={<ComponentLoading type="sidebar" />}>
                   <ChatSidebar
                     plans={plans}
@@ -645,7 +645,7 @@ const AIChatPage = () => {
             )}
 
             {/* Chat Container with Suspense */}
-            <div className="flex-1 h-full overflow-hidden">
+            <div className="flex-1 h-full">
               <Suspense fallback={<ComponentLoading type="chat" />}>
                 <ChatContainer
                   messages={messages}
@@ -684,7 +684,7 @@ const AIChatPage = () => {
       {/* Mobile Sidebar Backdrop */}
       {sidebarOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40 backdrop-blur-sm transition-all duration-300"
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30 backdrop-blur-sm transition-all duration-300"
           onClick={() => setSidebarOpen(false)}
         />
       )}

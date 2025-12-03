@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Menu, X, Dumbbell, ChevronDown, LogOut, User, Settings, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { signOut } from "firebase/auth";
@@ -14,13 +15,24 @@ export default function Navbar() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
   const [userName, setUserName] = useState("");
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
+  const buttonRef = useRef(null);
 
   const { user, loading } = useAuth();
   const router = useRouter();
   const { theme, toggleTheme, mounted } = useCustomTheme();
 
   const toggleMenu = () => setIsOpen(!isOpen);
-  const toggleDropdown = () => setShowDropdown(!showDropdown);
+  const toggleDropdown = () => {
+    if (!showDropdown && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setShowDropdown(!showDropdown);
+  };
   const closeDropdown = () => setShowDropdown(false);
 
   // Fetch profile image from API
@@ -59,6 +71,27 @@ export default function Navbar() {
     fetchProfileImage();
   }, [user]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showDropdown && buttonRef.current && !buttonRef.current.contains(event.target)) {
+        // Check if click is not on the dropdown itself
+        const dropdown = document.getElementById('navbar-dropdown');
+        if (dropdown && !dropdown.contains(event.target)) {
+          setShowDropdown(false);
+        }
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
+
   const handleLogout = async () => {
     await signOut(auth);
     closeDropdown();
@@ -85,7 +118,7 @@ export default function Navbar() {
   // Show loading state with proper theme classes
   if (!mounted) {
     return (
-      <nav className="bg-white/95 backdrop-blur-md border-b border-gray-100 sticky top-0 z-[9999] shadow-sm">
+      <nav className="bg-white/95 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2">
@@ -105,7 +138,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 sticky top-0 z-[9999] shadow-sm transition-colors duration-200">
+    <nav className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 sticky top-0 z-50 shadow-sm transition-colors duration-200">
       <div className="max-w-7xl mx-auto pb-4 px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -167,6 +200,7 @@ export default function Navbar() {
             {!loading && user && (
               <div className="relative">
                 <button
+                  ref={buttonRef}
                   onClick={toggleDropdown}
                   className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none"
                 >
@@ -183,8 +217,15 @@ export default function Navbar() {
                   <ChevronDown className="w-4 h-4" />
                 </button>
 
-                {showDropdown && (
-                  <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-md shadow-lg py-1 z-[10000]">
+                {showDropdown && typeof window !== 'undefined' && createPortal(
+                  <div 
+                    id="navbar-dropdown"
+                    className="fixed w-44 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-md shadow-lg py-1 z-[9999]"
+                    style={{
+                      top: `${dropdownPosition.top}px`,
+                      right: `${dropdownPosition.right}px`,
+                    }}
+                  >
                     <Link
                       href="/profile"
                       onClick={closeDropdown}
@@ -208,7 +249,8 @@ export default function Navbar() {
                       <LogOut className="mr-2 w-4 h-4" />
                       Logout
                     </button>
-                  </div>
+                  </div>,
+                  document.body
                 )}
               </div>
             )}

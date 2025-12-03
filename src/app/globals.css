@@ -44,8 +44,8 @@ html {
 .ai-chat-page {
   position: fixed;
   inset: 0;
-  top: 4rem;
-  overflow: hidden;
+  top: 5rem;
+  overflow: visible;
 }
 
 @media (max-width: 1023px) {
