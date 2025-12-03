@@ -1,11 +1,16 @@
 // src/ai/index.js
 // Central export point for all AI functionality
 
-// FUNCTION CALLING ORCHESTRATOR (TRUE STREAMING with pause/resume) ✅
-// Uses Gemini's native .stream() API for real-time token streaming
+// PROFESSIONAL FLOW ORCHESTRATOR 🎓
+// Implements full professional conversational flow:
+// Intent Classification → Semantic Memory (RAG) → Chain-of-Thought → 
+// Response Generation → Self-Critique → Refined Response
 export {
-  processChatMessageWithFunctionCallingStreaming
-} from './orchestrator-function-calling';
+  processChatWithProfessionalFlow
+} from './orchestrator-professional-flow';
+
+// Reasoning Modules
+export * from './reasoning';
 
 // Tools
 export * from './tools';
