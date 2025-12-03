@@ -1,7 +1,7 @@
-// app/api/chat/route.js — SSE VERSION with ChatGPT-style Function Calling
+// app/api/chat/route.js — SSE VERSION with Professional Conversational Flow
 
 import { NextResponse } from "next/server";
-import { processChatMessageWithFunctionCallingStreaming } from "@/ai/orchestrator-function-calling";
+import { processChatWithProfessionalFlow } from "@/ai/orchestrator-professional-flow";
 import { addToHistory } from "@/ai/memory";
 
 // Initialize LangSmith tracing (if enabled in env)
@@ -67,13 +67,13 @@ async function handleStreamingResponse({
           );
 
           // -------------------------
-          // 2) Process Chat Message with Function Calling Orchestrator
+          // 2) Process Chat Message with Professional Flow Orchestrator
           // -------------------------
-          console.log(`[Chat Route] Using ChatGPT-style function calling orchestrator`);
+          console.log(`[Chat Route] Using Professional Conversational Flow orchestrator`);
           
           let fullResponse = "";
           
-          const result = await processChatMessageWithFunctionCallingStreaming(
+          const result = await processChatWithProfessionalFlow(
             {
               message,
               plan,
