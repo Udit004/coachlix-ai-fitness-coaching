@@ -277,16 +277,16 @@ const ChatInput = ({
 
   return (
     <>
-      <div className="border-t border-gray-700 p-2 sm:p-3 bg-gray-800/50 backdrop-blur-sm">
-        {/* File attachments preview */}
+      <div className="px-3 py-2.5 bg-gray-900/95 backdrop-blur-sm">
+        {/* File attachments preview - Above input */}
         {attachedFiles.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-2">
+          <div className="mb-2 flex flex-wrap gap-1.5 max-w-3xl mx-auto">
             {attachedFiles.map((file) => {
               const IconComponent = getFileIcon(file.type);
               return (
                 <div
                   key={file.id}
-                  className="flex items-center space-x-2 bg-gray-700/50 rounded-lg px-2 py-1.5 text-sm max-w-xs border border-gray-600"
+                  className="flex items-center space-x-1.5 bg-gray-700/50 rounded-lg px-2 py-1 text-sm max-w-xs border border-gray-600/50 hover:border-gray-500 transition-colors"
                 >
                   {file.preview ? (
                     <img
@@ -298,14 +298,13 @@ const ChatInput = ({
                     <IconComponent className="h-3.5 w-3.5 text-gray-400" />
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-gray-200 truncate text-xs">{file.name}</p>
-                    <p className="text-gray-400 text-[10px]">{formatFileSize(file.size)}</p>
+                    <p className="text-gray-200 truncate text-[11px] font-medium">{file.name}</p>
                   </div>
                   <button
                     onClick={() => removeFile(file.id)}
-                    className="text-gray-400 hover:text-gray-200 ml-1"
+                    className="text-gray-400 hover:text-red-400 transition-colors"
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <X className="h-3 w-3" />
                   </button>
                 </div>
               );
@@ -313,104 +312,107 @@ const ChatInput = ({
           </div>
         )}
 
-        <div 
-          className={`flex items-end space-x-2 sm:space-x-4 ${
-            isDragging ? 'bg-blue-900/20 border-2 border-dashed border-blue-500 rounded-xl p-4' : ''
-          }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <div className="flex-1 relative">
-            <textarea
-              ref={textareaRef}
-              value={inputValue + interimTranscript}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={
-                isDragging 
-                  ? "Drop files here..." 
-                  : isListening 
-                    ? "Listening... Speak now!" 
-                    : "Ask about workouts, diet plans, badminton training..."
-              }
-              className={`w-full resize-none rounded-lg sm:rounded-xl border px-3 sm:px-4 py-2 sm:py-2.5 pr-16 sm:pr-20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-32 min-h-[40px] sm:min-h-[44px] bg-gray-800/90 backdrop-blur-sm text-gray-200 placeholder-gray-500 shadow-sm text-sm sm:text-base transition-all duration-200 ${
-                isDragging
-                  ? 'border-blue-500 ring-2 ring-blue-400/50 bg-blue-900/30'
-                  : isListening 
-                    ? 'border-red-500 ring-2 ring-red-400/50 bg-red-900/30' 
-                    : 'border-gray-700'
-              }`}
-              rows={1}
-              disabled={isTyping}
-              style={{
-                fontSize: '14px',
-                lineHeight: '1.4',
-                color: '#e5e7eb'
-              }}
-            />
+        {/* Main input container - Minimal height like ChatGPT */}
+        <div className="max-w-3xl mx-auto">
+          <div 
+            className={`relative flex items-center gap-2 bg-gray-800 rounded-[26px] border transition-all duration-200 ${
+              isDragging
+                ? 'border-blue-500 ring-1 ring-blue-400/50 bg-blue-900/10'
+                : isListening 
+                  ? 'border-red-500 ring-1 ring-red-400/50 bg-red-900/10' 
+                  : 'border-gray-700 hover:border-gray-600 focus-within:border-gray-600'
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            {/* Paperclip button */}
+            <button
+              onClick={handleFileSelect}
+              className="ml-3 p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 transition-all rounded-lg cursor-pointer flex-shrink-0"
+              title="Attach file"
+            >
+              <Paperclip className="h-5 w-5" />
+            </button>
+
+            {/* Textarea - Centered vertically */}
+            <div className="flex-1 py-2.5">
+              <textarea
+                ref={textareaRef}
+                value={inputValue + interimTranscript}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder={
+                  isDragging 
+                    ? "Drop files here..." 
+                    : isListening 
+                      ? "Listening..." 
+                      : "Ask anything"
+                }
+                className="w-full resize-none bg-transparent border-0 px-0 py-0 focus:outline-none focus:ring-0 max-h-[200px] min-h-[24px] text-gray-100 placeholder-gray-500 text-[15px] leading-6"
+                rows={1}
+                disabled={isTyping}
+                style={{
+                  fontSize: '15px',
+                  lineHeight: '24px'
+                }}
+              />
+            </div>
             
-            <div className="absolute bottom-2 right-2 flex items-center space-x-1">
-              <button
-                onClick={handleFileSelect}
-                className="p-1.5 text-gray-400 hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-700"
-                title="Attach file"
-              >
-                <Paperclip className="h-4 w-4" />
-              </button>
+            {/* Right side buttons - Mic and Send */}
+            <div className="flex items-center gap-1 mr-2 flex-shrink-0">
+              {/* Mic button */}
               <button
                 onClick={handleSpeechToggle}
                 disabled={!isSupported || isTyping}
-                className={`p-1.5 transition-colors rounded-lg relative ${
+                className={`p-2 transition-all rounded-lg relative cursor-pointer flex-shrink-0 ${
                   isListening 
-                    ? 'text-red-400 hover:text-red-300 hover:bg-red-900/30 animate-pulse' 
+                    ? 'text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20' 
                     : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
                 } ${!isSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title={isSupported ? (isListening ? 'Stop recording' : 'Start voice input') : 'Speech not supported'}
               >
                 {isListening ? (
-                  <Square className="h-4 w-4 fill-current" />
+                  <Square className="h-5 w-5 fill-current" />
                 ) : (
-                  <Mic className="h-4 w-4" />
+                  <Mic className="h-5 w-5" />
                 )}
                 {isListening && (
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+                  <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full animate-ping"></div>
                 )}
+              </button>
+
+              {/* Send button - Square with blue background when active */}
+              <button
+                onClick={handleSendWithFiles}
+                disabled={(!inputValue.trim() && attachedFiles.length === 0) || isTyping}
+                className={`p-2 rounded-lg transition-all duration-200 cursor-pointer flex-shrink-0 ${
+                  (!inputValue.trim() && attachedFiles.length === 0) || isTyping
+                    ? 'bg-transparent text-gray-600 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-500 text-white'
+                }`}
+              >
+                <Send className="h-5 w-5" />
               </button>
             </div>
           </div>
-          
-          <button
-            onClick={handleSendWithFiles}
-            disabled={(!inputValue.trim() && attachedFiles.length === 0) || isTyping}
-            className="flex-shrink-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 sm:p-2.5 rounded-lg sm:rounded-xl hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
-          >
-            <Send className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
-          </button>
-        </div>
-        
-        <div className="flex items-center justify-between mt-1.5 sm:mt-2 text-xs text-gray-400">
-          <div className="flex items-center space-x-1.5">
-            {(isDragging || isListening) && (
-              <>
-                <Sparkles className="h-3 w-3 text-blue-400" />
-                <span className="text-[11px] sm:text-xs">
-                  {isDragging 
-                    ? 'Drop files to attach' 
-                    : 'Listening...'}
-                </span>
-              </>
-            )}
-          </div>
-          <div className="flex items-center space-x-2">
-            {(speechError || permissionError) && (
-              <span className="text-red-400 text-[10px]">{speechError || permissionError}</span>
-            )}
-            <span className="hidden md:inline text-[11px]">
-              {attachedFiles.length > 0 && `${attachedFiles.length} file${attachedFiles.length > 1 ? 's' : ''} attached • `}
-              Press Enter to send, Shift + Enter for new line
-            </span>
-          </div>
+
+          {/* Helper text - Only show when needed */}
+          {((isDragging || isListening) || (speechError || permissionError)) && (
+            <div className="flex items-center justify-center mt-1.5 text-xs text-gray-500">
+              {(isDragging || isListening) && (
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="h-3 w-3 text-blue-400 animate-pulse" />
+                  <span className="text-[11px] text-gray-400">
+                    {isDragging ? 'Drop to attach' : 'Listening...'}
+                  </span>
+                </div>
+              )}
+              {(speechError || permissionError) && (
+                <span className="text-red-400 text-[11px]">{speechError || permissionError}</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
