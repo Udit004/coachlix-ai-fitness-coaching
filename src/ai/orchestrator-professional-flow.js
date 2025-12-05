@@ -13,6 +13,7 @@ import { performReasoning, formatReasoningSummary } from "./reasoning/chainOfTho
 import { validateResponse, applyAutomatedFixes, formatValidationSummary } from "./reasoning/responseValidator";
 import { buildSmartContext, getContextStats } from "./search/semanticMemoryRetrieval";
 import { generateProfessionalSystemPrompt } from "./prompts/systemPrompts";
+import { generateOptimizedSystemPrompt } from "./prompts/dynamicPromptBuilder";
 import { createStreamingLLM, createLLMWithSearch } from "./config/llmconfig";
 import { shouldEnableSearch, logSearchUsage, getSearchGroundingConfig } from "./config/searchGrounding";
 import { getGeminiFunctionDeclarations } from "./function-declarations";
@@ -40,6 +41,10 @@ const PROFESSIONAL_FLOW_CONFIG = {
   enableGoogleSearch: true,           // Master switch for search grounding
   searchThreshold: 0.7,                // Confidence threshold for using search results
   removeRedundantTools: true,          // Remove tools redundant with search (e.g., nutrition_lookup)
+  
+  // Dynamic Prompt Optimization (NEW!)
+  enableDynamicPrompts: true,          // Use intent-based prompt optimization
+  fallbackToFullPrompt: false,         // Use full prompt if dynamic fails
   
   // Validation settings
   skipLLMValidationForSimpleQueries: false, // Save cost/time on greetings
@@ -186,12 +191,24 @@ export async function processChatWithProfessionalFlow(params, onChunk) {
       tools: [{ functionDeclarations: filteredTools }]
     });
     
-    // Generate enhanced system prompt with reasoning insights
-    const systemPrompt = generateProfessionalSystemPrompt(
-      userContext, 
-      userId, 
-      reasoning
-    );
+    // Generate optimized system prompt based on intent and user context
+    let systemPrompt;
+    if (PROFESSIONAL_FLOW_CONFIG.enableDynamicPrompts) {
+      systemPrompt = generateOptimizedSystemPrompt(
+        intent,
+        userContext, 
+        userId, 
+        reasoning
+      );
+      console.log('[ProfessionalFlow] 📝 Using DYNAMIC system prompt (optimized for intent)');
+    } else {
+      systemPrompt = generateProfessionalSystemPrompt(
+        userContext, 
+        userId, 
+        reasoning
+      );
+      console.log('[ProfessionalFlow] 📝 Using FULL system prompt');
+    }
     
     const chatHistory = buildChatHistory(conversationHistory);
     const messages = buildInitialMessages(systemPrompt, chatHistory, message);

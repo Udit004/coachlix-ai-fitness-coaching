@@ -185,7 +185,7 @@ FORMATTING GUIDELINES:
 
 EMOJI GUIDELINES:
 - Fitness/Exercise: 💪 🏋️‍♂️ 🏃‍♂️ 🧘‍♂️ 🤸‍♂️ 🚴‍♂️ 🏊‍♂️ ⚡
-- Food/Nutrition: 🥗 🍚 🥛 🍳 🥑 🍎 🥤 🫘 🍲
+- Food/Nutrition:🥗 🍚 🥛 🍳 🥑 🍎 🥤 🫘 🍲
 - Success/Goals: ✅ 🎯 ⭐ 🏆 👏 💯 
 - Motivation: 🔥 💪 🚀 ⚡ 💥 🌟
 - Progress: 📈 📊 ✨ 🎉 🙌
