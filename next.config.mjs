@@ -11,6 +11,7 @@ const withPWA = nextPwa({
 
 const nextConfig = {
   reactStrictMode: true,
+  turbopack: {}, // Enable Turbopack explicitly for Next.js 16
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Don't bundle Node.js modules on the client side
