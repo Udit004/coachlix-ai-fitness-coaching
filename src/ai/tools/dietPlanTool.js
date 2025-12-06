@@ -147,6 +147,14 @@ export class CreateDietPlanTool extends Tool {
 
       // Create the diet plan
       console.log("💾 CreateDietPlanTool: Saving diet plan to database...");
+      
+      // Deactivate all existing active plans for this user
+      await DietPlan.updateMany(
+        { userId, isActive: true },
+        { $set: { isActive: false } }
+      );
+      console.log("✅ CreateDietPlanTool: Deactivated existing active plans");
+      
       const dietPlan = await DietPlan.create({
         userId,
         name: planName || `${userGoal} Plan - ${new Date().toLocaleDateString()}`,
