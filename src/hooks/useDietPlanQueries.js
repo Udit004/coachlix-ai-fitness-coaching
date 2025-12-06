@@ -258,3 +258,23 @@ export const useGenerateAIPlan = () => {
     },
   });
 };
+
+// Mutation to activate/deactivate diet plan
+export const useToggleDietPlanActive = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ planId, isActive }) => 
+      dietPlanService.togglePlanActive(planId, isActive),
+    onSuccess: (updatedPlan, { planId }) => {
+      // Update the specific plan in cache
+      queryClient.setQueryData(DIET_PLAN_KEYS.detail(planId), updatedPlan);
+      
+      // Invalidate all lists since activating one plan deactivates others
+      queryClient.invalidateQueries({ queryKey: DIET_PLAN_KEYS.lists() });
+    },
+    onError: (error) => {
+      console.error('Failed to toggle diet plan active status:', error);
+    },
+  });
+};

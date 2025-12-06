@@ -362,6 +362,23 @@ export const getFoodDetailsWithAI = async (foodName) => {
   }
 };
 
+// Toggle diet plan active status
+export const togglePlanActive = async (planId, isActive) => {
+  try {
+    const headers = await getAuthHeaders();
+    const method = isActive ? 'POST' : 'DELETE';
+    const response = await fetch(`${BASE_URL}/${planId}/activate`, {
+      method,
+      headers,
+    });
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error('Error toggling diet plan active status:', error);
+    throw error;
+  }
+};
+
 // Default export with all functions for convenience
 const dietPlanService = {
   getDietPlans,
@@ -381,6 +398,7 @@ const dietPlanService = {
   searchFoods,
   getPopularFoods,
   getFoodDetailsWithAI,
+  togglePlanActive,
 };
 
 export default dietPlanService;
