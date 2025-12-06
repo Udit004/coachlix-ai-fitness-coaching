@@ -13,11 +13,9 @@ export const useRecentActivity = (userId) => {
 
   // Workout plans
   const { data: workoutPlansRaw, isLoading: workoutsLoading, refetch: refetchWorkouts } = useWorkoutPlans();
-  const workoutPlans = Array.isArray(workoutPlansRaw) ? workoutPlansRaw : [];
 
   // Diet plans
   const { data: dietPlansRaw, isLoading: dietsLoading, refetch: refetchDiets } = useDietPlans();
-  const dietPlans = Array.isArray(dietPlansRaw) ? dietPlansRaw : [];
 
   // Progress stats
   const { data: progressData } = useQuery({
@@ -33,6 +31,7 @@ export const useRecentActivity = (userId) => {
 
   // Sort and pick recent workout plans (by last updated or last workout)
   const activeWorkouts = useMemo(() => {
+    const workoutPlans = Array.isArray(workoutPlansRaw) ? workoutPlansRaw : [];
     if (workoutPlans.length === 0) return [];
 
     return [...workoutPlans]
@@ -80,7 +79,7 @@ export const useRecentActivity = (userId) => {
           exerciseCount: weeks[currentWeek - 1]?.days?.[currentDay - 1]?.workouts?.[0]?.exercises?.length || 0
         };
       });
-  }, [workoutPlans]);
+  }, [workoutPlansRaw]);
 
   // Recent chats
   const recentChats = useMemo(() => {
@@ -105,6 +104,7 @@ export const useRecentActivity = (userId) => {
 
   // Diet plans
   const activeDietPlans = useMemo(() => {
+    const dietPlans = Array.isArray(dietPlansRaw) ? dietPlansRaw : [];
     if (dietPlans.length === 0) return [];
 
     return dietPlans
@@ -134,7 +134,7 @@ export const useRecentActivity = (userId) => {
           totalMeals
         };
       });
-  }, [dietPlans]);
+  }, [dietPlansRaw]);
 
   // Progress summary
   const progress = useMemo(() => {
