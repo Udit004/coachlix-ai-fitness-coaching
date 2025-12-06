@@ -146,7 +146,7 @@ const DietPlanSchema = new mongoose.Schema({
   days: [DaySchema],
   isActive: {
     type: Boolean,
-    default: true
+    default: false
   },
   difficulty: {
     type: String,
@@ -234,6 +234,25 @@ DietPlanSchema.statics.findByUserId = function(userId, options = {}) {
 
 DietPlanSchema.statics.findByGoal = function(goal) {
   return this.find({ goal, isActive: true });
+};
+
+DietPlanSchema.statics.getActivePlan = function(userId) {
+  return this.findOne({ userId, isActive: true });
+};
+
+DietPlanSchema.statics.setActivePlan = async function(userId, planId) {
+  // Deactivate all other plans for this user
+  await this.updateMany(
+    { userId, _id: { $ne: planId } },
+    { $set: { isActive: false } }
+  );
+  
+  // Activate the selected plan
+  return this.findByIdAndUpdate(
+    planId,
+    { $set: { isActive: true } },
+    { new: true }
+  );
 };
 
 const DietPlan = mongoose.models.DietPlan || mongoose.model('DietPlan', DietPlanSchema);

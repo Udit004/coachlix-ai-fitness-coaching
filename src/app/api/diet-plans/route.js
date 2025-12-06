@@ -168,6 +168,17 @@ export async function POST(request) {
       );
     }
 
+    // Check if user wants this to be the active plan
+    const shouldBeActive = body.isActive === true;
+    
+    // If this should be active, deactivate all other plans first
+    if (shouldBeActive) {
+      await DietPlan.updateMany(
+        { userId: user.uid },
+        { $set: { isActive: false } }
+      );
+    }
+
     const dietPlan = new DietPlan({
       userId: user.uid,
       name: name.trim(),
@@ -179,6 +190,7 @@ export async function POST(request) {
       targetFats: targetFats || 0,
       duration,
       days,
+      isActive: shouldBeActive,
       difficulty: body.difficulty || "Beginner",
       tags: body.tags || [],
       createdBy: body.createdBy || "user",

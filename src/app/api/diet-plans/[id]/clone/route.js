@@ -67,6 +67,7 @@ export async function POST(request, { params }) {
         ...day.toObject(),
         _id: undefined, // Remove _id to create new ones
       })),
+      isActive: false, // Cloned plans start as inactive
       difficulty: originalPlan.difficulty,
       tags: [...originalPlan.tags],
       createdBy: "user",
