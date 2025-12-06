@@ -20,7 +20,8 @@ import {
   useCreateDietPlan, 
   useUpdateDietPlan,
   useDeleteDietPlan, 
-  useCloneDietPlan 
+  useCloneDietPlan,
+  useToggleDietPlanActive
 } from "../../hooks/useDietPlanQueries";
 
 export default function DietPlansPage() {
@@ -83,7 +84,6 @@ export default function DietPlansPage() {
 
   // Prepare query options
   const queryOptions = useMemo(() => ({
-    activeOnly: true,
     ...(selectedGoal && { goal: selectedGoal }),
     sort:
       sortBy === "newest"
@@ -105,6 +105,7 @@ export default function DietPlansPage() {
   const updatePlanMutation = useUpdateDietPlan();
   const deletePlanMutation = useDeleteDietPlan();
   const clonePlanMutation = useCloneDietPlan();
+  const toggleActiveMutation = useToggleDietPlanActive();
 
   const [editingPlan, setEditingPlan] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -216,15 +217,12 @@ export default function DietPlansPage() {
     }
 
     try {
-      await updatePlanMutation.mutateAsync({ 
-        planId, 
-        updateData: { isActive } 
-      });
+      await toggleActiveMutation.mutateAsync({ planId, isActive });
     } catch (err) {
       console.error("Error toggling plan active status:", err);
       alert("Failed to update plan status. Please try again.");
     }
-  }, [updatePlanMutation]);
+  }, [toggleActiveMutation]);
 
   const calculateAverageCalories = useCallback(() => {
     if (!Array.isArray(dietPlans) || dietPlans.length === 0) return 0;

@@ -52,9 +52,7 @@ function WorkoutTodaySummary({ plan, onStart }) {
           ))}
           {workout.exercises?.length > 6 && (<li>+{workout.exercises.length - 6} more…</li>)}
         </ul>
-        <div className="mt-4">
-          <Button onClick={() => onStart(sessionLink)}>Start Workout</Button>
-        </div>
+        <div className="mt-4"><Button onClick={() => onStart(sessionLink)} className="cursor-pointer">Start Workout</Button></div>
       </div>
     );
   } catch (e) {
@@ -71,40 +69,37 @@ function DietTodaySummary({ plan }) {
     const day = plan.days?.[dayIndex] || plan.days?.[0];
 
     if (!day) {
-      return <div className="text-gray-600 dark:text-gray-300">No meals scheduled for today.</div>;
+      return <div className="text-gray-600 dark:text-gray-300 text-sm">No meals scheduled for today.</div>;
     }
 
     const mealOrder = ["Breakfast", "Lunch", "Dinner", "Snacks"];
     const meals = [...(day.meals || [])].sort((a, b) => mealOrder.indexOf(a.type) - mealOrder.indexOf(b.type));
 
     return (
-      <div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {mealOrder.map((type) => {
-            const meal = meals.find((m) => m.type === type);
-            return (
-              <div key={type} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="font-semibold">{type}</div>
+      <div className="space-y-2">
+        {mealOrder.slice(0, 3).map((type) => {
+          const meal = meals.find((m) => m.type === type);
+          if (!meal || !meal.items || meal.items.length === 0) return null;
+          
+          return (
+            <div key={type} className="flex items-start justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
+              <div className="flex-1">
+                <div className="font-medium text-sm text-gray-900 dark:text-white">{type}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                  {meal.items.slice(0, 2).map(it => it.name).join(", ")}
+                  {meal.items.length > 2 && ` +${meal.items.length - 2} more`}
                 </div>
-                {meal ? (
-                  <div className="text-sm text-gray-700 dark:text-gray-300">
-                    {(meal.items || []).slice(0, 3).map((it, i) => (
-                      <div key={i}>{it.name} — {it.quantity || "1 serving"}</div>
-                    ))}
-                    {meal.items?.length > 3 && (<div>+{meal.items.length - 3} more…</div>)}
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-500">No items yet</div>
-                )}
               </div>
-            );
-          })}
-        </div>
+              <div className="text-xs text-gray-500 ml-2">
+                {meal.totalCalories || 0} cal
+              </div>
+            </div>
+          );
+        })}
       </div>
     );
   } catch (e) {
-    return <div className="text-gray-600">Unable to compute today's meals.</div>;
+    return <div className="text-gray-600 text-sm">Unable to load meals.</div>;
   }
 }
 
@@ -122,20 +117,18 @@ export default function HomeDashboard() {
     : (Array.isArray(dietPlans?.plans) ? dietPlans.plans : []);
 
   const [favoriteWorkoutPlanId, setFavoriteWorkoutPlanId] = useState(null);
-  const [favoriteDietPlanId, setFavoriteDietPlanId] = useState(null);
 
   useEffect(() => {
     if (!authUser) return;
     try {
       const favWorkout = localStorage.getItem(`favWorkout:${authUser.uid}`);
-      const favDiet = localStorage.getItem(`favDiet:${authUser.uid}`);
       if (favWorkout) setFavoriteWorkoutPlanId(favWorkout);
-      if (favDiet) setFavoriteDietPlanId(favDiet);
     } catch (e) {}
   }, [authUser]);
 
   const selectedWorkoutPlan = workoutPlanList.find(p => p._id === favoriteWorkoutPlanId) || (workoutPlanList[0] || null);
-  const selectedDietPlan = dietPlanList.find(p => p._id === favoriteDietPlanId) || (dietPlanList[0] || null);
+  // Use the first active diet plan (there should only be one active)
+  const selectedDietPlan = dietPlanList.find(p => p.isActive) || dietPlanList[0] || null;
 
   const { data: workoutStats } = useWorkoutStats(selectedWorkoutPlan?._id);
   const updateDayMutation = useUpdateDay();
@@ -271,13 +264,12 @@ export default function HomeDashboard() {
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Today's Dashboard</h2>
         <div className="flex gap-2">
-          <Button onClick={() => router.push("/ai-chat")}>
+          <Button onClick={() => router.push("/ai-chat")} className="cursor-pointer">
             <Bot className="w-4 h-4 mr-2" />
             Ask AI Coach
           </Button>
         </div>
       </div>
-
       {/* Streak Counter - Top Priority */}
       <div className="mb-6">
         <StreakCounter 
@@ -312,7 +304,7 @@ export default function HomeDashboard() {
             {!selectedWorkoutPlan && (
               <div className="text-gray-600 dark:text-gray-300">
                 No active workout plan. Create one to get started.
-                <div className="mt-4"><Link href="/workout-plan"><Button>Create Workout Plan</Button></Link></div>
+                <div className="mt-4"><Link href="/workout-plan"><Button className="cursor-pointer">Create Workout Plan</Button></Link></div>
               </div>
             )}
 
@@ -363,78 +355,123 @@ export default function HomeDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Today's Nutrition</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {Array.isArray(dietPlanList) && dietPlanList.length > 0 && (
-              <div className="mb-4">
-                <label className="text-sm text-gray-600 dark:text-gray-300 mr-2">Favorite plan:</label>
-                <select
-                  className="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-900"
-                  value={selectedDietPlan?._id || ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFavoriteDietPlanId(val);
-                    if (authUser) { try { localStorage.setItem(`favDiet:${authUser.uid}`, val); } catch {} }
-                  }}
-                >
-                  {dietPlanList.map((p) => (<option key={p._id} value={p._id}>{p.name}</option>))}
-                </select>
-              </div>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Today's Nutrition</CardTitle>
+              {selectedDietPlan && (
+                <Link href="/diet-plan">
+                  <Button variant="ghost" size="sm" className="h-8 text-xs cursor-pointer">
+                    View Plans
+                  </Button>
+                </Link>
+              )}
+            </div>
+            {selectedDietPlan && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {selectedDietPlan.name}
+              </p>
             )}
-
+          </CardHeader>
+          <CardContent className="pt-0">
             {!selectedDietPlan && (
-              <div className="text-gray-600 dark:text-gray-300">
+              <div className="text-gray-600 dark:text-gray-300 text-sm">
                 No active diet plan. Create one to track your nutrition.
-                <div className="mt-4"><Link href="/diet-plan"><Button>Create Diet Plan</Button></Link></div>
+                <div className="mt-3">
+                  <Link href="/diet-plan">
+                    <Button size="sm" className="cursor-pointer">Create Diet Plan</Button>
+                  </Link>
+                </div>
               </div>
             )}
 
             {selectedDietPlan && nutritionData && (
-              <div className="space-y-6">
-                {/* Macro Progress Rings */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <MacroProgressRing 
-                    label="Calories"
-                    current={nutritionData.current.calories}
-                    target={nutritionData.target.calories}
-                    unit="kcal"
-                    color="blue"
-                  />
-                  <MacroProgressRing 
-                    label="Protein"
-                    current={nutritionData.current.protein}
-                    target={nutritionData.target.protein}
-                    unit="g"
-                    color="green"
-                  />
-                  <MacroProgressRing 
-                    label="Carbs"
-                    current={nutritionData.current.carbs}
-                    target={nutritionData.target.carbs}
-                    unit="g"
-                    color="orange"
-                  />
-                  <MacroProgressRing 
-                    label="Fats"
-                    current={nutritionData.current.fats}
-                    target={nutritionData.target.fats}
-                    unit="g"
-                    color="purple"
-                  />
+              <div className="space-y-4">
+                {/* Compact Macro Progress */}
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="text-center">
+                    <div className="relative w-12 h-12 mx-auto">
+                      <svg className="w-12 h-12 transform -rotate-90">
+                        <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="none" className="text-gray-200 dark:text-gray-700" />
+                        <circle 
+                          cx="24" cy="24" r="20" 
+                          stroke="currentColor" 
+                          strokeWidth="3" 
+                          fill="none" 
+                          strokeDasharray={`${2 * Math.PI * 20}`}
+                          strokeDashoffset={`${2 * Math.PI * 20 * (1 - Math.min(nutritionData.current.calories / nutritionData.target.calories, 1))}`}
+                          className="text-blue-500 transition-all duration-300"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                    <div className="text-xs font-semibold mt-1">{nutritionData.current.calories}</div>
+                    <div className="text-[10px] text-gray-500">Calories</div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="relative w-12 h-12 mx-auto">
+                      <svg className="w-12 h-12 transform -rotate-90">
+                        <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="none" className="text-gray-200 dark:text-gray-700" />
+                        <circle 
+                          cx="24" cy="24" r="20" 
+                          stroke="currentColor" 
+                          strokeWidth="3" 
+                          fill="none" 
+                          strokeDasharray={`${2 * Math.PI * 20}`}
+                          strokeDashoffset={`${2 * Math.PI * 20 * (1 - Math.min(nutritionData.current.protein / nutritionData.target.protein, 1))}`}
+                          className="text-green-500 transition-all duration-300"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                    <div className="text-xs font-semibold mt-1">{nutritionData.current.protein}g</div>
+                    <div className="text-[10px] text-gray-500">Protein</div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="relative w-12 h-12 mx-auto">
+                      <svg className="w-12 h-12 transform -rotate-90">
+                        <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="none" className="text-gray-200 dark:text-gray-700" />
+                        <circle 
+                          cx="24" cy="24" r="20" 
+                          stroke="currentColor" 
+                          strokeWidth="3" 
+                          fill="none" 
+                          strokeDasharray={`${2 * Math.PI * 20}`}
+                          strokeDashoffset={`${2 * Math.PI * 20 * (1 - Math.min(nutritionData.current.carbs / nutritionData.target.carbs, 1))}`}
+                          className="text-orange-500 transition-all duration-300"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                    <div className="text-xs font-semibold mt-1">{nutritionData.current.carbs}g</div>
+                    <div className="text-[10px] text-gray-500">Carbs</div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="relative w-12 h-12 mx-auto">
+                      <svg className="w-12 h-12 transform -rotate-90">
+                        <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="none" className="text-gray-200 dark:text-gray-700" />
+                        <circle 
+                          cx="24" cy="24" r="20" 
+                          stroke="currentColor" 
+                          strokeWidth="3" 
+                          fill="none" 
+                          strokeDasharray={`${2 * Math.PI * 20}`}
+                          strokeDashoffset={`${2 * Math.PI * 20 * (1 - Math.min(nutritionData.current.fats / nutritionData.target.fats, 1))}`}
+                          className="text-purple-500 transition-all duration-300"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                    <div className="text-xs font-semibold mt-1">{nutritionData.current.fats}g</div>
+                    <div className="text-[10px] text-gray-500">Fats</div>
+                  </div>
                 </div>
 
-                {/* Water Intake */}
-                <WaterIntakeTracker 
-                  current={nutritionData.waterIntake}
-                  target={3}
-                  onChange={handleWaterIntakeChange}
-                />
-
-                {/* Meals Summary */}
+                {/* Today's Meals - Compact */}
                 <div>
-                  <h4 className="font-semibold mb-3 text-gray-900 dark:text-white">Today's Meals</h4>
+                  <h4 className="text-sm font-semibold mb-2 text-gray-900 dark:text-white">Today's Meals</h4>
                   <DietTodaySummary plan={selectedDietPlan} />
                 </div>
               </div>
@@ -448,28 +485,28 @@ export default function HomeDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <Button className="w-full" onClick={() => router.push("/ai-chat")} variant="default">
+              <Button className="w-full cursor-pointer" onClick={() => router.push("/ai-chat")} variant="default">
                 <Bot className="w-4 h-4 mr-2" />
                 Ask AI Coach
               </Button>
               {selectedWorkoutPlan && (
-                <Button className="w-full" variant="outline" onClick={() => router.push(`/workout-plan/${selectedWorkoutPlan._id}`)}>
+                <Button className="w-full cursor-pointer" variant="outline" onClick={() => router.push(`/workout-plan/${selectedWorkoutPlan._id}`)}>
                   <Calendar className="w-4 h-4 mr-2" />
                   View Workout Plan
                 </Button>
               )}
               {selectedDietPlan && (
-                <Button className="w-full" variant="outline" onClick={() => router.push(`/diet-plan/${selectedDietPlan._id}`)}>
+                <Button className="w-full cursor-pointer" variant="outline" onClick={() => router.push(`/diet-plan/${selectedDietPlan._id}`)}>
                   Add Meal
                 </Button>
               )}
               {!selectedWorkoutPlan && (
-                <Button className="w-full" variant="outline" onClick={() => router.push("/workout-plan")}>
+                <Button className="w-full cursor-pointer" variant="outline" onClick={() => router.push("/workout-plan")}>
                   Create Workout Plan
                 </Button>
               )}
               {!selectedDietPlan && (
-                <Button className="w-full" variant="outline" onClick={() => router.push("/diet-plan")}>
+                <Button className="w-full cursor-pointer" variant="outline" onClick={() => router.push("/diet-plan")}>
                   Create Diet Plan
                 </Button>
               )}
