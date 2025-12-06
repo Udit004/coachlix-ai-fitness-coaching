@@ -274,7 +274,7 @@ const WorkoutPlanSchema = new mongoose.Schema({
   }],
   isActive: {
     type: Boolean,
-    default: true
+    default: false
   },
   isTemplate: {
     type: Boolean,
@@ -426,6 +426,25 @@ WorkoutPlanSchema.statics.findByUserId = function(userId, options = {}) {
 
 WorkoutPlanSchema.statics.findByGoal = function(goal) {
   return this.find({ goal, isActive: true });
+};
+
+WorkoutPlanSchema.statics.getActivePlan = function(userId) {
+  return this.findOne({ userId, isActive: true });
+};
+
+WorkoutPlanSchema.statics.setActivePlan = async function(userId, planId) {
+  // Deactivate all other plans for this user
+  await this.updateMany(
+    { userId, _id: { $ne: planId } },
+    { $set: { isActive: false } }
+  );
+  
+  // Activate the selected plan
+  return this.findByIdAndUpdate(
+    planId,
+    { $set: { isActive: true } },
+    { new: true }
+  );
 };
 
 WorkoutPlanSchema.statics.findTemplates = function() {
