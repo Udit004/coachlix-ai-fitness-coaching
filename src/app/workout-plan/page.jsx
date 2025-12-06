@@ -42,7 +42,6 @@ export default function WorkoutPlansPage() {
 
   // Query options
   const queryOptions = useMemo(() => ({
-    activeOnly: true,
     ...(selectedGoal && { goal: selectedGoal }),
     ...(selectedDifficulty && { difficulty: selectedDifficulty }),
     sort: sortBy === "newest" ? "-createdAt"
