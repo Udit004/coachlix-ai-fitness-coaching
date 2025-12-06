@@ -1224,6 +1224,23 @@ export const batchAddExercisesToWorkout = async (
   }
 };
 
+// Toggle workout plan active status
+export const togglePlanActive = async (planId, isActive) => {
+  try {
+    const headers = await getAuthHeaders();
+    const method = isActive ? 'POST' : 'DELETE';
+    const response = await fetch(`${BASE_URL}/${planId}/activate`, {
+      method,
+      headers,
+    });
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error('Error toggling workout plan active status:', error);
+    throw error;
+  }
+};
+
 // Default export with all functions for convenience
 const workoutPlanService = {
   getWorkoutPlans,
@@ -1279,6 +1296,7 @@ const workoutPlanService = {
   addExistingExerciseById,
   addCustomExerciseToWorkout,
   batchAddExercisesToWorkout,
+  togglePlanActive,
 };
 
 export default workoutPlanService;

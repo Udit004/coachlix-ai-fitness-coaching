@@ -104,7 +104,7 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit, onTog
 
   return (
     <div 
-      className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden group"
+      className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden group"
       onClick={handleCardClick}
     >
       {/* Header */}

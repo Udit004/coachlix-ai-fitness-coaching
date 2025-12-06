@@ -231,6 +231,10 @@ export const useDeleteWorkoutPlan = () => {
       // Remove from all relevant caches
       queryClient.removeQueries({ queryKey: workoutKeys.detail(planId) });
       queryClient.invalidateQueries({ queryKey: workoutKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: workoutKeys.all });
+    },
+    onError: (error) => {
+      console.error('Failed to delete workout plan:', error);
     },
   });
 };
@@ -460,6 +464,32 @@ export const useDeleteProgressEntry = () => {
       queryClient.invalidateQueries({ 
         queryKey: [...workoutKeys.progress(), variables.planId] 
       });
+    },
+  });
+};
+
+// Mutation to activate/deactivate workout plan
+export const useToggleWorkoutPlanActive = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ planId, isActive }) => 
+      workoutPlanService.togglePlanActive(planId, isActive),
+    onSuccess: (response, { planId }) => {
+      // Extract plan from response (could be response.plan or response directly)
+      const updatedPlan = response?.plan || response;
+      
+      // Update the specific plan in cache
+      queryClient.setQueryData(workoutKeys.detail(planId), updatedPlan);
+      
+      // Invalidate all lists since activating one plan deactivates others
+      queryClient.invalidateQueries({ queryKey: workoutKeys.lists() });
+      
+      // Also invalidate stats as active status affects them
+      queryClient.invalidateQueries({ queryKey: workoutKeys.all });
+    },
+    onError: (error) => {
+      console.error('Failed to toggle workout plan active status:', error);
     },
   });
 };
