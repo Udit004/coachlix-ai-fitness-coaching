@@ -57,19 +57,19 @@ const RecentActivitySection = () => {
 
   if (loading) {
     return (
-      <section className="px-4 py-6 bg-gray-50">
+      <section className="pt-8 pb-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Recent Activity</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Recent Activity</h2>
             <div className="animate-spin">
               <RefreshCw className="h-5 w-5 text-gray-400" />
             </div>
           </div>
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-xl p-4 animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+              <div key={i} className="bg-white dark:bg-gray-800 rounded-xl p-4 animate-pulse">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
               </div>
             ))}
           </div>
@@ -79,40 +79,40 @@ const RecentActivitySection = () => {
   }
 
   return (
-    <section className="px-4 py-6 bg-gray-50">
+    <section className="pt-8 pb-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
             <Activity className="h-6 w-6 text-blue-600" />
-            <h2 className="text-2xl font-bold text-gray-900">Recent Activity</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Recent Activity</h2>
           </div>
           <button
             onClick={handleRefresh}
-            className={`p-2 rounded-full bg-white shadow-md hover:shadow-lg transition-all duration-200 ${
+            className={`p-2 rounded-full bg-white dark:bg-gray-800 shadow-md hover:shadow-lg transition-all duration-200 ${
               refreshing ? 'animate-spin' : 'hover:scale-105'
             }`}
           >
-            <RefreshCw className="h-5 w-5 text-gray-600" />
+            <RefreshCw className="h-5 w-5 text-gray-600 dark:text-gray-300" />
           </button>
         </div>
 
         {/* Quick Stats */}
         {progress && (
           <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-white rounded-xl p-4 text-center">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center">
               <div className="text-2xl font-bold text-blue-600">{progress.weeklyWorkouts}</div>
-              <div className="text-sm text-gray-500">This Week</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">This Week</div>
             </div>
-            <div className="bg-white rounded-xl p-4 text-center">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center">
               <div className="text-2xl font-bold text-green-600">{progress.currentStreak}</div>
-              <div className="text-sm text-gray-500">Day Streak</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">Day Streak</div>
             </div>
-            <div className="bg-white rounded-xl p-4 text-center">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center">
               <div className="text-2xl font-bold text-purple-600">
                 {Math.round((progress.weeklyWorkouts / progress.weeklyTarget) * 100)}%
               </div>
-              <div className="text-sm text-gray-500">Goal Progress</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">Goal Progress</div>
             </div>
           </div>
         )}
@@ -139,7 +139,7 @@ const RecentActivitySection = () => {
         {recentChats.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
                 <MessageSquare className="h-5 w-5 mr-2 text-blue-600" />
                 Recent Conversations
               </h3>
@@ -156,18 +156,18 @@ const RecentActivitySection = () => {
                 <div
                   key={chat._id}
                   onClick={() => router.push(`/ai-chat?chatId=${chat._id}`)}
-                  className="bg-white rounded-xl p-4 border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all duration-200 cursor-pointer"
+                  className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-500 hover:shadow-md transition-all duration-200 cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-medium text-gray-900 line-clamp-1 flex-1">
+                    <h4 className="font-medium text-gray-900 dark:text-white line-clamp-1 flex-1">
                       {chat.title}
                     </h4>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPlanColor(chat.plan)}`}>
                       {chat.plan.replace('-', ' ')}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600 line-clamp-1 mb-2">{chat.lastMessage}</p>
-                  <div className="flex items-center justify-between text-xs text-gray-500">
+                  <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-1 mb-2">{chat.lastMessage}</p>
+                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                     <span className="flex items-center">
                       <Clock className="h-3 w-3 mr-1" />
                       {formatTimeAgo(chat.updatedAt)}
@@ -184,7 +184,7 @@ const RecentActivitySection = () => {
         {activeWorkouts.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
                 <Dumbbell className="h-5 w-5 mr-2 text-green-600" />
                 Active Workouts
               </h3>
@@ -205,10 +205,10 @@ const RecentActivitySection = () => {
                       `/workout-plan/${workout._id}/week/${workout.currentWeek}/day/${workout.currentDay}/workout/0`
                     )
                   }
-                  className="bg-white rounded-xl p-4 border border-gray-100 hover:border-green-200 hover:shadow-md transition-all duration-200 cursor-pointer"
+                  className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 hover:border-green-200 dark:hover:border-green-500 hover:shadow-md transition-all duration-200 cursor-pointer"
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium text-gray-900">{workout.name}</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-white">{workout.name}</h4>
                     <div className="flex items-center bg-green-100 text-green-700 px-2 py-1 rounded-full">
                       <Play className="h-3 w-3 mr-1" />
                       <span className="text-xs font-medium">Continue</span>
@@ -216,18 +216,18 @@ const RecentActivitySection = () => {
                   </div>
                   {/* Progress Bar */}
                   <div className="mb-3">
-                    <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
+                    <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300 mb-1">
                       <span>Week {workout.currentWeek}, Day {workout.currentDay}</span>
                       <span>{workout.progress}% complete</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div
                         className="bg-green-500 h-2 rounded-full transition-all duration-300"
                         style={{ width: `${workout.progress}%` }}
                       ></div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-gray-500">
+                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                     <span className="flex items-center">
                       <Target className="h-3 w-3 mr-1" />
                       Next: {workout.nextWorkout}
@@ -241,64 +241,7 @@ const RecentActivitySection = () => {
         )}
 
         {/* Diet Plans */}
-        {dietPlans.length > 0 && (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <Apple className="h-5 w-5 mr-2 text-orange-600" />
-                Active Diet Plans
-              </h3>
-              <button
-                onClick={() => router.push('/diet-plan')}
-                className="text-orange-600 text-sm font-medium hover:text-orange-700 flex items-center"
-              >
-                View All
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              {dietPlans.map((plan) => (
-                <div
-                  key={plan._id}
-                  onClick={() => router.push(`/diet-plan/${plan._id}`)}
-                  className="bg-white rounded-xl p-4 border border-gray-100 hover:border-orange-200 hover:shadow-md transition-all duration-200 cursor-pointer"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium text-gray-900">{plan.name}</h4>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPlanColor(plan.goal)}`}>
-                      {plan.goal.replace('-', ' ')}
-                    </span>
-                  </div>
-                  {/* Daily Progress */}
-                  <div className="grid grid-cols-2 gap-4 mb-3">
-                    <div>
-                      <div className="text-sm text-gray-600 mb-1">Today's Calories</div>
-                      <div className="text-lg font-semibold text-gray-900">
-                        {plan.todayCalories} / {plan.targetCalories}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600 mb-1">Meals Today</div>
-                      <div className="text-lg font-semibold text-gray-900">
-                        {plan.completedMeals} / {plan.totalMeals}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span className="flex items-center">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      Day {plan.currentDay} of {plan.totalDays}
-                    </span>
-                    <span className="flex items-center">
-                      <TrendingUp className="h-3 w-3 mr-1" />
-                      {Math.round((plan.todayCalories / plan.targetCalories) * 100)}% goal
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        
 
         {/* Empty State */}
         {recentChats.length === 0 && activeWorkouts.length === 0 && dietPlans.length === 0 && (
@@ -306,8 +249,8 @@ const RecentActivitySection = () => {
             <div className="mb-4">
               <Zap className="h-12 w-12 text-gray-300 mx-auto" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Ready to Start Your Journey?</h3>
-            <p className="text-gray-600 mb-6 max-w-sm mx-auto">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Ready to Start Your Journey?</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-sm mx-auto">
               Begin by chatting with your AI coach or creating your first workout plan.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -320,7 +263,7 @@ const RecentActivitySection = () => {
               </button>
               <button
                 onClick={() => router.push('/workout-plans')}
-                className="bg-white text-gray-900 border border-gray-300 px-6 py-3 rounded-xl font-medium hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center"
+                className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 px-6 py-3 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center"
               >
                 <BookOpen className="h-4 w-4 mr-2" />
                 Browse Plans

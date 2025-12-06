@@ -116,17 +116,8 @@ export default function HomeDashboard() {
     ? dietPlans
     : (Array.isArray(dietPlans?.plans) ? dietPlans.plans : []);
 
-  const [favoriteWorkoutPlanId, setFavoriteWorkoutPlanId] = useState(null);
-
-  useEffect(() => {
-    if (!authUser) return;
-    try {
-      const favWorkout = localStorage.getItem(`favWorkout:${authUser.uid}`);
-      if (favWorkout) setFavoriteWorkoutPlanId(favWorkout);
-    } catch (e) {}
-  }, [authUser]);
-
-  const selectedWorkoutPlan = workoutPlanList.find(p => p._id === favoriteWorkoutPlanId) || (workoutPlanList[0] || null);
+  // Use the first active workout plan (there should only be one active)
+  const selectedWorkoutPlan = workoutPlanList.find(p => p.isActive) || workoutPlanList[0] || null;
   // Use the first active diet plan (there should only be one active)
   const selectedDietPlan = dietPlanList.find(p => p.isActive) || dietPlanList[0] || null;
 
@@ -284,23 +275,6 @@ export default function HomeDashboard() {
             <CardTitle>Today's Workout</CardTitle>
           </CardHeader>
           <CardContent>
-            {Array.isArray(workoutPlanList) && workoutPlanList.length > 0 && (
-              <div className="mb-4">
-                <label className="text-sm text-gray-600 dark:text-gray-300 mr-2">Favorite plan:</label>
-                <select
-                  className="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-900"
-                  value={selectedWorkoutPlan?._id || ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFavoriteWorkoutPlanId(val);
-                    if (authUser) { try { localStorage.setItem(`favWorkout:${authUser.uid}`, val); } catch {} }
-                  }}
-                >
-                  {workoutPlanList.map((p) => (<option key={p._id} value={p._id}>{p.name}</option>))}
-                </select>
-              </div>
-            )}
-
             {!selectedWorkoutPlan && (
               <div className="text-gray-600 dark:text-gray-300">
                 No active workout plan. Create one to get started.

@@ -23,7 +23,8 @@ import {
   useCreateWorkoutPlan, 
   useUpdateWorkoutPlan, 
   useDeleteWorkoutPlan, 
-  useCloneWorkoutPlan 
+  useCloneWorkoutPlan,
+  useToggleWorkoutPlanActive
 } from "../../hooks/useWorkoutQueries";
 
 export default function WorkoutPlansPage() {
@@ -63,6 +64,7 @@ export default function WorkoutPlansPage() {
   const updatePlanMutation = useUpdateWorkoutPlan();
   const deletePlanMutation = useDeleteWorkoutPlan();
   const clonePlanMutation = useCloneWorkoutPlan();
+  const toggleActiveMutation = useToggleWorkoutPlanActive();
 
   // Dynamic imports
   const CreatePlanModal = dynamic(() => import("./CreatePlanModal"), {
@@ -240,9 +242,9 @@ export default function WorkoutPlansPage() {
     }
 
     try {
-      await updatePlanMutation.mutateAsync({ 
+      await toggleActiveMutation.mutateAsync({ 
         planId, 
-        updateData: { isActive } 
+        isActive 
       });
     } catch (err) {
       console.error("Error toggling plan active status:", err);
