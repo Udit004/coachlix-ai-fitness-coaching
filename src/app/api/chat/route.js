@@ -12,7 +12,7 @@ import "@/ai/config/langsmith";
 // ============================================================
 export async function POST(request) {
   try {
-    const { message, plan, conversationHistory, profile, userId } =
+    const { message, plan, conversationHistory, profile, userId, files } =
       await request.json();
 
     if (!message || !userId) {
@@ -22,12 +22,21 @@ export async function POST(request) {
       );
     }
 
+    // Log multimodal content if files are present
+    if (files && files.length > 0) {
+      console.log(`[Chat Route] Multimodal request: ${files.length} file(s) attached`);
+      files.forEach((file, index) => {
+        console.log(`  File ${index + 1}: ${file.name} (${file.category})`);
+      });
+    }
+
     return handleStreamingResponse({
       message,
       plan,
       conversationHistory,
       profile,
       userId,
+      files, // Pass files to streaming handler
     });
   } catch (err) {
     console.error("Request Error:", err);
@@ -46,7 +55,8 @@ async function handleStreamingResponse({
   plan,
   conversationHistory,
   profile,
-  userId
+  userId,
+  files
 }) {
   try {
     const encoder = new TextEncoder();
@@ -80,6 +90,7 @@ async function handleStreamingResponse({
               conversationHistory,
               profile,
               userId,
+              files, // Pass files to orchestrator for multimodal processing
             },
             // Streaming callback - sends each word as it's generated
             async (chunk) => {
