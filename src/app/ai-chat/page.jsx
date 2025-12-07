@@ -274,20 +274,29 @@ const AIChatPage = () => {
   };
 
   // Handle sending messages with streaming support
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || isTyping) return;
+  const handleSendMessage = async (messageData) => {
+    // Support both old format (string/undefined) and new format (object with files)
+    const message = typeof messageData === 'object' && messageData !== null 
+      ? (messageData.text || inputValue)
+      : (messageData || inputValue);
+    const files = messageData?.files || [];
+
+    // Validate input
+    if (!message.trim() && files.length === 0) return;
+    if (isTyping) return;
 
     const userMessage = {
       id: Date.now(),
       role: "user",
-      content: inputValue,
+      content: message,
       timestamp: new Date(),
       plan: selectedPlan,
+      files: files.length > 0 ? files : undefined, // Only include if files exist
     };
 
     // Add user message
     addMessage(userMessage);
-    const currentInput = inputValue;
+    const currentInput = message;
     setInputValue("");
     setIsTyping(true);
     setError(null);
@@ -317,6 +326,7 @@ const AIChatPage = () => {
           conversationHistory: messages,
           profile: userProfile,
           userId: authUser?.uid,
+          files: files.length > 0 ? files : undefined, // Include files if present
           streaming: true, // Enable streaming
         }),
       });
@@ -440,7 +450,7 @@ const AIChatPage = () => {
       const welcomeMessage = {
         id: Date.now(),
         role: "ai",
-        content: `Hi ${userProfile.name}! 👋 Ready to work on your ${userProfile.fitnessGoal?.replace("-", " ")} goals?`,
+        content: `Hi ${userProfile.name}! 👋`,
         timestamp: new Date(),
         suggestions: [
           `Create a ${userProfile.fitnessGoal?.replace("-", " ")} plan`,

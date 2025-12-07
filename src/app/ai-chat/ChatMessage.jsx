@@ -303,6 +303,65 @@ const ChatMessage = ({
                 )}
               </div>
             </div>
+            
+            {/* File Attachments Display */}
+            {message.files && message.files.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {message.files.map((file, index) => (
+                  <div
+                    key={index}
+                    className="bg-gray-700/50 rounded-lg p-2 border border-gray-600 hover:border-gray-500 transition-colors"
+                  >
+                    {file.category === 'image' || file.type?.startsWith('image/') ? (
+                      // Image preview
+                      <div className="space-y-2">
+                        <img
+                          src={file.url || file.preview}
+                          alt={file.name}
+                          className="w-full max-w-md rounded-lg shadow-lg"
+                          loading="lazy"
+                        />
+                        <div className="flex items-center justify-between text-xs text-gray-400">
+                          <span className="truncate">{file.name}</span>
+                          {file.size && (
+                            <span className="ml-2 flex-shrink-0">
+                              {(file.size / 1024 / 1024).toFixed(2)} MB
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      // Document preview
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-shrink-0 w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                          <svg className="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-200 truncate font-medium">{file.name}</p>
+                          {file.size && (
+                            <p className="text-xs text-gray-500">
+                              {(file.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          )}
+                        </div>
+                        {file.url && (
+                          <a
+                            href={file.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-shrink-0 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg transition-colors"
+                          >
+                            View
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Message Actions - Only show when NOT streaming */}
             {!isStreaming && (

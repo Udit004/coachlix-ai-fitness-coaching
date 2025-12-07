@@ -156,22 +156,54 @@ const ChatInput = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const processFiles = (files) => {
+  const processFiles = async (files) => {
     const fileArray = Array.from(files);
     const validFiles = [];
     const errors = [];
 
-    fileArray.forEach(file => {
+    for (const file of fileArray) {
       const error = validateFile(file);
       if (error) {
         errors.push(`${file.name}: ${error}`);
-      } else {
+        continue;
+      }
+
+      try {
+        // Upload file to server
+        const formData = new FormData();
+        formData.append('file', file);
+
+        console.log(`[ChatInput] Uploading ${file.name}...`);
+        
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Upload failed');
+        }
+
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Upload failed');
+        }
+
+        console.log(`[ChatInput] ✅ Uploaded ${file.name}:`, result.file.url);
+
+        // Create file object with uploaded data
         const fileObj = {
           id: Date.now() + Math.random(),
           file,
-          name: file.name,
-          size: file.size,
-          type: file.type,
+          name: result.file.name,
+          size: result.file.size,
+          type: result.file.type,
+          category: result.file.category,
+          url: result.file.url,
+          base64: result.file.base64, // ← Important: base64 data from server
+          cloudinaryId: result.file.cloudinaryId,
           preview: null
         };
 
@@ -191,8 +223,11 @@ const ChatInput = ({
         }
 
         validFiles.push(fileObj);
+      } catch (uploadError) {
+        console.error(`[ChatInput] Upload error for ${file.name}:`, uploadError);
+        errors.push(`${file.name}: ${uploadError.message}`);
       }
-    });
+    }
 
     if (errors.length > 0) {
       alert('Some files could not be attached:\n' + errors.join('\n'));
