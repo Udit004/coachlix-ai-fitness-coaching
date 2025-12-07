@@ -28,12 +28,28 @@ export function buildChatHistory(conversationHistory) {
 
 /**
  * Build initial messages array for LLM conversation
+ * Supports both text-only and multimodal content
  * @param {string} systemPrompt - System prompt with context
  * @param {Array} chatHistory - Previous chat messages
- * @param {string} userMessage - Current user message
+ * @param {string|Array} userMessage - Current user message (string or multimodal array)
  * @returns {Array} - Complete messages array for LLM
  */
 export function buildInitialMessages(systemPrompt, chatHistory, userMessage) {
+  // Handle multimodal content (array of parts)
+  if (Array.isArray(userMessage)) {
+    console.log('[MessageBuilder] Creating multimodal HumanMessage with', userMessage.length, 'parts');
+    
+    // For Google Gemini with LangChain, we need to pass content as an array
+    return [
+      new SystemMessage(systemPrompt),
+      ...chatHistory,
+      new HumanMessage({
+        content: userMessage  // Pass the array directly as content
+      })
+    ];
+  }
+  
+  // Handle text-only content (string)
   return [
     new SystemMessage(systemPrompt),
     ...chatHistory,
