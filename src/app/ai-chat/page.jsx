@@ -313,8 +313,9 @@ const AIChatPage = () => {
 
     addMessage(aiMessage);
 
-    try {
+      try {
       // Use streaming API
+      // Send minimal payload - server will fetch history from database
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -323,19 +324,17 @@ const AIChatPage = () => {
         body: JSON.stringify({
           message: currentInput,
           plan: selectedPlan,
-          conversationHistory: messages,
-          profile: userProfile,
+          chatId: currentChatId,  // Server will fetch history using this
           userId: authUser?.uid,
-          // Remove base64 from files to reduce payload size (prevent 413 error)
+          // Remove base64 from files to reduce payload size
           files: files.length > 0 ? files.map(file => ({
             name: file.name,
             type: file.type,
             size: file.size,
             category: file.category,
             url: file.url,
-            // base64 removed - server will fetch from URL if needed
           })) : undefined,
-          streaming: true, // Enable streaming
+          streaming: true,
         }),
       });
 

@@ -2,7 +2,9 @@
 
 import { NextResponse } from "next/server";
 import { processChatWithProfessionalFlow } from "@/ai/orchestrator-professional-flow";
-import { addToHistory } from "@/ai/memory";
+import { addToHistory, getHistory } from "@/ai/memory";
+import { connectDB } from "@/lib/db";
+import ChatSession from "@/models/ChatSession";
 
 // Initialize LangSmith tracing (if enabled in env)
 import "@/ai/config/langsmith";
@@ -12,14 +14,65 @@ import "@/ai/config/langsmith";
 // ============================================================
 export async function POST(request) {
   try {
-    const { message, plan, conversationHistory, profile, userId, files } =
-      await request.json();
+    const { message, plan, chatId, userId, files } = await request.json();
 
     if (!message || !userId) {
       return NextResponse.json(
         { success: false, error: "Message and userId are required" },
         { status: 400 }
       );
+    }
+
+    // Connect to MongoDB
+    await connectDB();
+
+    // Fetch conversation history from MongoDB (if chatId exists)
+    let conversationHistory = [];
+    if (chatId) {
+      try {
+        console.log(`[Chat Route] Fetching history for chatId: ${chatId}`);
+        const chatSession = await ChatSession.findById(chatId);
+        
+        if (chatSession) {
+          conversationHistory = chatSession.messages || [];
+          console.log(`[Chat Route] ✅ Loaded ${conversationHistory.length} messages from database`);
+        } else {
+          console.log(`[Chat Route] ⚠️ Chat ${chatId} not found, starting fresh`);
+        }
+      } catch (dbError) {
+        console.error('[Chat Route] ❌ Error fetching chat history:', dbError);
+        // Continue with empty history if fetch fails
+      }
+    }
+
+    // Fetch user profile from MongoDB
+    let profile = null;
+    try {
+      console.log(`[Chat Route] Fetching profile for userId: ${userId}`);
+      const User = (await import('@/models/userProfileModel')).default;
+      const user = await User.findOne({ firebaseUid: userId });
+      
+      if (user) {
+        profile = {
+          name: user.name,
+          email: user.email,
+          fitnessGoal: user.fitnessGoal,
+          experience: user.experience,
+          gender: user.gender,
+          activityLevel: user.activityLevel,
+          age: user.age,
+          height: user.height,
+          weight: user.weight,
+          targetWeight: user.targetWeight,
+          bio: user.bio,
+        };
+        console.log(`[Chat Route] ✅ Loaded user profile for ${user.name}`);
+      } else {
+        console.log(`[Chat Route] ⚠️ User profile not found for ${userId}`);
+      }
+    } catch (profileError) {
+      console.error('[Chat Route] ❌ Error fetching profile:', profileError);
+      // Continue without profile if fetch fails
     }
 
     // Log multimodal content if files are present
@@ -30,13 +83,20 @@ export async function POST(request) {
       });
     }
 
+    console.log(`[Chat Route] Request summary:`, {
+      hasHistory: conversationHistory.length > 0,
+      historyLength: conversationHistory.length,
+      hasProfile: !!profile,
+      hasFiles: files && files.length > 0
+    });
+
     return handleStreamingResponse({
       message,
       plan,
-      conversationHistory,
-      profile,
+      conversationHistory,  // From MongoDB
+      profile,              // From MongoDB or Firebase Auth
       userId,
-      files, // Pass files to streaming handler
+      files,
     });
   } catch (err) {
     console.error("Request Error:", err);
@@ -46,6 +106,7 @@ export async function POST(request) {
     );
   }
 }
+
 
 // ============================================================
 //                 SSE STREAMING RESPONSE HANDLER
