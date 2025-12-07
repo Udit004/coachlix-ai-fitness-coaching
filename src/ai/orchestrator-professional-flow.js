@@ -27,6 +27,12 @@ import {
   streamTextToFrontend,
   sendCompletionSignal
 } from "./streaming";
+import { 
+  buildMultimodalContent, 
+  isMultimodalContent,
+  getContentTypeDescription,
+  getFilesSummary
+} from "./multimodal/contentBuilder";
 
 /**
  * Professional Flow Configuration
@@ -64,7 +70,7 @@ const PROFESSIONAL_FLOW_CONFIG = {
  * @returns {Promise<Object>} - { response, metadata }
  */
 export async function processChatWithProfessionalFlow(params, onChunk) {
-  const { message, userId, plan = "general", profile = null, conversationHistory = [] } = params;
+  const { message, files, userId, plan = "general", profile = null, conversationHistory = [] } = params;
   const startTime = Date.now();
   const flowMetrics = {
     intentClassificationTime: 0,
@@ -80,6 +86,20 @@ export async function processChatWithProfessionalFlow(params, onChunk) {
   console.log('[ProfessionalFlow] User:', userId);
   console.log('[ProfessionalFlow] Message:', message);
   console.log('[ProfessionalFlow] History length:', conversationHistory.length);
+  
+  // Log multimodal content if files are present
+  const contentType = getContentTypeDescription(message, files);
+  const filesSummary = getFilesSummary(files);
+  
+  console.log('[ProfessionalFlow] Content Type:', contentType);
+  if (filesSummary.count > 0) {
+    console.log('[ProfessionalFlow] 📎 Files Attached:', filesSummary.count);
+    console.log('[ProfessionalFlow]   - Images:', filesSummary.images);
+    console.log('[ProfessionalFlow]   - Documents:', filesSummary.documents);
+    console.log('[ProfessionalFlow]   - Total Size:', `${(filesSummary.totalSize / 1024 / 1024).toFixed(2)}MB`);
+    console.log('[ProfessionalFlow]   - Types:', filesSummary.types.join(', '));
+  }
+  
   console.log('='.repeat(80) + '\n');
   
   try {
@@ -211,7 +231,18 @@ export async function processChatWithProfessionalFlow(params, onChunk) {
     }
     
     const chatHistory = buildChatHistory(conversationHistory);
-    const messages = buildInitialMessages(systemPrompt, chatHistory, message);
+    
+    // Build multimodal content if files are present
+    let userContent;
+    if (isMultimodalContent(files)) {
+      console.log('[ProfessionalFlow] 🖼️ Building multimodal content (text + files)...');
+      userContent = buildMultimodalContent(message, files);
+      console.log('[ProfessionalFlow] ✅ Multimodal content built with', userContent.length, 'parts');
+    } else {
+      userContent = message;
+    }
+    
+    const messages = buildInitialMessages(systemPrompt, chatHistory, userContent);
     
     console.log('[ProfessionalFlow] ✅ LLM initialized with', filteredTools.length, 'tools');
     if (enableSearch) {
@@ -426,6 +457,12 @@ export async function processChatWithProfessionalFlow(params, onChunk) {
         // Flow metadata
         architecture: 'professional_flow',
         flowVersion: '1.0',
+        
+        // Multimodal data (NEW!)
+        contentType,
+        hasFiles: filesSummary.count > 0,
+        filesProcessed: filesSummary.count,
+        filesSummary: filesSummary.count > 0 ? filesSummary : null,
         
         // Intent data
         intent: intent.intent,
