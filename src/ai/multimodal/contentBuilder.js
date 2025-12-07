@@ -8,7 +8,7 @@
  * @param {Array} files - Array of uploaded files with base64 data
  * @returns {Array} - Array of content parts for Gemini
  */
-export function buildMultimodalContent(message, files = []) {
+export async function buildMultimodalContent(message, files = []) {
   const parts = [];
   
   // Add text message first
@@ -21,7 +21,7 @@ export function buildMultimodalContent(message, files = []) {
   
   // Add files (images and documents)
   if (files && files.length > 0) {
-    files.forEach((file, index) => {
+    for (const [index, file] of files.entries()) {
       try {
         // Auto-detect category from MIME type if not provided
         let category = file.category;
@@ -29,30 +29,49 @@ export function buildMultimodalContent(message, files = []) {
           category = file.type.startsWith('image/') ? 'image' : 'document';
         }
         
-        // Validate required fields
-        if (!file.base64) {
-          console.error(`[Multimodal] File ${index + 1} (${file.name}): Missing base64 data`);
-          return;
+        // Check for URL (Cloudinary URL from upload)
+        if (!file.url) {
+          console.error(`[Multimodal] File ${index + 1} (${file.name}): Missing URL`);
+          continue;
         }
         
         if (!file.type) {
           console.error(`[Multimodal] File ${index + 1} (${file.name}): Missing MIME type`);
-          return;
+          continue;
         }
         
         if (category === 'image') {
-          // Add image with inline data - LangChain format
-          parts.push({
-            type: "image_url",
-            image_url: {
-              url: `data:${file.type};base64,${file.base64}`
-            }
-          });
+          // Fetch image from Cloudinary and convert to base64
+          console.log(`[Multimodal] Fetching image from URL: ${file.url}`);
           
-          console.log(`[Multimodal] ✅ Added image ${index + 1}: ${file.name} (${file.type})`);
+          try {
+            const response = await fetch(file.url);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch image: ${response.status}`);
+            }
+            
+            const arrayBuffer = await response.arrayBuffer();
+            const base64 = Buffer.from(arrayBuffer).toString('base64');
+            
+            // Use base64 data URL (required by Gemini)
+            parts.push({
+              type: "image_url",
+              image_url: {
+                url: `data:${file.type};base64,${base64}`
+              }
+            });
+            
+            console.log(`[Multimodal] ✅ Added image ${index + 1}: ${file.name} (fetched from Cloudinary)`);
+          } catch (fetchError) {
+            console.error(`[Multimodal] ❌ Failed to fetch image ${file.name}:`, fetchError);
+            // Add error message to parts
+            parts.push({
+              type: "text",
+              text: `[Error: Could not load image ${file.name}]`
+            });
+          }
         } else if (category === 'document') {
           // For documents, we'll add as text with a note
-          // Gemini doesn't support document inline data in the same way
           parts.push({
             type: "text",
             text: `[Document attached: ${file.name}]`
@@ -65,7 +84,7 @@ export function buildMultimodalContent(message, files = []) {
       } catch (error) {
         console.error(`[Multimodal] ❌ Error adding file ${file.name}:`, error);
       }
-    });
+    }
   }
   
   console.log(`[Multimodal] 📦 Built multimodal content with ${parts.length} parts (${parts.filter(p => p.type === 'text').length} text, ${parts.filter(p => p.type === 'image_url').length} images)`);

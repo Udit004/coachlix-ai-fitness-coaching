@@ -326,7 +326,15 @@ const AIChatPage = () => {
           conversationHistory: messages,
           profile: userProfile,
           userId: authUser?.uid,
-          files: files.length > 0 ? files : undefined, // Include files if present
+          // Remove base64 from files to reduce payload size (prevent 413 error)
+          files: files.length > 0 ? files.map(file => ({
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            category: file.category,
+            url: file.url,
+            // base64 removed - server will fetch from URL if needed
+          })) : undefined,
           streaming: true, // Enable streaming
         }),
       });

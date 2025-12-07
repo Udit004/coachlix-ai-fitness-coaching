@@ -236,7 +236,7 @@ export async function processChatWithProfessionalFlow(params, onChunk) {
     let userContent;
     if (isMultimodalContent(files)) {
       console.log('[ProfessionalFlow] 🖼️ Building multimodal content (text + files)...');
-      userContent = buildMultimodalContent(message, files);
+      userContent = await buildMultimodalContent(message, files);
       console.log('[ProfessionalFlow] ✅ Multimodal content built with', userContent.length, 'parts');
     } else {
       userContent = message;
