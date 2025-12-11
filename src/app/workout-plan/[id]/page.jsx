@@ -21,10 +21,10 @@ import {
   Eye,
 } from "lucide-react";
 import { useAuth } from "../../../hooks/useAuth";
-import { 
-  useWorkoutPlan, 
-  useUpdateWorkoutPlan, 
-  useAddExercisesToWorkout 
+import {
+  useWorkoutPlan,
+  useUpdateWorkoutPlan,
+  useAddExercisesToWorkout,
 } from "../../../hooks/useWorkoutQueries";
 import ProgressTracker from "./ProgressTracker";
 
@@ -41,11 +41,11 @@ export default function WorkoutPlanDetailPage() {
   const [showEditPlan, setShowEditPlan] = useState(false);
 
   // React Query hooks
-  const { 
-    data: planData, 
-    isLoading: loading, 
+  const {
+    data: planData,
+    isLoading: loading,
     error: fetchError,
-    refetch
+    refetch,
   } = useWorkoutPlan(id);
 
   const updatePlanMutation = useUpdateWorkoutPlan();
@@ -114,7 +114,7 @@ export default function WorkoutPlanDetailPage() {
         workoutId: selectedWorkout,
         exercises: selectedExercises,
       });
-      
+
       console.log("✅ Exercises added successfully");
       setShowAddExercise(false);
       setSelectedDay(null);
@@ -277,12 +277,21 @@ export default function WorkoutPlanDetailPage() {
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                   {plan.name}
                 </h1>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-gray-500 dark:text-gray-400">
                   {plan.description}
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="hidden md:flex items-center space-x-3">
+              <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                <Target className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Goal</p>
+                <p className="font-semibold text-gray-900 dark:text-white">
+                  {plan.stats?.completionRate || 0}%
+                </p>
+              </div>
               <button
                 onClick={() => setShowProgress(true)}
                 className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
@@ -296,7 +305,9 @@ export default function WorkoutPlanDetailPage() {
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors"
               >
                 <Edit className="h-4 w-4" />
-                <span>{updatePlanMutation.isLoading ? "Updating..." : "Edit Plan"}</span>
+                <span>
+                  {updatePlanMutation.isLoading ? "Updating..." : "Edit Plan"}
+                </span>
               </button>
             </div>
           </div>
@@ -305,8 +316,8 @@ export default function WorkoutPlanDetailPage() {
 
       <div className="max-w-6xl mx-auto p-4">
         {/* Plan Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
+        <div className="md:hidden grid grid-cols-3 lg:grid-cols-4 gap-6 mb-2 md:mb-8">
+          <div className="rounded-xl px-6 py-2 shadow-sm">
             <div className="flex items-center space-x-3">
               <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
                 <Target className="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -317,7 +328,26 @@ export default function WorkoutPlanDetailPage() {
                   {plan.stats?.completionRate || 0}%
                 </p>
               </div>
+              
+              <button
+                onClick={() => setShowProgress(true)}
+                className="flex md:hidden items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+              >
+                <TrendingUp className="h-4 w-4" />
+                <span>Progress</span>
+              </button>
+              <button
+                onClick={() => setShowEditPlan(true)}
+                disabled={updatePlanMutation.isLoading}
+                className="flex md:hidden items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors"
+              >
+                <Edit className="h-4 w-4" />
+                <span>
+                  {updatePlanMutation.isLoading ? "Updating..." : "Edit"}
+                </span>
+              </button>
             </div>
+            
           </div>
         </div>
 
@@ -445,7 +475,9 @@ export default function WorkoutPlanDetailPage() {
                               >
                                 <Plus className="h-3 w-3" />
                                 <span>
-                                  {addExercisesMutation.isLoading ? "Adding..." : "Add Exercises"}
+                                  {addExercisesMutation.isLoading
+                                    ? "Adding..."
+                                    : "Add Exercises"}
                                 </span>
                               </button>
                             )}
@@ -536,7 +568,7 @@ export default function WorkoutPlanDetailPage() {
           isLoading={addExercisesMutation.isLoading}
         />
       )}
-      
+
       {showProgress && (
         <ProgressTracker plan={plan} onClose={() => setShowProgress(false)} />
       )}
@@ -551,4 +583,4 @@ export default function WorkoutPlanDetailPage() {
       )}
     </div>
   );
-};
+}
