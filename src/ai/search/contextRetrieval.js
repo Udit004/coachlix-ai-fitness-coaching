@@ -13,9 +13,10 @@ import { getCachedProfile, getCachedDietPlan, getCachedWorkoutPlan } from "../co
  * 
  * @param {string} userId - User ID
  * @param {string} message - User message (for query hints)
+ * @param {Object} intent - Intent classification with dataNeeds (optional)
  * @returns {Promise<Object>} Minimal context object
  */
-export async function buildMinimalContext(userId, message = '') {
+export async function buildMinimalContext(userId, message = '', intent = null) {
   try {
     await connectDB();
     
@@ -26,20 +27,38 @@ export async function buildMinimalContext(userId, message = '') {
     const profile = typeof profileData === 'string' ? profileData : profileData.text;
     const rawProfile = typeof profileData === 'object' ? profileData.rawProfile : null;
     
-    // Check if message hints at specific data needs
-    const needsDiet = /\b(diet|food|meal|eat|calorie|nutrition|macro)\b/i.test(message);
-    const needsWorkout = /\b(workout|exercise|train|gym|fitness|muscle|strength)\b/i.test(message);
+    // SMART FETCHING: Use intent.dataNeeds if available, fallback to message keywords
+    let needsDiet = false;
+    let needsWorkout = false;
+    
+    if (intent && intent.dataNeeds) {
+      // Use precise intent-based data needs (PREFERRED)
+      needsDiet = intent.dataNeeds.needsDiet;
+      needsWorkout = intent.dataNeeds.needsWorkout;
+      console.log('[MinimalContext] Using intent.dataNeeds:', { needsDiet, needsWorkout });
+    } else {
+      // Fallback to message keyword detection
+      needsDiet = /\b(diet|food|meal|eat|calorie|nutrition|macro)\b/i.test(message);
+      needsWorkout = /\b(workout|exercise|train|gym|fitness|muscle|strength)\b/i.test(message);
+      console.log('[MinimalContext] Using keyword detection:', { needsDiet, needsWorkout });
+    }
     
     let dietSummary = null;
     let workoutSummary = null;
     
-    // Load only if message hints at it (lazy loading)
+    // Load only if needed (lazy loading)
     if (needsDiet) {
       dietSummary = await getDietPlanSummary(userId);
+      console.log('[MinimalContext] ✅ Diet plan loaded');
+    } else {
+      console.log('[MinimalContext] ⚡ Diet plan SKIPPED (not needed)');
     }
     
     if (needsWorkout) {
       workoutSummary = await getWorkoutPlanSummary(userId);
+      console.log('[MinimalContext] ✅ Workout plan loaded');
+    } else {
+      console.log('[MinimalContext] ⚡ Workout plan SKIPPED (not needed)');
     }
     
     // Build combined context (keep it minimal - max 600 tokens ~2400 chars)

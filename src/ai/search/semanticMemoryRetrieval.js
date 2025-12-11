@@ -15,45 +15,38 @@ import { buildMinimalContext } from "./contextRetrieval";
  * @returns {Array} - Ranked relevant messages
  */
 function rankMessagesByRelevance(messages, currentMessage, maxMessages = 10) {
-  const currentMessageLower = currentMessage.toLowerCase();
   const keywords = extractKeywords(currentMessage);
   
   const scoredMessages = messages.map((message, index) => {
     let score = 0;
-    
-    // Recency boost (more recent = higher score)
-    const recencyScore = (index / messages.length) * 100;
-    score += recencyScore;
-    
-    // Keyword matching (semantic similarity proxy)
     const messageContent = message.content?.toLowerCase() || '';
+    
+    // 1. Keyword matching (STRONGEST signal)
     const keywordMatches = keywords.filter(keyword => 
       messageContent.includes(keyword)
     ).length;
-    score += keywordMatches * 20;
+    score += keywordMatches * 50; // Increased from 20 to 50
     
-    // Same intent type (user vs AI messages)
+    // 2. Recency boost (SECONDARY signal)
+    const recencyScore = (index / messages.length) * 30; // Reduced from 100 to 30
+    score += recencyScore;
+    
+    // 3. Role priority
     if (message.role === 'user') {
-      score += 10; // Prioritize user messages for context
+      score += 5; // Reduced from 10 to 5
     }
     
-    // Length penalty (very short messages less useful)
+    // 4. Length penalty
     if (messageContent.length < 20) {
-      score -= 10;
+      score -= 20; // Increased penalty from 10 to 20
     }
     
-    return {
-      message,
-      score,
-      index
-    };
+    return { message, score, index };
   });
   
-  // Sort by score (highest first) and return top N
   return scoredMessages
     .sort((a, b) => b.score - a.score)
-    .slice(0, maxMessages)
-    .map(item => item.message);
+    .slice(0, maxMessages);
 }
 
 /**
@@ -131,10 +124,11 @@ function analyzeConversationHistory(messages) {
  * 
  * @param {string} userId - User ID
  * @param {string} message - Current user message
+ * @param {Object} intent - Intent classification with dataNeeds
  * @param {Object} options - { maxHistoryMessages, includeAnalysis }
  * @returns {Promise<Object>} - Enhanced context with RAG
  */
-export async function buildEnhancedContext(userId, message, options = {}) {
+export async function buildEnhancedContext(userId, message, intent = null, options = {}) {
   const {
     maxHistoryMessages = 10,
     includeAnalysis = true
@@ -147,8 +141,8 @@ export async function buildEnhancedContext(userId, message, options = {}) {
   console.log('[SemanticMemory] Message:', message.substring(0, 100) + '...');
   
   try {
-    // Step 1: Get basic user context (profile, current plans)
-    const baseContext = await buildMinimalContext(userId, message);
+    // Step 1: Get basic user context (profile, current plans) - NOW WITH INTENT
+    const baseContext = await buildMinimalContext(userId, message, intent);
     
     // Step 2: Retrieve conversation history
     const allMessages = await getRecentChatHistory(userId, 20);
@@ -234,7 +228,7 @@ export async function buildEnhancedContext(userId, message, options = {}) {
     console.error('[SemanticMemory] ❌ Error building enhanced context:', error);
     
     // Fallback to basic context
-    const baseContext = await buildMinimalContext(userId, message);
+    const baseContext = await buildMinimalContext(userId, message, intent);
     return {
       ...baseContext,
       relevantHistory: [],
@@ -253,12 +247,13 @@ export async function buildEnhancedContext(userId, message, options = {}) {
  * 
  * @param {string} userId - User ID
  * @param {string} message - Current user message
+ * @param {Object} intent - Intent classification with dataNeeds
  * @returns {Promise<Object>} - Lightweight context
  */
-export async function buildLightweightContext(userId, message) {
+export async function buildLightweightContext(userId, message, intent = null) {
   console.log('[SemanticMemory] 💨 Using lightweight context (no history)');
   
-  const baseContext = await buildMinimalContext(userId, message);
+  const baseContext = await buildMinimalContext(userId, message, intent);
   
   return {
     ...baseContext,
@@ -284,11 +279,11 @@ export async function buildSmartContext(userId, message, intent) {
   const lightweightIntents = ['greeting', 'motivation', 'feedback'];
   
   if (lightweightIntents.includes(intent.intent) && intent.confidence > 0.8) {
-    return await buildLightweightContext(userId, message);
+    return await buildLightweightContext(userId, message, intent);
   }
   
   // Complex intents need full context with RAG
-  return await buildEnhancedContext(userId, message, {
+  return await buildEnhancedContext(userId, message, intent, {
     maxHistoryMessages: intent.requiresData ? 10 : 5,
     includeAnalysis: intent.dataNeeds?.priority === 'high'
   });
