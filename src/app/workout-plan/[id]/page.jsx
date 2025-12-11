@@ -264,7 +264,7 @@ export default function WorkoutPlanDetailPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="max-w-6xl mx-auto px-4 md:py-4 py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
@@ -392,21 +392,21 @@ export default function WorkoutPlanDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
               {currentWeek.days?.map((day) => {
                 const status = getDayStatus(day);
+                const isEmptyDay = status === "empty";
                 return (
                   <div
                     key={day.dayNumber}
-                    className={`border-2 rounded-xl p-4 transition-all duration-200 ${getStatusColor(
-                      status
-                    )}`}
+                    className={`border-2 rounded-xl transition-all duration-200 ${
+                      isEmptyDay ? "p-2" : "p-4"
+                    } ${getStatusColor(status)}`}
                   >
-                    <div className="text-center mb-3">
-                      <h3 className="font-semibold text-sm">{day.dayName}</h3>
-                      <p className="text-xs opacity-75">Day {day.dayNumber}</p>
+                    <div className={`text-center ${isEmptyDay ? "mb-1" : "mb-3"}`}>
+                      <h3 className={`font-semibold ${isEmptyDay ? "text-xs" : "text-sm"}`}>{day.dayName}</h3>
+                      <p className={`opacity-75 ${isEmptyDay ? "text-[10px]" : "text-xs"}`}>Day {day.dayNumber}</p>
                     </div>
 
                     {day.isRestDay ? (
-                      <div className="text-center py-4">
-                        <RotateCcw className="h-6 w-6 mx-auto mb-2 opacity-75" />
+                      <div className={`text-center py-1`}>
                         <p className="text-xs">Rest Day</p>
                       </div>
                     ) : day.workouts?.length > 0 ? (
@@ -448,7 +448,7 @@ export default function WorkoutPlanDetailPage() {
                                 </span>
                               </button>
 
-                              <button
+                              {/* <button
                                 onClick={() =>
                                   handleEditWorkout(
                                     activeWeek,
@@ -460,7 +460,7 @@ export default function WorkoutPlanDetailPage() {
                                 title="Edit workout"
                               >
                                 <Settings className="h-3 w-3" />
-                              </button>
+                              </button> */}
                             </div>
 
                             {(workout.exercises?.length || 0) === 0 && (
@@ -485,17 +485,19 @@ export default function WorkoutPlanDetailPage() {
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-4">
-                        <Plus className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                        <p className="text-xs opacity-75 mb-2">No workouts</p>
-                        <button
-                          onClick={() =>
-                            handleAddWorkoutToDay(activeWeek, day.dayNumber)
-                          }
-                          className="text-xs underline hover:no-underline transition-colors"
-                        >
-                          Add workout
-                        </button>
+                      <div className={`text-center ${isEmptyDay ? "py-1" : "py-4"}`}>
+                        <Plus className={`${isEmptyDay ? "h-4 w-4" : "h-6 w-6"} mx-auto ${isEmptyDay ? "mb-1" : "mb-2"} opacity-50`} />
+                        <p className={`opacity-75 ${isEmptyDay ? "text-[10px] mb-1" : "text-xs mb-2"}`}>No workouts</p>
+                        {!isEmptyDay && (
+                          <button
+                            onClick={() =>
+                              handleAddWorkoutToDay(activeWeek, day.dayNumber)
+                            }
+                            className="text-xs underline hover:no-underline transition-colors"
+                          >
+                            Add workout
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
