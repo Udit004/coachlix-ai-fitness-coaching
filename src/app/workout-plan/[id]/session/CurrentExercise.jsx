@@ -101,7 +101,7 @@ const CurrentExercise = ({ currentExercise, exercises }) => {
         <h4 className="font-medium text-gray-900 dark:text-white mb-3">
           Current Set: {currentSet}
         </h4>
-        <div className="flex space-x-3">
+        <div className="flex flex-col space-y-3 md:flex-row md:space-x-3">
           <input
             type="number"
             placeholder="Reps"
@@ -117,7 +117,7 @@ const CurrentExercise = ({ currentExercise, exercises }) => {
           />
           <button
             onClick={handleSetComplete}
-            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+            className="px-4 py-2 h-13 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
           >
             Complete Set
           </button>

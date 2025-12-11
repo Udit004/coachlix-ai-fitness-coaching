@@ -1,16 +1,16 @@
 // components/workout-session/WorkoutHeader.jsx
-import React from 'react';
-import { ArrowLeft, Volume2, VolumeX, Save } from 'lucide-react';
-import useWorkoutSessionStore from '@/stores/workoutSessionStore';
-import { useSaveWorkoutProgress } from '@/hooks/useWorkoutQueries';
+import React from "react";
+import { ArrowLeft, Volume2, VolumeX, Save } from "lucide-react";
+import useWorkoutSessionStore from "@/stores/workoutSessionStore";
+import { useSaveWorkoutProgress } from "@/hooks/useWorkoutQueries";
 
-const WorkoutHeader = ({ 
-  planId, 
-  weekNumber, 
-  dayNumber, 
+const WorkoutHeader = ({
+  planId,
+  weekNumber,
+  dayNumber,
   workoutId,
   workoutIndex,
-  onBack, 
+  onBack,
   onProgressSave,
 }) => {
   const {
@@ -73,25 +73,16 @@ const WorkoutHeader = ({
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={toggleSound}
-              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              {soundEnabled ? (
-                <Volume2 className="h-5 w-5" />
-              ) : (
-                <VolumeX className="h-5 w-5" />
-              )}
-            </button>
-
+          <div className="hidden md:flex items-center space-x-3">
             <button
               onClick={handleSaveProgress}
               disabled={saveProgressMutation.isLoading}
               className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg transition-colors"
             >
               <Save className="h-4 w-4" />
-              <span>{saveProgressMutation.isLoading ? "Saving..." : "Save Progress"}</span>
+              <span>
+                {saveProgressMutation.isLoading ? "Saving..." : "Save Progress"}
+              </span>
             </button>
           </div>
         </div>
@@ -100,7 +91,8 @@ const WorkoutHeader = ({
         <div className="mt-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Progress: {completedExercises.length} of {exercises.length} exercises
+              Progress: {completedExercises.length} of {exercises.length}{" "}
+              exercises
             </span>
             <span className="text-sm text-gray-600 dark:text-gray-400">
               {Math.round(progressPercentage)}%
@@ -112,6 +104,20 @@ const WorkoutHeader = ({
               style={{ width: `${progressPercentage}%` }}
             ></div>
           </div>
+          <div className="md:hidden flex items-center justify-center  mt-4 space-x-3">
+              <button
+                onClick={handleSaveProgress}
+                disabled={saveProgressMutation.isLoading}
+                className="flex items-center justify-center w-full space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg transition-colors"
+              >
+                <Save className="h-4 w-4" />
+                <span>
+                  {saveProgressMutation.isLoading
+                    ? "Saving..."
+                    : "Save Progress"}
+                </span>
+              </button>
+            </div>
         </div>
       </div>
     </div>

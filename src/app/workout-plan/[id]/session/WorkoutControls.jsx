@@ -191,8 +191,8 @@ const WorkoutControls = ({
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex space-x-3">
+      <div className="flex items-center justify-between mb-4 space-x-2">
+        <div className="flex space-x-3 md:space-x-2">
           <button
             onClick={handlePreviousExercise}
             disabled={currentExerciseIndex === 0}
@@ -204,7 +204,7 @@ const WorkoutControls = ({
 
           <button
             onClick={handleStartPause}
-            className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            className="flex items-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
           >
             {isPlaying ? (
               <Pause className="h-5 w-5" />
@@ -224,11 +224,11 @@ const WorkoutControls = ({
           </button>
         </div>
 
-        <div className="flex space-x-3">
+        <div className="hidden md:flex md:space-x-2">
           <button
             onClick={handleSaveProgress}
             disabled={saveProgressMutation.isLoading || isSaving}
-            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 transition-colors font-medium"
+            className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 transition-colors font-medium"
           >
             {saveProgressMutation.isLoading || isSaving
               ? "Saving..."
@@ -238,7 +238,7 @@ const WorkoutControls = ({
           <button
             onClick={handleCompleteExercise}
             disabled={completedExercises.includes(currentExerciseIndex)}
-            className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+            className="px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
           >
             Complete Exercise
           </button>
@@ -246,7 +246,7 @@ const WorkoutControls = ({
           <button
             onClick={handleCompleteWorkout}
             disabled={completeWorkoutMutation.isLoading || isCompleting}
-            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-purple-400 transition-colors font-medium"
+            className="px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-purple-400 transition-colors font-medium"
           >
             {completeWorkoutMutation.isLoading || isCompleting
               ? "Finishing..."
@@ -254,6 +254,35 @@ const WorkoutControls = ({
           </button>
         </div>
       </div>
+      <div className="md:hidden flex space-x-4 mb-6">
+          <button
+            onClick={handleSaveProgress}
+            disabled={saveProgressMutation.isLoading || isSaving}
+            className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 transition-colors font-medium"
+          >
+            {saveProgressMutation.isLoading || isSaving
+              ? "Saving..."
+              : "Save Progress"}
+          </button>
+
+          <button
+            onClick={handleCompleteExercise}
+            disabled={completedExercises.includes(currentExerciseIndex)}
+            className="px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+          >
+            Complete Exercise
+          </button>
+
+          <button
+            onClick={handleCompleteWorkout}
+            disabled={completeWorkoutMutation.isLoading || isCompleting}
+            className="px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-purple-400 transition-colors font-medium"
+          >
+            {completeWorkoutMutation.isLoading || isCompleting
+              ? "Finishing..."
+              : "Finish Workout"}
+          </button>
+        </div>
 
       {/* Workout Notes */}
       <div>
