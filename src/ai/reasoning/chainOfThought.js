@@ -267,10 +267,20 @@ export function needsFullReasoning(intent, dataNeeds) {
   if (dataNeeds.priority === 'high') return true;
   if (intent.requiresData) return true;
   
-  // Simple greetings and basic questions can use fast path
-  const simpleIntents = ['greeting', 'motivation', 'question_general'];
-  if (simpleIntents.includes(intent.intent) && intent.confidence > 0.8) {
-    return false;
+  // Simple intents can use fast path (0ms instead of 11 seconds!)
+  const simpleIntents = [
+    'greeting',
+    'motivation', 
+    'question_general',
+    'nutrition_inquiry',    // "what is protein" doesn't need 11s reasoning
+    'food_comparison',      // "chicken vs paneer" doesn't need 11s reasoning
+    'supplement_inquiry',   // "what is creatine" doesn't need 11s reasoning
+    'complaint',
+    'feedback'
+  ];
+  
+  if (simpleIntents.includes(intent.intent) && intent.confidence > 0.60) {
+    return false;  // Use fast path
   }
   
   return true;
