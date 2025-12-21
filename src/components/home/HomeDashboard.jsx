@@ -255,8 +255,8 @@ export default function HomeDashboard() {
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Today's Dashboard</h2>
         <div className="flex gap-2">
-          <Button onClick={() => router.push("/ai-chat")} className="cursor-pointer">
-            <Bot className="w-4 h-4 mr-2" />
+          <Button onClick={() => router.push("/ai-chat")} className="bg-gradient-to-r from-indigo-600 to-purple-600 border border-gray-300 cursor-pointer">
+            <Bot className="w-4 h-4 mr-2 " />
             Ask AI Coach
           </Button>
         </div>
