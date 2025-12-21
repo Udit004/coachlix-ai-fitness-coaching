@@ -1,8 +1,10 @@
 // src/ai/reasoning/chainOfThought.js
 // Multi-Step Reasoning with Chain-of-Thought for Professional Responses
 // Implements structured thinking before generating responses
+// NOW ENHANCED: Supports ReAct principle (Reasoning + Acting)
 
 import { createStreamingLLM } from "../config/llmconfig";
+import { executeReActLoop } from "./reactLoop";
 
 /**
  * Chain-of-Thought reasoning steps
@@ -22,7 +24,7 @@ export const ReasoningStep = {
  * @returns {string} - Chain-of-thought prompt
  */
 function generateThinkingPrompt({ message, intent, userContext, dataNeeds }) {
-  return `You are an expert fitness AI assistant analyzing a user's request. Think step-by-step before responding.
+  return `You are an expert Coachlix AI assistant analyzing a user's request. Think step-by-step before responding.
 
 USER CONTEXT:
 ${userContext.combined || 'No context available'}
@@ -288,19 +290,44 @@ export function needsFullReasoning(intent, dataNeeds) {
 
 /**
  * Main reasoning orchestrator
- * Decides between full Chain-of-Thought or fast reasoning
+ * Decides between full Chain-of-Thought, ReAct loop, or fast reasoning
  * 
- * @param {Object} params - { message, intent, userContext, dataNeeds }
+ * @param {Object} params - { message, intent, userContext, dataNeeds, userId, enableReAct }
  * @returns {Promise<Object>} - Reasoning output
  */
 export async function performReasoning(params) {
-  const { intent, dataNeeds } = params;
+  const { intent, dataNeeds, enableReAct = ture, userId } = params;
   
-  if (needsFullReasoning(intent, dataNeeds)) {
-    return await executeChainOfThought(params);
-  } else {
-    return fastReasoning(params);
+  // ============================================================
+  // OPTION 1: ReAct Loop (NEW! - Reasoning + Acting)
+  // ============================================================
+  // Use ReAct when:
+  // - Feature is explicitly enabled
+  // - Query requires data and tool calls
+  // - High priority intent
+  if (enableReAct && (intent.requiresData || dataNeeds.priority === 'high')) {
+    console.log('[ChainOfThought] 🔄 Using ReAct loop (Reasoning + Acting)');
+    return await executeReActLoop({
+      message: params.message,
+      intent,
+      userContext: params.userContext,
+      userId
+    });
   }
+  
+  // ============================================================
+  // OPTION 2: Full Chain-of-Thought (Traditional)
+  // ============================================================
+  if (needsFullReasoning(intent, dataNeeds)) {
+    console.log('[ChainOfThought] 🧠 Using full Chain-of-Thought reasoning');
+    return await executeChainOfThought(params);
+  }
+  
+  // ============================================================
+  // OPTION 3: Fast Reasoning (Simple queries)
+  // ============================================================
+  console.log('[ChainOfThought] ⚡ Using fast reasoning path');
+  return fastReasoning(params);
 }
 
 /**
@@ -312,7 +339,13 @@ export async function performReasoning(params) {
 export function formatReasoningSummary(reasoning) {
   let summary = '\n=== REASONING SUMMARY ===\n';
   
-  if (reasoning.isFastPath) {
+  // Check if ReAct loop was used
+  if (reasoning.reactEnabled) {
+    summary += '🔄 ReAct Loop (Reasoning + Acting)\n';
+    summary += `   - Steps: ${reasoning.stepsUsed}\n`;
+    summary += `   - Tool Calls: ${reasoning.toolCallCount}\n`;
+    summary += `   - Tools Used: ${reasoning.actions?.map(a => a.toolName).join(', ') || 'none'}\n`;
+  } else if (reasoning.isFastPath) {
     summary += '⚡ Fast Reasoning Path\n';
   } else {
     summary += '🧠 Full Chain-of-Thought Reasoning\n';

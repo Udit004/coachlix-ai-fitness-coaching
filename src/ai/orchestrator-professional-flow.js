@@ -44,6 +44,11 @@ const PROFESSIONAL_FLOW_CONFIG = {
   enableResponseValidation: true,
   enableSemanticRAG: true,
   
+  // ReAct (Reasoning + Acting) Configuration (NEW!)
+  enableReAct: true,                  // Master switch for ReAct loop (set to true to enable)
+  reactForHighPriority: true,          // Use ReAct for high-priority intents
+  reactForDataRequiredIntents: true,   // Use ReAct when data is required
+  
   // Google Search Grounding (NEW!)
   enableGoogleSearch: true,           // Master switch for search grounding
   searchThreshold: 0.7,                // Confidence threshold for using search results
@@ -192,23 +197,40 @@ export async function processChatWithProfessionalFlow(params, onChunk) {
     console.log('[ProfessionalFlow]   - Total length:', contextStats.totalLength, 'chars');
     
     // ============================================================
-    // STEP 3: CHAIN-OF-THOUGHT REASONING
+    // STEP 3: CHAIN-OF-THOUGHT REASONING (with optional ReAct)
     // ============================================================
     console.log('\n[ProfessionalFlow] 🧠 STEP 3: Chain-of-Thought Reasoning...');
     const reasoningStart = Date.now();
     
     let reasoning = null;
     if (PROFESSIONAL_FLOW_CONFIG.enableChainOfThought) {
+      // Determine if ReAct should be used
+      const shouldUseReAct = PROFESSIONAL_FLOW_CONFIG.enableReAct && (
+        (PROFESSIONAL_FLOW_CONFIG.reactForHighPriority && intent.dataNeeds.priority === 'high') ||
+        (PROFESSIONAL_FLOW_CONFIG.reactForDataRequiredIntents && intent.requiresData)
+      );
+      
+      if (shouldUseReAct) {
+        console.log('[ProfessionalFlow] 🔄 Enabling ReAct loop (Reasoning + Acting)');
+      }
+      
       reasoning = await performReasoning({
         message,
         intent,
         userContext,
-        dataNeeds: intent.dataNeeds
+        dataNeeds: intent.dataNeeds,
+        enableReAct: shouldUseReAct,
+        userId
       });
       
       flowMetrics.reasoningTime = Date.now() - reasoningStart;
       
-      if (reasoning.isFastPath) {
+      if (reasoning.reactEnabled) {
+        console.log('[ProfessionalFlow] ✅ ReAct loop complete');
+        console.log('[ProfessionalFlow]   - Steps taken:', reasoning.stepsUsed);
+        console.log('[ProfessionalFlow]   - Tools called:', reasoning.toolCallCount);
+        console.log('[ProfessionalFlow]   - Tools used:', reasoning.actions?.map(a => a.toolName).join(', ') || 'none');
+      } else if (reasoning.isFastPath) {
         console.log('[ProfessionalFlow] ⚡ Used fast reasoning path');
       } else {
         console.log('[ProfessionalFlow] ✅ Full reasoning complete');
@@ -529,6 +551,7 @@ export async function processChatWithProfessionalFlow(params, onChunk) {
     console.log('[ProfessionalFlow]   - Validation Score:', validation?.overallScore || 'N/A', '/10');
     console.log('[ProfessionalFlow]   - Response Length:', improvedResponse.length, 'chars');
     console.log('[ProfessionalFlow]   - Auto-fixes Applied:', improvedResponse !== fullResponse ? 'Yes' : 'No');
+    console.log('[ProfessionalFlow]   - ReAct Used:', reasoning?.reactEnabled ? 'Yes' : 'No');
     console.log('[ProfessionalFlow]   - Google Search Used:', enableSearch ? 'Yes' : 'No');
     console.log('='.repeat(80) + '\n');
     
@@ -570,7 +593,10 @@ export async function processChatWithProfessionalFlow(params, onChunk) {
         
         // Reasoning data
         reasoningEnabled: !!reasoning,
-        reasoningPath: reasoning?.isFastPath ? 'fast' : 'full',
+        reasoningPath: reasoning?.reactEnabled ? 'react' : (reasoning?.isFastPath ? 'fast' : 'full'),
+        reactEnabled: reasoning?.reactEnabled || false,
+        reactSteps: reasoning?.stepsUsed || 0,
+        reactToolCalls: reasoning?.toolCallCount || 0,
         keyPoints: reasoning?.keyPoints || [],
         
         // Generation data
