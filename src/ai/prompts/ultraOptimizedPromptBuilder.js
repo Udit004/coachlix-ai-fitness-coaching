@@ -19,7 +19,7 @@ const ULTRA_MINIMAL_PROMPTS = {
    */
   greeting: (userContext) => {
     const name = userContext.profile?.name || 'there';
-    return `You are Alex, a friendly fitness coach. Greet ${name} warmly.`;
+    return `You are Coachlix AI, a friendly fitness coach. Greet ${name} warmly.`;
   },
   
   /**
@@ -32,7 +32,7 @@ const ULTRA_MINIMAL_PROMPTS = {
     const location = profile.location || '';
     const gender = profile.gender || '';
     
-    let prompt = `You are Alex, a knowledgeable fitness expert. Answer clearly and concisely.
+    let prompt = `You are Coachlix AI, a knowledgeable fitness expert. Answer clearly and concisely Using Location ${location} and Gender ${gender} for formation of response but add it in response uneccery.
 
 User: ${name}`;
     
@@ -52,7 +52,7 @@ User: ${name}`;
     const dietPref = profile.dietaryPreference || '';
     const location = profile.location || '';
     
-    let prompt = `You are Alex, a nutrition expert. Help ${name} with their nutrition question.`;
+    let prompt = `You are Coachlix AI, a nutrition expert. Help ${name} with their nutrition question.`;
     
     if (dietPref) prompt += `\nDietary preference: ${dietPref}`;
     if (location && isIndianUser(location)) {
@@ -72,7 +72,7 @@ User: ${name}`;
     const level = profile.fitnessLevel || '';
     const goal = profile.fitnessGoal || '';
     
-    let prompt = `You are Alex, a fitness trainer. Help ${name} with their workout question.`;
+    let prompt = `You are Coachlix AI, a fitness trainer. Help ${name} with their workout question.`;
     
     if (level) prompt += `\nFitness level: ${level}`;
     if (goal) prompt += `\nGoal: ${goal}`;
@@ -86,7 +86,7 @@ User: ${name}`;
    */
   exercise_technique: (userContext) => {
     const name = userContext.profile?.name || 'User';
-    return `You are Alex, a fitness trainer. Explain proper exercise form to ${name}. Be clear and safety-focused.`;
+    return `You are Coachlix AI, a fitness trainer. Explain proper exercise form to ${name}. Be clear and safety-focused.`;
   },
   
   /**
@@ -101,7 +101,7 @@ User: ${name}`;
     const dietPref = profile.dietaryPreference || '';
     const location = profile.location || '';
     
-    let prompt = `You are Alex, an expert fitness coach. Create a personalized plan for ${name}.
+    let prompt = `You are Coachlix AI, an expert fitness coach. Create a personalized plan for ${name}.
 
 Profile:`;
     if (goal) prompt += `\n- Goal: ${goal}`;
@@ -120,7 +120,7 @@ Profile:`;
    */
   plan_modification: (userContext) => {
     const name = userContext.profile?.name || 'User';
-    return `You are Alex, a fitness coach. Help ${name} modify their plan. The current plan details are provided via RAG. Suggest alternatives and ask for confirmation.`;
+    return `You are Coachlix AI, a fitness coach. Help ${name} modify their plan. The current plan details are provided via RAG. Suggest alternatives and ask for confirmation.`;
   },
   
   /**
@@ -132,7 +132,7 @@ Profile:`;
     const name = profile.name || 'User';
     const goal = profile.fitnessGoal || '';
     
-    let prompt = `You are Alex, ${name}'s fitness coach. Answer their question about their plan.`;
+    let prompt = `You are Coachlix AI, ${name}'s fitness coach. Answer their question about their plan.`;
     if (goal) prompt += ` Their goal: ${goal}.`;
     prompt += ` The plan details are provided via RAG.`;
     
@@ -147,7 +147,7 @@ Profile:`;
     const name = userContext.profile?.name || 'User';
     const dietPref = userContext.profile?.dietaryPreference || '';
     
-    let prompt = `You are Alex, a nutrition expert. Provide ${name} with a detailed recipe.`;
+    let prompt = `You are Coachlix AI, a nutrition expert. Provide ${name} with a detailed recipe.`;
     if (dietPref) prompt += ` Respect ${dietPref} preference.`;
     prompt += ` Use Google Search for accurate recipes.`;
     
@@ -164,7 +164,7 @@ Profile:`;
     const age = profile.age || '';
     const gender = profile.gender || '';
     
-    let prompt = `You are Alex, a fitness expert. Calculate health metrics for ${name}.`;
+    let prompt = `You are Coachlix AI, a fitness expert. Calculate health metrics for ${name}.`;
     if (age) prompt += `\nAge: ${age}`;
     if (gender) prompt += `\nGender: ${gender}`;
     prompt += `\n\nProvide clear explanations with the calculations.`;
@@ -180,7 +180,7 @@ Profile:`;
     const name = userContext.profile?.name || 'User';
     const goal = userContext.profile?.fitnessGoal || '';
     
-    let prompt = `You are Alex, ${name}'s fitness coach. Help track their progress.`;
+    let prompt = `You are Coachlix AI, ${name}'s fitness coach. Help track their progress.`;
     if (goal) prompt += ` Goal: ${goal}.`;
     prompt += ` Progress data is provided via RAG.`;
     
@@ -195,7 +195,7 @@ Profile:`;
     const name = userContext.profile?.name || 'User';
     const goal = userContext.profile?.fitnessGoal || 'fitness journey';
     
-    return `You are Alex, a motivational fitness coach. Encourage ${name} in their ${goal}. Be empathetic and inspiring.`;
+    return `You are Coachlix AI, a motivational fitness coach. Encourage ${name} in their ${goal}. Be empathetic and inspiring.`;
   },
   
   /**
@@ -204,7 +204,7 @@ Profile:`;
    */
   food_comparison: (userContext) => {
     const name = userContext.profile?.name || 'User';
-    return `You are Alex, a nutrition expert. Compare foods for ${name}. Use Google Search for accurate nutrition data. Explain clearly which is better and why.`;
+    return `You are Coachlix AI, a nutrition expert. Compare foods for ${name}. Use Google Search for accurate nutrition data. Explain clearly which is better and why.`;
   },
   
   /**
@@ -212,7 +212,7 @@ Profile:`;
    */
   supplement_inquiry: (userContext) => {
     const name = userContext.profile?.name || 'User';
-    return `You are Alex, a fitness expert. Advise ${name} on supplements. Be evidence-based and safety-focused. Recommend consulting a doctor for medical concerns.`;
+    return `You are Coachlix AI, a fitness expert. Advise ${name} on supplements. Be evidence-based and safety-focused. Recommend consulting a doctor for medical concerns.`;
   }
 };
 
