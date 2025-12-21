@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import useUserProfileStore from "@/stores/useUserProfileStore";
 import { useAuthContext } from "../../auth/AuthContext";
+import { useRouter } from "next/navigation";
 import { User, Bell, Settings } from "lucide-react";
 
 // Import components
@@ -13,6 +14,7 @@ import ErrorMessage from "./ErrorMessage";
 
 export default function ProfilePage() {
   const { user: authUser, loading: authLoading } = useAuthContext();
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [tempData, setTempData] = useState(null);
@@ -45,12 +47,28 @@ export default function ProfilePage() {
 
         if (hasValidProfile() && profileData) {
           console.log("📦 Using existing profile data from store");
+          
+          // Check if needs onboarding
+          if (profileData.needsOnboarding) {
+            console.log("🔀 Redirecting to onboarding...");
+            router.push('/onboarding');
+            return;
+          }
+          
           setTempData(profileData);
           return;
         }
 
         if (!profileLoading) {
           const profile = await fetchUserProfile(userId);
+          
+          // Check if needs onboarding
+          if (profile?.needsOnboarding) {
+            console.log("🔀 Redirecting to onboarding...");
+            router.push('/onboarding');
+            return;
+          }
+          
           setTempData(profile);
         }
       } catch (err) {
@@ -67,6 +85,7 @@ export default function ProfilePage() {
     profileError,
     clearError,
     profileLoading,
+    router,
   ]);
 
   // Handler functions
@@ -118,6 +137,19 @@ export default function ProfilePage() {
     }));
   };
 
+  // Retry function for error state
+  const handleRetry = async () => {
+    if (!authUser) return;
+    
+    clearError();
+    try {
+      const userId = authUser.uid;
+      await fetchUserProfile(userId, { force: true });
+    } catch (err) {
+      console.error("Retry failed:", err);
+    }
+  };
+
   // Loading and error states
   const isLoading = authLoading || profileLoading;
   
@@ -126,7 +158,7 @@ export default function ProfilePage() {
   }
 
   if (profileError) {
-    return <ErrorMessage message={profileError} />;
+    return <ErrorMessage message={profileError} onRetry={handleRetry} />;
   }
 
   if (!profileData) {

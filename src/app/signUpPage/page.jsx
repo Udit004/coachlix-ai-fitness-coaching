@@ -66,7 +66,8 @@ export default function SignUpPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       await updateProfile(userCredential.user, { displayName: formData.fullName });
       setSignupSuccess(true);
-      setTimeout(() => router.push('/'), 2000);
+      // Redirect to onboarding instead of home
+      setTimeout(() => router.push('/onboarding'), 2000);
     } catch (error) {
       setErrors({ submit: error.message || 'Signup failed. Try again.' });
     } finally {
@@ -78,7 +79,8 @@ export default function SignUpPage() {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      router.push('/');
+      // Redirect to onboarding for new Google users
+      router.push('/onboarding');
     } catch (error) {
       setErrors({ submit: error.message || 'Google signup failed.' });
     }
