@@ -56,7 +56,7 @@ export async function GET(request) {
     console.log('❌ Cache miss - fetching from database');
 
     let user = await User.findOne({ firebaseUid: userId });
-    console.log('👤 User found in DB:', user ? 'Yes' : 'No');
+    console.log('👤 User found by firebaseUid:', user ? 'Yes' : 'No');
 
     // Get the user's email from the Firebase token
     let userEmail = null;
@@ -70,31 +70,73 @@ export async function GET(request) {
       console.log('📧 User email:', userEmail);
     }
 
+    // If user doesn't exist by firebaseUid, check by email first
     if (!user && userEmail) {
-      user = new User({
-        firebaseUid: userId,
-        name: "New User",
-        email: userEmail,
-        fitnessGoal: "Weight Loss",
-        experience: "Beginner",
-        stats: {
-          workoutsCompleted: 0,
-          daysStreak: 0,
-          caloriesBurned: 0,
-          totalHours: 0,
-        },
-        achievements: [
-          {
-            title: "Welcome!",
-            description: "Welcome to your fitness journey",
-            icon: "Star",
-            earned: true,
-            earnedDate: new Date(),
+      console.log('🔍 Checking for existing user by email...');
+      user = await User.findOne({ email: userEmail.toLowerCase() });
+      
+      if (user) {
+        console.log('✅ Found existing user by email, updating firebaseUid');
+        user.firebaseUid = userId;
+        await user.save();
+      } else {
+        console.log('🆕 Creating minimal user profile - onboarding required');
+        // Create minimal profile - user will complete in onboarding
+        user = new User({
+          firebaseUid: userId,
+          name: "New User",
+          email: userEmail.toLowerCase(),
+          gender: "other", // Temporary default - will be updated in onboarding
+          fitnessGoal: "Weight Loss",
+          experience: "Beginner",
+          activityLevel: "moderately active",
+          stats: {
+            workoutsCompleted: 0,
+            daysStreak: 0,
+            caloriesBurned: 0,
+            totalHours: 0,
           },
-        ],
-        recentActivities: [],
-      });
-      await user.save();
+          achievements: [
+            {
+              title: "Welcome!",
+              description: "Welcome to your fitness journey",
+              icon: "Star",
+              earned: true,
+              earnedDate: new Date(),
+            },
+          ],
+          recentActivities: [],
+          profileCompleted: false, // Flag to check if onboarding is done
+        });
+        
+        try {
+          await user.save();
+          console.log('✅ Minimal profile created, needs onboarding');
+        } catch (saveError) {
+          console.error('❌ Error creating profile:', saveError);
+          
+          // Handle duplicate key error
+          if (saveError.code === 11000) {
+            console.log('🔄 Duplicate key, trying to find existing user...');
+            user = await User.findOne({ email: userEmail.toLowerCase() });
+            if (user) {
+              user.firebaseUid = userId;
+              await user.save();
+            }
+          }
+          
+          if (!user) {
+            return NextResponse.json(
+              { 
+                success: false, 
+                error: "Failed to create user profile",
+                details: saveError.message 
+              },
+              { status: 500 }
+            );
+          }
+        }
+      }
     }
 
     const profileData = {
@@ -116,6 +158,12 @@ export async function GET(request) {
       stats: user.stats,
       achievements: user.achievements,
       recentActivities: user.recentActivities,
+      profileCompleted: user.profileCompleted !== false, // Check if onboarding is completed
+      // More accurate check - needs onboarding if profile is not completed OR has default values
+      needsOnboarding: 
+        user.profileCompleted === false || 
+        (user.name === "New User" && (!user.location || !user.location.trim())) ||
+        (user.gender === "other" && user.name === "New User"),
     };
 
     // Cache the profile data in Upstash Redis
@@ -220,6 +268,7 @@ export async function PUT(request) {
       targetWeight,
       bio,
       updatedAt: new Date(),
+      profileCompleted: true, // Mark profile as completed when user updates it
     };
 
     // Analyze profile changes

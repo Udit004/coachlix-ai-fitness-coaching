@@ -12,25 +12,69 @@ const getCurrentUserToken = async () => {
 };
 
 export const userProfileService = {
-  // Get user profile
-  getUserProfile: async (userId) => {
-    try {
-      // Fetch from API directly (Redis caching should be handled server-side)
-      const token = await getCurrentUserToken();
-      const response = await fetch('/api/userProfile', {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch profile');
+  // Get user profile with retry logic
+  getUserProfile: async (userId, retries = 2) => {
+    let lastError;
+    
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        if (attempt > 0) {
+          console.log(`🔄 Retry attempt ${attempt}/${retries} for user profile`);
+          // Wait before retry (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        }
+        
+        // Fetch from API directly (Redis caching should be handled server-side)
+        const token = await getCurrentUserToken();
+        
+        if (!token) {
+          throw new Error('No authentication token available. Please log in again.');
+        }
+        
+        const response = await fetch('/api/userProfile', {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+        });
+        
+        // Handle different HTTP status codes
+        if (response.status === 401) {
+          throw new Error('Your session has expired. Please log in again.');
+        }
+        
+        if (response.status === 404) {
+          throw new Error('Profile not found. Creating a new profile...');
+        }
+        
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.error || data.details || 'Failed to fetch profile');
+        }
+        
+        console.log('✅ Profile loaded successfully');
+        return data.data;
+        
+      } catch (error) {
+        console.error(`❌ Error fetching profile (attempt ${attempt + 1}):`, error);
+        lastError = error;
+        
+        // Don't retry on authentication errors
+        if (error.message.includes('authentication') || 
+            error.message.includes('session') ||
+            error.message.includes('log in')) {
+          break;
+        }
       }
-      
-      return data.data;
-    } catch (error) {
-      console.error('Error in getUserProfile service:', error);
-      throw error;
     }
+    
+    // If all retries failed, throw the last error
+    throw lastError;
   },
 
   // Update user profile
