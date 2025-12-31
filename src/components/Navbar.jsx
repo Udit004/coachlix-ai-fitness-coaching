@@ -175,7 +175,7 @@ export default function Navbar() {
           {/* Desktop Auth & Theme Toggle - Hidden on tablet and below */}
           <div className="hidden lg:flex items-center gap-4 relative">
             {/* Theme Toggle Button */}
-            <button
+            {/* <button
               onClick={toggleTheme}
               className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 transition-all duration-200 border border-gray-200 dark:border-gray-700"
               aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
@@ -186,7 +186,7 @@ export default function Navbar() {
               ) : (
                 <Moon className="h-5 w-5" />
               )}
-            </button>
+            </button> */}
 
             {!loading && !user && (
               <>
