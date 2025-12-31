@@ -122,14 +122,14 @@ export default function Navbar() {
       <nav className="bg-white/95 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2">
               <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
                 <img src="/assets/CoachlixLogo.png" alt="Logo" className="h-6 w-6" />
               </div>
               <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Coachlix
               </span>
-            </div>
+            </Link>
             {/* Loading skeleton for theme toggle */}
             <div className="w-10 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
           </div>
@@ -143,14 +143,14 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 py-2 md:py-2 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <div className="flex items-center space-x-2">
+          <Link href="/" className="flex items-center space-x-2 cursor-pointer">
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
                 <img src="/assets/CoachlixLogo.png" alt="Logo" className="h-6 w-6" />
             </div>
             <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               Coachlix
             </span>
-          </div>
+          </Link>
 
           {/* Desktop Navigation - Hidden on tablet and below */}
           <div className="hidden lg:flex items-center space-x-8">
