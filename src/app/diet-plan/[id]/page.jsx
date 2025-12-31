@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import DietDayCard from "./DietDayCard";
+import DietPlanActions from "./DietPlanActions";
 import useDietPlanStore from "@/stores/useDietPlanStore";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -31,6 +32,9 @@ export default function SingleDietPlanPage() {
   const authResult = useAuth();
   const user = authResult?.user || null;
   const authLoading = authResult?.loading || false;
+
+  // Local state for day visibility
+  const [showAllDays, setShowAllDays] = React.useState(false);
 
   // UI state from Zustand
   const {
@@ -259,9 +263,9 @@ export default function SingleDietPlanPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col space-y-4 mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
           {/* Top row with back button and title */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/diet-plan")}
               className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
@@ -276,86 +280,101 @@ export default function SingleDietPlanPage() {
                 {dietPlan.description || `${dietPlan.goal} diet plan`}
               </p>
             </div>
+            
+            {/* Action buttons - Mobile (right side of header) */}
+            <div className="lg:hidden flex-shrink-0">
+              <DietPlanActions
+                onClone={handleClonePlan}
+                onEdit={() => router.push(`/diet-plan/${id}/edit`)}
+                onDelete={handleDeletePlan}
+                isCloning={clonePlanMutation.isPending}
+                isDeleting={deletePlanMutation.isPending}
+              />
+            </div>
           </div>
 
-          {/* Action buttons row */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <button
-              onClick={handleClonePlan}
-              disabled={clonePlanMutation.isPending}
-              className="flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors text-sm"
-            >
-              <Copy className="h-4 w-4" />
-              <span>{clonePlanMutation.isPending ? "Cloning..." : "Clone"}</span>
-            </button>
-            <button
-              onClick={() => router.push(`/diet-plan/${id}/edit`)}
-              className="flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
-            >
-              <Edit className="h-4 w-4" />
-              <span>Edit</span>
-            </button>
-            <button
-              onClick={handleDeletePlan}
-              disabled={deletePlanMutation.isPending}
-              className="flex items-center justify-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-lg transition-colors text-sm"
-            >
-              <Trash2 className="h-4 w-4" />
-              <span>{deletePlanMutation.isPending ? "Deleting..." : "Delete"}</span>
-            </button>
+          {/* Action buttons - Desktop */}
+          <div className="hidden lg:flex flex-shrink-0">
+            <DietPlanActions
+              onClone={handleClonePlan}
+              onEdit={() => router.push(`/diet-plan/${id}/edit`)}
+              onDelete={handleDeletePlan}
+              isCloning={clonePlanMutation.isPending}
+              isDeleting={deletePlanMutation.isPending}
+            />
           </div>
         </div>
 
         {/* Plan Overview */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-6 shadow-sm mb-8">
           {/* Main Stats Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-            <div className="text-center">
-              <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-green-100 dark:bg-green-900 rounded-xl mb-2 sm:mb-3 mx-auto">
-                <Target className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
+          <div className="grid grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-4 lg:gap-6">
+            {/* Goal */}
+            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-2 sm:p-3 lg:p-4">
+              <div className="flex flex-col lg:flex-row items-center lg:items-start gap-2 sm:gap-3 lg:gap-4">
+                <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 lg:w-14 lg:h-14 bg-green-100 dark:bg-green-900 rounded-xl flex-shrink-0">
+                  <Target className="h-4 w-4 sm:h-5 sm:w-5 lg:h-7 lg:w-7 text-green-600 dark:text-green-400" />
+                </div>
+                <div className="text-center lg:text-left flex-1 min-w-0">
+                  <p className="text-sm sm:text-lg lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
+                    {dietPlan.goal}
+                  </p>
+                  <p className="text-gray-600 dark:text-gray-400 text-[10px] sm:text-xs lg:text-sm mt-0.5">
+                    Goal
+                  </p>
+                </div>
               </div>
-              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
-                {dietPlan.goal}
-              </p>
-              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
-                Goal
-              </p>
             </div>
 
-            <div className="text-center">
-              <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 dark:bg-blue-900 rounded-xl mb-2 sm:mb-3 mx-auto">
-                <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
+            {/* Avg Calories */}
+            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-2 sm:p-3 lg:p-4">
+              <div className="flex flex-col lg:flex-row items-center lg:items-start gap-2 sm:gap-3 lg:gap-4">
+                <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 lg:w-14 lg:h-14 bg-blue-100 dark:bg-blue-900 rounded-xl flex-shrink-0">
+                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 lg:h-7 lg:w-7 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="text-center lg:text-left flex-1 min-w-0">
+                  <p className="text-sm sm:text-lg lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
+                    {averageCalories}
+                  </p>
+                  <p className="text-gray-600 dark:text-gray-400 text-[10px] sm:text-xs lg:text-sm mt-0.5">
+                    Avg Cal/Day
+                  </p>
+                </div>
               </div>
-              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
-                {averageCalories}
-              </p>
-              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
-                Avg Calories/Day
-              </p>
             </div>
 
-            <div className="text-center">
-              <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 dark:bg-purple-900 rounded-xl mb-2 sm:mb-3 mx-auto">
-                <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 dark:text-purple-400" />
+            {/* Days Planned */}
+            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-2 sm:p-3 lg:p-4">
+              <div className="flex flex-col lg:flex-row items-center lg:items-start gap-2 sm:gap-3 lg:gap-4">
+                <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 lg:w-14 lg:h-14 bg-purple-100 dark:bg-purple-900 rounded-xl flex-shrink-0">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 lg:h-7 lg:w-7 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div className="text-center lg:text-left flex-1 min-w-0">
+                  <p className="text-sm sm:text-lg lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
+                    {dietPlan.days?.length || 0}
+                  </p>
+                  <p className="text-gray-600 dark:text-gray-400 text-[10px] sm:text-xs lg:text-sm mt-0.5">
+                    Days
+                  </p>
+                </div>
               </div>
-              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
-                {dietPlan.days?.length || 0}
-              </p>
-              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
-                Days Planned
-              </p>
             </div>
 
-            <div className="text-center">
-              <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 dark:bg-orange-900 rounded-xl mb-2 sm:mb-3 mx-auto">
-                <Target className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600 dark:text-orange-400" />
+            {/* Duration */}
+            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-2 sm:p-3 lg:p-4">
+              <div className="flex flex-col lg:flex-row items-center lg:items-start gap-2 sm:gap-3 lg:gap-4">
+                <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 lg:w-14 lg:h-14 bg-orange-100 dark:bg-orange-900 rounded-xl flex-shrink-0">
+                  <Target className="h-4 w-4 sm:h-5 sm:w-5 lg:h-7 lg:w-7 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div className="text-center lg:text-left flex-1 min-w-0">
+                  <p className="text-sm sm:text-lg lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
+                    {dietPlan.duration}
+                  </p>
+                  <p className="text-gray-600 dark:text-gray-400 text-[10px] sm:text-xs lg:text-sm mt-0.5">
+                    Duration
+                  </p>
+                </div>
               </div>
-              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
-                {dietPlan.duration}
-              </p>
-              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
-                Duration (Days)
-              </p>
             </div>
           </div>
 
@@ -364,47 +383,56 @@ export default function SingleDietPlanPage() {
             <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
               Daily Macro Targets
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30 rounded-lg p-3 sm:p-4 text-center">
-                <div className="flex items-center justify-center w-8 h-8 bg-red-100 dark:bg-red-900 rounded-lg mb-2 mx-auto">
-                  <span className="text-red-600 dark:text-red-400 font-bold text-sm">
-                    P
-                  </span>
+            <div className="grid grid-cols-3 gap-2 sm:gap-4">
+              {/* Protein */}
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30 rounded-lg p-2 sm:p-4">
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-red-100 dark:bg-red-900 rounded-lg mb-1.5 sm:mb-2">
+                    <span className="text-red-600 dark:text-red-400 font-bold text-xs sm:text-sm">
+                      P
+                    </span>
+                  </div>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-red-700 dark:text-red-300">
+                    {dietPlan.targetProtein || 0}<span className="text-sm sm:text-base">g</span>
+                  </p>
+                  <p className="text-red-600 dark:text-red-400 text-xs sm:text-sm mt-0.5">
+                    Protein
+                  </p>
                 </div>
-                <p className="text-base sm:text-lg font-semibold text-red-700 dark:text-red-300">
-                  {dietPlan.targetProtein || 0}g
-                </p>
-                <p className="text-red-600 dark:text-red-400 text-xs sm:text-sm">
-                  Protein
-                </p>
               </div>
 
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800/30 rounded-lg p-3 sm:p-4 text-center">
-                <div className="flex items-center justify-center w-8 h-8 bg-yellow-100 dark:bg-yellow-900 rounded-lg mb-2 mx-auto">
-                  <span className="text-yellow-600 dark:text-yellow-400 font-bold text-sm">
-                    C
-                  </span>
+              {/* Carbs */}
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800/30 rounded-lg p-2 sm:p-4">
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-yellow-100 dark:bg-yellow-900 rounded-lg mb-1.5 sm:mb-2">
+                    <span className="text-yellow-600 dark:text-yellow-400 font-bold text-xs sm:text-sm">
+                      C
+                    </span>
+                  </div>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-700 dark:text-yellow-300">
+                    {dietPlan.targetCarbs || 0}<span className="text-sm sm:text-base">g</span>
+                  </p>
+                  <p className="text-yellow-600 dark:text-yellow-400 text-xs sm:text-sm mt-0.5">
+                    Carbs
+                  </p>
                 </div>
-                <p className="text-base sm:text-lg font-semibold text-yellow-700 dark:text-yellow-300">
-                  {dietPlan.targetCarbs || 0}g
-                </p>
-                <p className="text-yellow-600 dark:text-yellow-400 text-xs sm:text-sm">
-                  Carbs
-                </p>
               </div>
 
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 rounded-lg p-3 sm:p-4 text-center">
-                <div className="flex items-center justify-center w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg mb-2 mx-auto">
-                  <span className="text-blue-600 dark:text-blue-400 font-bold text-sm">
-                    F
-                  </span>
+              {/* Fats */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 rounded-lg p-2 sm:p-4">
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 dark:bg-blue-900 rounded-lg mb-1.5 sm:mb-2">
+                    <span className="text-blue-600 dark:text-blue-400 font-bold text-xs sm:text-sm">
+                      F
+                    </span>
+                  </div>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-700 dark:text-blue-300">
+                    {dietPlan.targetFats || 0}<span className="text-sm sm:text-base">g</span>
+                  </p>
+                  <p className="text-blue-600 dark:text-blue-400 text-xs sm:text-sm mt-0.5">
+                    Fats
+                  </p>
                 </div>
-                <p className="text-base sm:text-lg font-semibold text-blue-700 dark:text-blue-300">
-                  {dietPlan.targetFats || 0}g
-                </p>
-                <p className="text-blue-600 dark:text-blue-400 text-xs sm:text-sm">
-                  Fats
-                </p>
               </div>
             </div>
           </div>
@@ -420,27 +448,72 @@ export default function SingleDietPlanPage() {
               <button
                 onClick={handleAddDay}
                 disabled={addDayMutation.isPending}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 disabled:opacity-50 text-white rounded-lg transition-all"
               >
                 <Plus className="h-4 w-4" />
-                <span>{addDayMutation.isPending ? "Adding..." : "Add Day"}</span>
+                <span className="hidden sm:inline">{addDayMutation.isPending ? "Adding..." : "Add Day"}</span>
+                <span className="sm:hidden">Add</span>
               </button>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {dietPlan.days.map((day) => (
+            {/* Mobile View - Show limited days with expand button */}
+            <div className="lg:hidden">
+              <div className="flex flex-wrap gap-2">
+                {dietPlan.days
+                  .slice(0, showAllDays ? dietPlan.days.length : 6)
+                  .map((day) => (
+                    <button
+                      key={day.dayNumber}
+                      onClick={() => setActiveDay(day.dayNumber)}
+                      className={`px-4 py-2 rounded-lg transition-colors ${
+                        activeDay === day.dayNumber
+                          ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                          : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                      }`}
+                    >
+                      Day {day.dayNumber}
+                    </button>
+                  ))}
+              </div>
+              
+              {dietPlan.days.length > 6 && (
                 <button
-                  key={day.dayNumber}
-                  onClick={() => setActiveDay(day.dayNumber)}
-                  className={`px-4 py-2 rounded-lg transition-colors ${
-                    activeDay === day.dayNumber
-                      ? "bg-green-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                  }`}
+                  onClick={() => setShowAllDays(!showAllDays)}
+                  className="mt-3 w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors text-sm font-medium"
                 >
-                  Day {day.dayNumber}
+                  {showAllDays ? "Show Less" : `Show All ${dietPlan.days.length} Days`}
                 </button>
-              ))}
+              )}
+            </div>
+
+            {/* Desktop View - Show all or with expand if more than 14 */}
+            <div className="hidden lg:block">
+              <div className="flex flex-wrap gap-2">
+                {dietPlan.days
+                  .slice(0, showAllDays || dietPlan.days.length <= 14 ? dietPlan.days.length : 14)
+                  .map((day) => (
+                    <button
+                      key={day.dayNumber}
+                      onClick={() => setActiveDay(day.dayNumber)}
+                      className={`px-4 py-2 rounded-lg transition-colors ${
+                        activeDay === day.dayNumber
+                          ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                          : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                      }`}
+                    >
+                      Day {day.dayNumber}
+                    </button>
+                  ))}
+              </div>
+              
+              {dietPlan.days.length > 14 && (
+                <button
+                  onClick={() => setShowAllDays(!showAllDays)}
+                  className="mt-3 px-6 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors text-sm font-medium"
+                >
+                  {showAllDays ? "Show Less" : `Show All ${dietPlan.days.length} Days`}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -475,7 +548,7 @@ export default function SingleDietPlanPage() {
                 <button
                   onClick={handleAddDay}
                   disabled={addDayMutation.isPending}
-                  className="inline-flex items-center space-x-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-xl transition-colors"
+                  className="inline-flex items-center space-x-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-xl transition-colors"
                 >
                   <Plus className="h-5 w-5" />
                   <span>{addDayMutation.isPending ? "Adding..." : "Add First Day"}</span>

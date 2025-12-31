@@ -5,6 +5,7 @@ import { Edit, Trash2, Save, X } from 'lucide-react';
 
 export default function FoodItemCard({ item, itemIndex, onUpdate, onDelete }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isNameExpanded, setIsNameExpanded] = useState(false);
   const [editData, setEditData] = useState({
     name: item.name || '',
     calories: item.calories || 0,
@@ -82,7 +83,7 @@ export default function FoodItemCard({ item, itemIndex, onUpdate, onDelete }) {
               type="text"
               value={editData.quantity}
               onChange={(e) => setEditData({ ...editData, quantity: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
               placeholder="e.g., 150g, 1 cup, 2 pieces"
             />
           </div>
@@ -96,7 +97,7 @@ export default function FoodItemCard({ item, itemIndex, onUpdate, onDelete }) {
               type="number"
               value={editData.calories}
               onChange={(e) => setEditData({ ...editData, calories: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
               min="0"
               step="0.1"
               required
@@ -111,7 +112,7 @@ export default function FoodItemCard({ item, itemIndex, onUpdate, onDelete }) {
               type="number"
               value={editData.protein}
               onChange={(e) => setEditData({ ...editData, protein: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
               min="0"
               step="0.1"
             />
@@ -125,7 +126,7 @@ export default function FoodItemCard({ item, itemIndex, onUpdate, onDelete }) {
               type="number"
               value={editData.carbs}
               onChange={(e) => setEditData({ ...editData, carbs: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
               min="0"
               step="0.1"
             />
@@ -139,7 +140,7 @@ export default function FoodItemCard({ item, itemIndex, onUpdate, onDelete }) {
               type="number"
               value={editData.fats}
               onChange={(e) => setEditData({ ...editData, fats: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
               min="0"
               step="0.1"
             />
@@ -153,7 +154,7 @@ export default function FoodItemCard({ item, itemIndex, onUpdate, onDelete }) {
             <textarea
               value={editData.notes}
               onChange={(e) => setEditData({ ...editData, notes: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm resize-none"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm resize-none"
               rows={2}
               maxLength={200}
               placeholder="Any additional notes about preparation, brand, etc."
@@ -185,24 +186,39 @@ export default function FoodItemCard({ item, itemIndex, onUpdate, onDelete }) {
     );
   }
 
+  const isLongName = item.name && item.name.length > 35;
+  const shouldTruncate = isLongName && !isNameExpanded;
+
   return (
     <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-3 group hover:shadow-sm transition-shadow">
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           {/* Food Name & Quantity */}
-          <div className="flex items-center space-x-2 mb-2">
-            <h4 className="font-medium text-gray-900 dark:text-white truncate">
-              {item.name}
-            </h4>
-            {item.quantity && item.quantity !== '1 serving' && (
-              <span className="text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-full shrink-0">
-                {item.quantity}
-              </span>
+          <div className="mb-2">
+            <div className="flex items-start gap-2 flex-wrap">
+              <h4 className={`font-medium text-gray-900 dark:text-white text-sm sm:text-base ${
+                shouldTruncate ? 'line-clamp-1' : ''
+              }`}>
+                {item.name}
+              </h4>
+              {item.quantity && item.quantity !== '1 serving' && (
+                <span className="text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded-full shrink-0">
+                  {item.quantity}
+                </span>
+              )}
+            </div>
+            {isLongName && (
+              <button
+                onClick={() => setIsNameExpanded(!isNameExpanded)}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mt-1 font-medium"
+              >
+                {isNameExpanded ? 'Show less' : 'Show more'}
+              </button>
             )}
           </div>
 
           {/* Macros */}
-          <div className="flex items-center space-x-4 text-sm">
+          <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-xs sm:text-sm">
             <div className="flex items-center space-x-1">
               <span className="font-semibold text-gray-900 dark:text-white">
                 {Math.round(item.calories || 0)}
@@ -212,8 +228,8 @@ export default function FoodItemCard({ item, itemIndex, onUpdate, onDelete }) {
             
             {(item.protein > 0 || item.carbs > 0 || item.fats > 0) && (
               <>
-                <div className="text-gray-400">•</div>
-                <div className="flex items-center space-x-2 text-xs">
+                <div className="text-gray-400 hidden sm:block">•</div>
+                <div className="flex items-center flex-wrap gap-2 text-xs">
                   {item.protein > 0 && (
                     <span className="text-red-600 dark:text-red-400">
                       P: {Math.round(item.protein)}g
@@ -236,24 +252,24 @@ export default function FoodItemCard({ item, itemIndex, onUpdate, onDelete }) {
 
           {/* Notes */}
           {item.notes && (
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 italic">
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1.5 italic">
               {item.notes}
             </p>
           )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity ml-3">
+        {/* Action Buttons - Always visible on mobile, hover on desktop */}
+        <div className="flex items-center space-x-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
           <button
             onClick={() => setIsEditing(true)}
-            className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors"
+            className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors"
             title="Edit food item"
           >
             <Edit className="h-4 w-4" />
           </button>
           <button
             onClick={onDelete}
-            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+            className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
             title="Delete food item"
           >
             <Trash2 className="h-4 w-4" />

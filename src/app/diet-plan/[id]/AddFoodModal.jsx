@@ -415,7 +415,7 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                       setFormData({ ...formData, quantity: e.target.value })
                     }
                     disabled={isSubmitting}
-                    className="w-full px-3 py-2.5 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 text-sm sm:text-base"
+                      className="w-full px-3 py-2.5 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 text-sm sm:text-base"
                     placeholder="e.g., 150g, 1 cup, 2 pieces"
                   />
                 </div>
@@ -433,7 +433,7 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                         setFormData({ ...formData, calories: e.target.value })
                       }
                       disabled={isSubmitting}
-                      className="w-full px-3 py-2.5 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 text-sm sm:text-base"
+                      className="w-full px-3 py-2.5 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 text-sm sm:text-base"
                       min="0"
                       step="0.1"
                       placeholder="e.g., 250"
@@ -452,7 +452,7 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                         setFormData({ ...formData, protein: e.target.value })
                       }
                       disabled={isSubmitting}
-                      className="w-full px-3 py-2.5 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 text-sm sm:text-base"
+                      className="w-full px-3 py-2.5 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 text-sm sm:text-base"
                       min="0"
                       step="0.1"
                       placeholder="e.g., 25"
@@ -470,7 +470,7 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                         setFormData({ ...formData, carbs: e.target.value })
                       }
                       disabled={isSubmitting}
-                      className="w-full px-3 py-2.5 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 text-sm sm:text-base"
+                      className="w-full px-3 py-2.5 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 text-sm sm:text-base"
                       min="0"
                       step="0.1"
                       placeholder="e.g., 15"
@@ -488,7 +488,7 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                         setFormData({ ...formData, fats: e.target.value })
                       }
                       disabled={isSubmitting}
-                      className="w-full px-3 py-2.5 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 text-sm sm:text-base"
+                      className="w-full px-3 py-2.5 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 text-sm sm:text-base"
                       min="0"
                       step="0.1"
                       placeholder="e.g., 10"
@@ -507,7 +507,7 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                       setFormData({ ...formData, notes: e.target.value })
                     }
                     disabled={isSubmitting}
-                    className="w-full px-3 py-2.5 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none disabled:opacity-50 text-sm sm:text-base"
+                    className="w-full px-3 py-2.5 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none disabled:opacity-50 text-sm sm:text-base"
                     rows={3}
                     maxLength={200}
                     placeholder="Any additional notes about preparation, brand, etc."
@@ -529,7 +529,7 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onKeyPress={handleSearchKeyPress}
                       disabled={isSubmitting}
-                      className="w-full pl-9 sm:pl-10 pr-3 py-2.5 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 text-sm sm:text-base"
+                      className="w-full pl-9 sm:pl-10 pr-3 py-2.5 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 text-sm sm:text-base"
                       placeholder="Search foods..."
                     />
                     <Search className="absolute left-2.5 sm:left-3 top-3 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
@@ -539,7 +539,7 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                     disabled={
                       isSearching || !searchQuery.trim() || isSubmitting
                     }
-                    className="px-4 sm:px-6 py-2.5 sm:py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-medium text-sm sm:text-base"
+                    className="px-4 sm:px-6 py-2.5 sm:py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg transition-colors font-medium text-sm sm:text-base"
                   >
                     {isSearching ? "Searching..." : "Search"}
                   </button>
@@ -817,7 +817,7 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                 type="submit"
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-medium text-sm sm:text-base"
+                className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg transition-colors font-medium text-sm sm:text-base"
               >
                 {isSubmitting ? "Adding..." : "Add Food"}
               </button>
