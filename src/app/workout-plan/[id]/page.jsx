@@ -283,18 +283,9 @@ export default function WorkoutPlanDetailPage() {
               </div>
             </div>
             <div className="hidden md:flex items-center space-x-3">
-              <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <Target className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Goal</p>
-                <p className="font-semibold text-gray-900 dark:text-white">
-                  {plan.stats?.completionRate || 0}%
-                </p>
-              </div>
               <button
                 onClick={() => setShowProgress(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-colors cursor-pointer"
               >
                 <TrendingUp className="h-4 w-4" />
                 <span>Progress</span>
@@ -302,7 +293,7 @@ export default function WorkoutPlanDetailPage() {
               <button
                 onClick={() => setShowEditPlan(true)}
                 disabled={updatePlanMutation.isLoading}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700 disabled:bg-blue-400 text-white rounded-lg transition-colors cursor-pointer"
               >
                 <Edit className="h-4 w-4" />
                 <span>
