@@ -316,7 +316,7 @@ export default function DietDayCard({ day, planId, onUpdate }) {
             {!isEditingNotes ? (
               <button
                 onClick={() => setIsEditingNotes(true)}
-                className="text-blue-300 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-500 hover:bg-blue-700 rounded-md text-xs sm:text-sm cursor-pointer transition-colors"
+                className="text-blue-300 w-26 md:w-16 item-center px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-md text-xs sm:text-sm cursor-pointer transition-colors"
               >
                 Edit
               </button>
@@ -324,7 +324,7 @@ export default function DietDayCard({ day, planId, onUpdate }) {
               <div className="flex space-x-2">
                 <button
                   onClick={handleUpdateNotes}
-                  className="text-white px-3 sm:px-4 py-1.5 sm:py-2 bg-green-600 hover:bg-green-700 rounded-md text-xs sm:text-sm cursor-pointer transition-colors"
+                  className="text-white w-26 md:w-16 px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-md text-xs sm:text-sm cursor-pointer transition-colors"
                 >
                   Save
                 </button>
@@ -333,7 +333,7 @@ export default function DietDayCard({ day, planId, onUpdate }) {
                     setIsEditingNotes(false);
                     setDayNotes(day.notes || '');
                   }}
-                  className="text-white px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500 hover:bg-red-700 rounded-md text-xs sm:text-sm cursor-pointer transition-colors"
+                  className="text-white w-26 md:w-16 px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500 hover:bg-red-700 rounded-md text-xs sm:text-sm item-center justify-center cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
