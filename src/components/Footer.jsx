@@ -1,67 +1,79 @@
-import { Dumbbell, Instagram, Linkedin, Youtube, Heart } from 'lucide-react';
+import { Dumbbell, Instagram, Linkedin, Youtube, Heart } from "lucide-react";
+import Image from "next/image";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   const footerLinks = {
     company: [
-      { name: 'About', href: '/about' },
-      { name: 'Contact', href: '/contact' },
-      { name: 'Careers', href: '/careers' }
+      { name: "About", href: "/about" },
+      { name: "Contact", href: "/contact" },
+      { name: "Careers", href: "/careers" },
     ],
     legal: [
-      { name: 'Terms of Service', href: '/terms' },
-      { name: 'Privacy Policy', href: '/privacy' },
-      { name: 'Cookie Policy', href: '/cookies' }
+      { name: "Terms of Service", href: "/terms" },
+      { name: "Privacy Policy", href: "/privacy" },
+      { name: "Cookie Policy", href: "/cookies" },
     ],
     features: [
-      { name: 'AI Coach', href: '/ai-chat' },
-      { name: 'Diet Plans', href: '/diet-plan' },
-      { name: 'Workouts', href: '/workout-plan' }
-    ]
+      { name: "AI Coach", href: "/ai-chat" },
+      { name: "Diet Plans", href: "/diet-plan" },
+      { name: "Workouts", href: "/workout-plan" },
+    ],
   };
 
   const socialLinks = [
-    { 
-      name: 'Instagram',
-      href: 'https://instagram.com/coachlix',
+    {
+      name: "Instagram",
+      href: "https://instagram.com/coachlix",
       icon: Instagram,
-      color: 'hover:text-pink-500'
+      color: "hover:text-pink-500",
     },
-    { 
-      name: 'LinkedIn',
-      href: 'https://linkedin.com/company/coachlix',
+    {
+      name: "LinkedIn",
+      href: "https://linkedin.com/company/coachlix",
       icon: Linkedin,
-      color: 'hover:text-blue-600'
+      color: "hover:text-blue-600",
     },
-    { 
-      name: 'YouTube',
-      href: 'https://youtube.com/@coachlix',
+    {
+      name: "YouTube",
+      href: "https://youtube.com/@coachlix",
       icon: Youtube,
-      color: 'hover:text-red-500'
-    }
+      color: "hover:text-red-500",
+    },
   ];
 
   return (
     <footer className="bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 border-t border-gray-100 dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Main Footer Content */}
-        <div className="py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {/* Brand Section */}
-          <div className="lg:col-span-1">
-            <div className="flex items-center space-x-2 mb-4">
+        <div className="py-8 sm:py-12 grid grid-cols-1 lg:grid-cols-6 gap-8 lg:gap-8">
+          {/* Brand Section - Takes 1 column on desktop */}
+          <div className="lg:col-span-3 text-center lg:text-left">
+            {/* Logo and Brand Name */}
+            <div className="flex items-center justify-center lg:justify-start space-x-2 mb-4">
               <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-xl">
-                <Dumbbell className="h-6 w-6 text-white" />
+                <Image
+                  src="/assets/CoachlixLogo.png"
+                  alt="Coachlix Logo"
+                  width={32}
+                  height={32}
+                  className="sm:w-10 sm:h-10"
+                />
               </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Coachlix
               </span>
             </div>
-            <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-6 max-w-xs">
-              Your personal AI fitness coach helping you achieve your health and wellness goals with personalized workout and diet plans.
+
+            {/* Description */}
+            <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-6 mx-auto lg:mx-0 max-w-xs">
+              Your personal AI fitness coach helping you achieve your health
+              and wellness goals with personalized workout and diet plans.
             </p>
+
             {/* Social Links */}
-            <div className="flex space-x-4">
+            <div className="flex space-x-3 items-center justify-center lg:justify-start">
               {socialLinks.map((social) => {
                 const IconComponent = social.icon;
                 return (
@@ -70,71 +82,74 @@ export default function Footer() {
                     href={social.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`bg-white dark:bg-gray-800 p-3 rounded-full shadow-sm hover:shadow-md transform hover:-translate-y-1 transition-all duration-200 text-gray-600 dark:text-gray-300 ${social.color}`}
+                    className={`bg-white dark:bg-gray-800 p-2.5 sm:p-3 rounded-full shadow-sm hover:shadow-md transform hover:-translate-y-1 transition-all duration-200 text-gray-600 dark:text-gray-300 ${social.color}`}
                     aria-label={`Follow us on ${social.name}`}
                   >
-                    <IconComponent className="h-5 w-5" />
+                    <IconComponent className="h-4 w-4 sm:h-5 sm:w-5" />
                   </a>
                 );
               })}
             </div>
           </div>
 
-          {/* Company Links */}
-          <div>
-            <h3 className="text-gray-900 dark:text-white font-semibold text-sm uppercase tracking-wider mb-4">
-              Company
-            </h3>
-            <ul className="space-y-3">
-              {footerLinks.company.map((link) => (
-                <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors duration-200 hover:underline"
-                  >
-                    {link.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {/* Links Section - Takes 3 columns on desktop */}
+          <div className="lg:col-span-3 grid grid-cols-3 gap-4">
+            {/* Company Links */}
+            <div>
+              <h3 className="text-gray-900 dark:text-white font-semibold text-xs sm:text-sm uppercase tracking-wider mb-3 sm:mb-4">
+                Company
+              </h3>
+              <ul className="space-y-2 sm:space-y-3">
+                {footerLinks.company.map((link) => (
+                  <li key={link.name}>
+                    <a
+                      href={link.href}
+                      className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors duration-200 hover:underline"
+                    >
+                      {link.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-          {/* Features Links */}
-          <div>
-            <h3 className="text-gray-900 dark:text-white font-semibold text-sm uppercase tracking-wider mb-4">
-              Features
-            </h3>
-            <ul className="space-y-3">
-              {footerLinks.features.map((link) => (
-                <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors duration-200 hover:underline"
-                  >
-                    {link.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+            {/* Features Links */}
+            <div>
+              <h3 className="text-gray-900 dark:text-white font-semibold text-xs sm:text-sm uppercase tracking-wider mb-3 sm:mb-4">
+                Features
+              </h3>
+              <ul className="space-y-2 sm:space-y-3">
+                {footerLinks.features.map((link) => (
+                  <li key={link.name}>
+                    <a
+                      href={link.href}
+                      className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors duration-200 hover:underline"
+                    >
+                      {link.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-          {/* Legal Links */}
-          <div>
-            <h3 className="text-gray-900 dark:text-white font-semibold text-sm uppercase tracking-wider mb-4">
-              Legal
-            </h3>
-            <ul className="space-y-3">
-              {footerLinks.legal.map((link) => (
-                <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors duration-200 hover:underline"
-                  >
-                    {link.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
+            {/* Legal Links */}
+            <div>
+              <h3 className="text-gray-900 dark:text-white font-semibold text-xs sm:text-sm uppercase tracking-wider mb-3 sm:mb-4">
+                Legal
+              </h3>
+              <ul className="space-y-2 sm:space-y-3">
+                {footerLinks.legal.map((link) => (
+                  <li key={link.name}>
+                    <a
+                      href={link.href}
+                      className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors duration-200 hover:underline"
+                    >
+                      {link.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
 
