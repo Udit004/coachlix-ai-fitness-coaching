@@ -329,7 +329,7 @@ export default function DietPlansPage() {
           <button
             onClick={() => setShowCreateModal(true)}
             disabled={createPlanMutation.isPending}
-            className="mt-4 sm:mt-0 inline-flex items-center space-x-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+            className="mt-4 sm:mt-0 inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-blue-400 disabled:to-purple-400 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
           >
             <Plus className="h-5 w-5" />
             <span>{createPlanMutation.isPending ? "Creating..." : "Create Plan"}</span>

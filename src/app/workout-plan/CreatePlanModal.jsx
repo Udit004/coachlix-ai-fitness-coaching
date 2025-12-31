@@ -467,7 +467,7 @@ export default function CreatePlanModal({ onClose, onCreate }) {
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:cursor-not-allowed min-w-[120px]"
+              className="px-6 py-3 bg-gradient-to-b from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-blue-400 disabled:to-purple-400 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:cursor-not-allowed min-w-[120px]"
             >
               {loading ? (
                 <div className="flex items-center justify-center">

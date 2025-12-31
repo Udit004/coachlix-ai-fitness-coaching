@@ -388,7 +388,7 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div 
-                className="bg-green-500 h-2 rounded-full transition-all duration-300" 
+                className="bg-purple-500 h-2 rounded-full transition-all duration-300" 
                 style={{ width: `${progressPercentage}%` }}
               ></div>
             </div>
@@ -431,7 +431,7 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
           <button
             onClick={handleViewPlan}
             disabled={!planId}
-            className="flex-1 inline-flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
+            className="flex-1 inline-flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700   disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
           >
             <Eye className="h-4 w-4 flex-shrink-0" />
             <span>View Plan</span>

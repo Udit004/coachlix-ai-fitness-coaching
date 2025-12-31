@@ -668,7 +668,7 @@ export default function CreatePlanModal({ onClose, onCreate }) {
                       !formData.name.trim() ||
                       formData.targetCalories < 1000
                     }
-                    className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-xl transition-colors disabled:cursor-not-allowed inline-flex items-center space-x-2"
+                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl transition-colors disabled:cursor-not-allowed inline-flex items-center space-x-2"
                   >
                     {loading ? (
                       <>

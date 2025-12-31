@@ -291,7 +291,7 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit, onTog
             e.stopPropagation();
             router.push(`/workout-plan/${plan._id}`);
           }}
-          className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors group/btn"
+          className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-medium transition-colors group/btn cursor-pointer"
         >
           <Play className="h-4 w-4 group-hover/btn:translate-x-0.5 transition-transform" />
           <span>Start Workout</span>
