@@ -6,7 +6,7 @@ import { Menu, X, Dumbbell, ChevronDown, LogOut, User, Settings, Sun, Moon } fro
 import { useAuth } from "@/hooks/useAuth";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from 'next/link';
 import { useCustomTheme } from "@/context/CustomThemeProvider";
 
@@ -20,6 +20,7 @@ export default function Navbar() {
 
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const { theme, toggleTheme, mounted } = useCustomTheme();
 
   const toggleMenu = () => setIsOpen(!isOpen);
@@ -139,7 +140,7 @@ export default function Navbar() {
 
   return (
     <nav className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 sticky top-0 z-50 shadow-sm transition-colors duration-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 py-2 md:py-2 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center space-x-2">
@@ -153,15 +154,22 @@ export default function Navbar() {
 
           {/* Desktop Navigation - Hidden on tablet and below */}
           <div className="hidden lg:flex items-center space-x-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.name}
-                href={link.href}
-                className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:bg-blue-50 dark:hover:bg-gray-800"
-              >
-                {link.name}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.name}
+                  href={link.href}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    isActive
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
+                      : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              );
+            })}
           </div>
 
           {/* Desktop Auth & Theme Toggle - Hidden on tablet and below */}
@@ -289,16 +297,23 @@ export default function Navbar() {
           }`}
         >
           <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-800">
-            {navLinks.map((link) => (
-              <Link
-                key={link.name}
-                href={link.href}
-                className="block text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 px-3 py-2 rounded-md text-base font-medium transition-all duration-200"
-                onClick={() => setIsOpen(false)}
-              >
-                {link.name}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.name}
+                  href={link.href}
+                  className={`block px-3 py-2 rounded-md text-base font-medium transition-all duration-200 ${
+                    isActive
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
+                      : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800'
+                  }`}
+                  onClick={() => setIsOpen(false)}
+                >
+                  {link.name}
+                </Link>
+              );
+            })}
 
             <div className="flex flex-col space-y-2 pt-4 border-t border-gray-100 dark:border-gray-800">
               {!loading && !user && (
@@ -322,7 +337,7 @@ export default function Navbar() {
 
               {!loading && user && (
                 <div className="text-center text-gray-700 dark:text-gray-300 font-medium">
-                  <div className="flex items-center justify-center gap-2 mb-2">
+                  <div className="flex items-center justify-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold uppercase">
                       {profileImage ? (
                         <img src={profileImage} alt="profile" className="w-8 h-8 rounded-full object-cover" />
