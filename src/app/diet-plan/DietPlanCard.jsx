@@ -248,8 +248,8 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
   const daysCompleted = getDaysCompleted();
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 dark:border-gray-700 group relative">
-      <div className="p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 dark:border-gray-700 group relative flex flex-col h-full">
+      <div className="p-6 flex flex-col flex-1">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1 min-w-0"> {/* min-w-0 prevents text overflow issues */}
@@ -427,11 +427,11 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
         )}
 
         {/* Action Buttons */}
-        <div className="flex space-x-3">
+        <div className="flex space-x-3 mt-auto">
           <button
             onClick={handleViewPlan}
             disabled={!planId}
-            className="flex-1 inline-flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700   disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
+            className="flex-1 cursor-pointer inline-flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700   disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
           >
             <Eye className="h-4 w-4 flex-shrink-0" />
             <span>View Plan</span>
@@ -440,7 +440,7 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
           {planIsActive && planId && (
             <button
               onClick={handleStartPlan}
-              className="inline-flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              className="cursor-pointer inline-flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
               title="Start Plan"
             >
               <Play className="h-4 w-4" />
