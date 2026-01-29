@@ -319,7 +319,7 @@ export default function DietPlansPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-400 to-purple-600 bg-clip-text text-transparent mb-2">
               Diet Plans
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
@@ -329,7 +329,7 @@ export default function DietPlansPage() {
           <button
             onClick={() => setShowCreateModal(true)}
             disabled={createPlanMutation.isPending}
-            className="mt-4 sm:mt-0 inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-blue-400 disabled:to-purple-400 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+            className="mt-4 sm:mt-0 inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-blue-400 disabled:to-purple-400 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
           >
             <Plus className="h-5 w-5" />
             <span>{createPlanMutation.isPending ? "Creating..." : "Create Plan"}</span>
@@ -429,7 +429,7 @@ export default function DietPlansPage() {
               <select
                 value={selectedGoal}
                 onChange={(e) => setSelectedGoal(e.target.value)}
-                className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-pointer"
               >
                 <option value="">All Goals</option>
                 {goals.map((goal) => (
@@ -443,7 +443,7 @@ export default function DietPlansPage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-pointer"
               >
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>

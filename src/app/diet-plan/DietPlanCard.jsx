@@ -266,7 +266,7 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
           <div className="relative ml-2" ref={menuRef}>
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0"
+              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0 cursor-pointer"
               disabled={loading}
               aria-label="More options"
             >
@@ -280,7 +280,7 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
                     handleViewPlan();
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 rounded-t-lg"
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 rounded-t-lg cursor-pointer"
                 >
                   <Eye className="h-4 w-4 flex-shrink-0" />
                   <span>View Details</span>
@@ -290,14 +290,14 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
                     handleEditPlan();
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2"
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 cursor-pointer"
                 >
                   <Edit className="h-4 w-4 flex-shrink-0" />
                   <span>Edit Plan</span>
                 </button>
                 <button
                   onClick={handleClone}
-                  className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2"
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 cursor-pointer"
                   disabled={loading}
                 >
                   <Copy className="h-4 w-4 flex-shrink-0" />
@@ -305,7 +305,7 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
                 </button>
                 <button
                   onClick={handleToggleActive}
-                  className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2"
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 cursor-pointer"
                   disabled={isTogglingActive || loading}
                 >
                   <Power className="h-4 w-4 flex-shrink-0" />
@@ -313,7 +313,7 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900 flex items-center space-x-2 rounded-b-lg"
+                  className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900 flex items-center space-x-2 rounded-b-lg cursor-pointer"
                   disabled={loading}
                 >
                   <Trash2 className="h-4 w-4 flex-shrink-0" />
@@ -380,7 +380,7 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
         </div>
 
         {/* Progress Bar */}
-        {planDuration > 1 && (
+        {/* {planDuration > 1 && (
           <div className="mb-4">
             <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
               <span>Progress</span>
@@ -393,7 +393,7 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
               ></div>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Meta Info */}
         <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-4">
