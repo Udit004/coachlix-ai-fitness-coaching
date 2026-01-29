@@ -334,7 +334,7 @@ export default function WorkoutPlansPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-400 to-purple-600 bg-clip-text text-transparent mb-2">
               Workout Plans
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
@@ -461,11 +461,11 @@ export default function WorkoutPlansPage() {
             <select
               value={selectedGoal}
               onChange={(e) => setSelectedGoal(e.target.value)}
-              className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-pointer"
             >
               <option value="">All Goals</option>
               {goals.map((goal) => (
-                <option key={goal} value={goal}>
+                <option key={goal} className="cursor-pointer" value={goal}>
                   {goal}
                 </option>
               ))}
@@ -475,11 +475,11 @@ export default function WorkoutPlansPage() {
             <select
               value={selectedDifficulty}
               onChange={(e) => setSelectedDifficulty(e.target.value)}
-              className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-pointer"
             >
               <option value="">All Levels</option>
               {difficulties.map((difficulty) => (
-                <option key={difficulty} value={difficulty}>
+                <option key={difficulty} className="cursor-pointer" value={difficulty}>
                   {difficulty}
                 </option>
               ))}
@@ -489,12 +489,12 @@ export default function WorkoutPlansPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-pointer"
             >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="updated">Recently Updated</option>
-              <option value="popular">Most Popular</option>
+              <option className="cursor-pointer" value="newest">Newest First</option>
+              <option className="cursor-pointer" value="oldest">Oldest First</option>
+              <option className="cursor-pointer" value="updated">Recently Updated</option>
+              <option className="cursor-pointer" value="popular">Most Popular</option>
             </select>
             </div>
           </div>

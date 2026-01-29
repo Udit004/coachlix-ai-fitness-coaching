@@ -104,11 +104,13 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit, onTog
 
   return (
     <div 
-      className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden group"
+      className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden group flex flex-col h-full"
       onClick={handleCardClick}
     >
-      {/* Header */}
-      <div className="p-6 pb-4">
+      {/* Content Wrapper */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="p-6 pb-4">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
@@ -126,7 +128,7 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit, onTog
                 e.stopPropagation();
                 setShowDropdown(!showDropdown);
               }}
-              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
             >
               <MoreVertical className="h-5 w-5" />
             </button>
@@ -144,7 +146,7 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit, onTog
                   <div className="py-1">
                     <button
                       onClick={handleEdit}
-                      className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                      className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer"
                     >
                       <Edit className="h-4 w-4" />
                       <span>Edit Plan</span>
@@ -153,7 +155,7 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit, onTog
                     <button
                       onClick={handleClone}
                       disabled={isCloning}
-                      className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+                      className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 cursor-pointer"
                     >
                       <Copy className="h-4 w-4" />
                       <span>{isCloning ? "Cloning..." : "Clone Plan"}</span>
@@ -162,7 +164,7 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit, onTog
                     <button
                       onClick={handleToggleActive}
                       disabled={isTogglingActive}
-                      className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+                      className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 cursor-pointer"
                     >
                       <Power className="h-4 w-4" />
                       <span>{isTogglingActive ? "Updating..." : (plan.isActive ? "Mark as Inactive" : "Mark as Active")}</span>
@@ -172,7 +174,7 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit, onTog
                     
                     <button
                       onClick={handleDelete}
-                      className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors cursor-pointer"
                     >
                       <Trash2 className="h-4 w-4" />
                       <span>Delete Plan</span>
@@ -196,7 +198,7 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit, onTog
         </div>
 
         {/* Progress Bar */}
-        <div className="mb-4">
+        {/* <div className="mb-4">
           <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
             <span>Progress</span>
             <span>{getProgressPercentage()}%</span>
@@ -207,7 +209,7 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit, onTog
               style={{ width: `${getProgressPercentage()}%` }}
             />
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Stats */}
@@ -283,6 +285,7 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit, onTog
           </div>
         </div>
       )}
+      </div>
 
       {/* Action Button */}
       <div className="px-6 pb-6">
@@ -299,7 +302,7 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit, onTog
       </div>
 
       {/* Active Status Indicator */}
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-7 right-14">
         {plan.isActive ? (
           <span className="inline-flex items-center px-2 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs font-medium rounded-full">
             <span className="w-2 h-2 bg-green-500 rounded-full mr-1.5 animate-pulse"></span>
