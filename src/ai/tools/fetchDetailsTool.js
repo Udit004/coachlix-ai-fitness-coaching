@@ -58,6 +58,7 @@ export class FetchDetailsTool extends Tool {
       }
 
       let response = `📋 Diet Plan: "${dietPlan.name}"\n`;
+      response += `Plan ID: ${dietPlan._id}\n`;
       response += `Goal: ${dietPlan.goal}\n`;
       response += `Daily Targets: ${dietPlan.targetCalories} kcal, ${dietPlan.targetProtein}g protein, ${dietPlan.targetCarbs}g carbs, ${dietPlan.targetFats}g fats\n\n`;
 

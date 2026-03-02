@@ -254,7 +254,10 @@ export class UpdateDietPlanTool extends Tool {
         targetFats,
         addDay,
         updateDay,
+        updateMeal,
         addMeal,
+        addFoodItem,
+        removeFoodItem,
         goal,
         isActive,
         notes
@@ -363,6 +366,72 @@ export class UpdateDietPlanTool extends Tool {
         if (dayIndex !== -1) {
           dietPlan.days[dayIndex].meals.push(addMeal.meal);
         }
+      }
+
+      // ── Smart single-meal patch (does NOT touch other meals on the day) ──
+      if (updateMeal) {
+        console.log(`🔄 UpdateDietPlanTool: Patching ${updateMeal.mealType} on day ${updateMeal.dayNumber}...`);
+        const dayIndex = dietPlan.days.findIndex(d => d.dayNumber === updateMeal.dayNumber);
+        if (dayIndex === -1) {
+          return `Error: Day ${updateMeal.dayNumber} not found in this plan.`;
+        }
+        const mealIndex = dietPlan.days[dayIndex].meals.findIndex(
+          m => m.type === updateMeal.mealType
+        );
+        if (mealIndex !== -1) {
+          // Replace only this meal's items; type stays the same
+          dietPlan.days[dayIndex].meals[mealIndex].items = updateMeal.items;
+        } else {
+          // Meal type doesn't exist yet on this day — create it
+          dietPlan.days[dayIndex].meals.push({
+            type: updateMeal.mealType,
+            items: updateMeal.items,
+          });
+        }
+        console.log(`✅ UpdateDietPlanTool: ${updateMeal.mealType} on day ${updateMeal.dayNumber} patched successfully`);
+      }
+
+      // ── Add a single food item to an existing meal ────────────────────────
+      if (addFoodItem) {
+        console.log(`➕ UpdateDietPlanTool: Adding food item to ${addFoodItem.mealType} on day ${addFoodItem.dayNumber}...`);
+        const dayIndex = dietPlan.days.findIndex(d => d.dayNumber === addFoodItem.dayNumber);
+        if (dayIndex === -1) {
+          return `Error: Day ${addFoodItem.dayNumber} not found in this plan.`;
+        }
+        let mealIndex = dietPlan.days[dayIndex].meals.findIndex(
+          m => m.type === addFoodItem.mealType
+        );
+        if (mealIndex === -1) {
+          // Create the meal type if it doesn't exist
+          dietPlan.days[dayIndex].meals.push({ type: addFoodItem.mealType, items: [] });
+          mealIndex = dietPlan.days[dayIndex].meals.length - 1;
+        }
+        dietPlan.days[dayIndex].meals[mealIndex].items.push(addFoodItem.item);
+        console.log(`✅ UpdateDietPlanTool: Added "${addFoodItem.item.name}" to ${addFoodItem.mealType} on day ${addFoodItem.dayNumber}`);
+      }
+
+      // ── Remove a food item from an existing meal ──────────────────────────
+      if (removeFoodItem) {
+        console.log(`🗑️ UpdateDietPlanTool: Removing "${removeFoodItem.foodName}" from ${removeFoodItem.mealType} on day ${removeFoodItem.dayNumber}...`);
+        const dayIndex = dietPlan.days.findIndex(d => d.dayNumber === removeFoodItem.dayNumber);
+        if (dayIndex === -1) {
+          return `Error: Day ${removeFoodItem.dayNumber} not found in this plan.`;
+        }
+        const mealIndex = dietPlan.days[dayIndex].meals.findIndex(
+          m => m.type === removeFoodItem.mealType
+        );
+        if (mealIndex === -1) {
+          return `Error: ${removeFoodItem.mealType} not found on day ${removeFoodItem.dayNumber}.`;
+        }
+        const before = dietPlan.days[dayIndex].meals[mealIndex].items.length;
+        dietPlan.days[dayIndex].meals[mealIndex].items = dietPlan.days[dayIndex].meals[mealIndex].items.filter(
+          item => item.name.toLowerCase() !== removeFoodItem.foodName.toLowerCase()
+        );
+        const after = dietPlan.days[dayIndex].meals[mealIndex].items.length;
+        if (before === after) {
+          return `Warning: No item named "${removeFoodItem.foodName}" found in ${removeFoodItem.mealType} on day ${removeFoodItem.dayNumber}. No changes made.`;
+        }
+        console.log(`✅ UpdateDietPlanTool: Removed "${removeFoodItem.foodName}" from ${removeFoodItem.mealType} on day ${removeFoodItem.dayNumber}`);
       }
 
       // Apply updates

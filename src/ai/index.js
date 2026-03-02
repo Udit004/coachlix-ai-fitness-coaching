@@ -1,9 +1,12 @@
 // src/ai/index.js
 // Central export point for all AI functionality
 
-// PROFESSIONAL FLOW ORCHESTRATOR 🎓
-// Implements full professional conversational flow:
-// Intent Classification → Semantic Memory (RAG) → Chain-of-Thought → 
+// LANGGRAPH PIPELINE 🔥 (active — replaced professional flow)
+// Intent → RAG Context → Prompt Builder → LLM ⇄ Tools (parallel) → Stream
+export { processChatWithGraph } from './graph/stream';
+
+// LEGACY PROFESSIONAL FLOW ORCHESTRATOR (kept for reference / fallback)
+// Intent Classification → Semantic Memory (RAG) → Chain-of-Thought →
 // Response Generation → Self-Critique → Refined Response
 export {
   processChatWithProfessionalFlow

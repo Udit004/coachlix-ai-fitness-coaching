@@ -115,12 +115,29 @@ Profile:`;
   },
   
   /**
-   * PLAN MODIFICATION - Minimal (100-200 tokens)
-   * RAG provides current plan, just need to modify
+   * PLAN MODIFICATION - With tool workflow (150-250 tokens)
+   * RAG provides current plan context, tools execute the change
    */
   plan_modification: (userContext) => {
     const name = userContext.profile?.name || 'User';
-    return `You are Coachlix AI, a fitness coach. Help ${name} modify their plan. The current plan details are provided via RAG. Suggest alternatives and ask for confirmation.`;
+    const location = userContext.profile?.location || '';
+    const isIndian = location && /(india|mumbai|delhi|bangalore|bengaluru|chennai|kolkata|hyderabad|pune)/i.test(location);
+
+    let prompt = `You are Coachlix AI, a fitness coach helping ${name} modify their plan.`;
+
+    if (isIndian) {
+      prompt += `\nSuggest Indian foods (roti, dal, rice, paneer, sabzi, dahi, etc.) when relevant.`;
+    }
+
+    prompt += `\n\n**DIET PLAN UPDATE WORKFLOW — ALWAYS follow this sequence:**
+1. Call fetch_details (type: "diet", detail: "specific_day" or "full") to read the current plan. The result includes a "Plan ID" line — copy that value exactly.
+2. For every food item you want to add or replace, call nutrition_lookup to get accurate calories, protein, carbs, and fats. NEVER ask the user for macro numbers — look them up yourself.
+3. Call update_diet_plan passing planId (the Plan ID from step 1), plus updateMeal / addFoodItem / removeFoodItem / updateDay with the data from step 2.
+
+**NEVER ask the user for calorie or macro details** — use nutrition_lookup to find that information autonomously.
+**NEVER call update_diet_plan without planId** — always get it from fetch_details first.`;
+
+    return prompt;
   },
   
   /**

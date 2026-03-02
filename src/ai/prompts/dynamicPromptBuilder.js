@@ -173,7 +173,11 @@ USER ID: ${userId}`,
 - User asks for "nutrition info for [food]" → RESPOND DIRECTLY using Google Search
 - User asks "suggest/recommend meals" → Provide suggestions, then ASK to create plan
 - User asks "show me my meals/workout" → MUST call: fetch_details ONCE
-- User asks "create/update diet plan" → Call create_diet_plan with proper parameters
+- User asks "create diet plan" → Call create_diet_plan with proper parameters
+- User asks to **update/change/modify a day/meal/food item** in their diet plan → Follow this MANDATORY sequence:
+  Step 1: Call fetch_details (type "diet") — the result contains a "Plan ID" line, copy it
+  Step 2: For each new food item, call nutrition_lookup to get macros — NEVER ask the user for calorie/macro numbers
+  Step 3: Call update_diet_plan with planId (from Step 1) + updateMeal / addFoodItem / removeFoodItem — NEVER omit planId
 - User asks for "BMI" or "calculate calories" → MUST call: calculate_health_metrics ONCE`,
 
   GOOGLE_SEARCH_CAPABILITY: () => `\n\n🌐 GOOGLE SEARCH CAPABILITY:

@@ -1,7 +1,7 @@
 // app/api/chat/route.js — SSE VERSION with Professional Conversational Flow
 
 import { NextResponse } from "next/server";
-import { processChatWithProfessionalFlow } from "@/ai/orchestrator-professional-flow";
+import { processChatWithGraph } from "@/ai/graph/stream";
 import { addToHistory, getHistory } from "@/ai/memory";
 import { connectDB } from "@/lib/db";
 import ChatSession from "@/models/ChatSession";
@@ -138,13 +138,13 @@ async function handleStreamingResponse({
           );
 
           // -------------------------
-          // 2) Process Chat Message with Professional Flow Orchestrator
+          // 2) Process Chat Message with LangGraph Pipeline
           // -------------------------
-          console.log(`[Chat Route] Using Professional Conversational Flow orchestrator`);
+          console.log(`[Chat Route] Using LangGraph pipeline`);
           
           let fullResponse = "";
           
-          const result = await processChatWithProfessionalFlow(
+          const result = await processChatWithGraph(
             {
               message,
               plan,
