@@ -3,6 +3,39 @@ import { Tool } from "@langchain/core/tools";
 import { connectDB } from "../../lib/db";
 import User from "../../models/userProfileModel";
 import WorkoutPlan from "../../models/WorkoutPlan";
+import { redis } from "../../lib/redis";
+
+/**
+ * Invalidate all Redis cache entries for a user's workout plans.
+ * Clears both the list variants and any cached individual plan.
+ * @param {string} userId - Firebase UID
+ * @param {string|null} planId - Specific plan ID to also invalidate (optional)
+ */
+async function invalidateWorkoutPlanCache(userId, planId = null) {
+  try {
+    const keys = [];
+
+    // Invalidate all list cache variants for this user
+    const listPattern = `user:workout-plans-list:${userId}:*`;
+    const listKeys = await redis.keys(listPattern);
+    if (listKeys && listKeys.length > 0) {
+      keys.push(...listKeys);
+    }
+
+    // Invalidate specific plan detail cache if provided
+    if (planId) {
+      keys.push(`user:workout-plan:${userId}:${planId}`);
+    }
+
+    if (keys.length > 0) {
+      await Promise.all(keys.map((k) => redis.del(k)));
+      console.log(`🗑️ Cache invalidated for user ${userId}: [${keys.join(", ")}]`);
+    }
+  } catch (err) {
+    // Cache errors should never block the tool response
+    console.error("⚠️ Workout plan cache invalidation error:", err.message);
+  }
+}
 
 /**
  * Tool for getting/retrieving workout plans
@@ -147,6 +180,9 @@ export class UpdateWorkoutPlanTool extends Tool {
           runValidators: true,
         }
       );
+
+      // Invalidate Redis cache so the new/updated plan is immediately visible
+      await invalidateWorkoutPlanCache(userId, String(workoutPlan._id));
 
       // Update user stats
       if (user) {

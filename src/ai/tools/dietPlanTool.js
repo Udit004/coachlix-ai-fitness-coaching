@@ -3,6 +3,39 @@ import { Tool } from "@langchain/core/tools";
 import { connectDB } from "../../lib/db";
 import User from "../../models/userProfileModel";
 import DietPlan from "../../models/DietPlan";
+import { redis } from "../../lib/redis";
+
+/**
+ * Invalidate all Redis cache entries for a user's diet plans.
+ * Clears both the list variants and any cached individual plan.
+ * @param {string} userId - Firebase UID
+ * @param {string|null} planId - Specific plan ID to also invalidate (optional)
+ */
+async function invalidateDietPlanCache(userId, planId = null) {
+  try {
+    const keys = [];
+
+    // Invalidate all list cache variants for this user
+    const listPattern = `user:diet-plans-list:${userId}:*`;
+    const listKeys = await redis.keys(listPattern);
+    if (listKeys && listKeys.length > 0) {
+      keys.push(...listKeys);
+    }
+
+    // Invalidate specific plan detail cache if provided
+    if (planId) {
+      keys.push(`user:diet-plan:${userId}:${planId}`);
+    }
+
+    if (keys.length > 0) {
+      await Promise.all(keys.map((k) => redis.del(k)));
+      console.log(`🗑️ Cache invalidated for user ${userId}: [${keys.join(", ")}]`);
+    }
+  } catch (err) {
+    // Cache errors should never block the tool response
+    console.error("⚠️ Diet plan cache invalidation error:", err.message);
+  }
+}
 
 /**
  * Enhanced tool for creating diet plans with AI assistance
@@ -196,6 +229,9 @@ export class CreateDietPlanTool extends Tool {
       );
 
       console.log("✅ CreateDietPlanTool: User activity updated");
+
+      // Invalidate Redis cache so the new plan is immediately visible
+      await invalidateDietPlanCache(userId, String(dietPlan._id));
 
       let response = `Successfully created your diet plan "${dietPlan.name}"! 🎉\n\n` +
         `📋 Plan Details:\n` +
@@ -440,6 +476,9 @@ export class UpdateDietPlanTool extends Tool {
       console.log("💾 UpdateDietPlanTool: Saving updated diet plan...");
       await dietPlan.save();
       console.log("✅ UpdateDietPlanTool: Diet plan updated successfully");
+
+      // Invalidate Redis cache so the updated plan is immediately visible
+      await invalidateDietPlanCache(userId, String(dietPlan._id));
 
       // Log activity
       await User.findOneAndUpdate(
