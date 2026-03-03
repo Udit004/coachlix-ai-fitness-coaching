@@ -3,25 +3,28 @@
 //
 // This file compiles the fitness coaching pipeline into a reusable StateGraph.
 //
-// ┌─────────────────────────────────────────────────────────────────────────┐
-// │  START                                                                  │
-// │    │                                                                    │
-// │    ▼                                                                    │
-// │  classify  ─────────────────────────────────────────────────────────── │
-// │    │ (always)                                                           │
-// │    ▼                                                                    │
-// │  retrieveContext  (inline logic skips DB for greeting/motivation/etc.) │
-// │    │ (always)                                                           │
-// │    ▼                                                                    │
-// │  buildPrompt                                                            │
-// │    │ (always)                                                           │
-// │    ▼                                                                    │
-// │  llm ──── tool_calls present? ──yes──▶  tools ──┐                     │
-// │    │                                             │                     │
-// │    │ no                                          └──▶ llm (loop)       │
-// │    ▼                                                                   │
-// │   END                                                                  │
-// └─────────────────────────────────────────────────────────────────────────┘
+// ┌──────────────────────────────────────────────────────────────────────────┐
+// │  START                                                                   │
+// │    │                                                                     │
+// │    ▼                                                                     │
+// │  classify ──────── routeAfterClassify() ──────────────────────────────  │
+// │         │                   │                          │                 │
+// │  GREETING           GENERAL_FITNESS           PERSONALIZED_FITNESS       │
+// │         │                   │                          │                 │
+// │         ▼                   ▼                          ▼                 │
+// │      greeting        buildSimplePrompt          retrieveContext          │
+// │    (template)        (no profile data)                 │                 │
+// │         │                   │                          ▼                 │
+// │         ▼                   │                    buildPrompt             │
+// │        END                  │               (selective profile)          │
+// │                             └─────────────────────────┘                 │
+// │                                           ▼                              │
+// │                              llm ── tool_calls? ──yes──▶ tools ──┐      │
+// │                               │                                   │      │
+// │                               │ no                     └──▶ llm (loop)  │
+// │                               ▼                                          │
+// │                              END                                         │
+// └──────────────────────────────────────────────────────────────────────────┘
 //
 // The graph is compiled once and cached globally (one compile per process).
 // Vercel serverless: no checkpointer — state is ephemeral per request.
@@ -32,6 +35,9 @@ import { StateGraph, END, START } from "@langchain/langgraph";
 import { GraphState } from "./state.js";
 import {
   intentNode,
+  routeAfterClassify,
+  greetingNode,
+  buildSimplePromptNode,
   retrieveContextNode,
   buildPromptNode,
   llmNode,
@@ -48,6 +54,8 @@ export function buildFitnessGraph() {
   const workflow = new StateGraph(GraphState)
     // ── Nodes ───────────────────────────────────────────────────────────────
     .addNode("classify", intentNode)
+    .addNode("greeting", greetingNode)              // GREETING: template, no LLM
+    .addNode("buildSimplePrompt", buildSimplePromptNode) // GENERAL_FITNESS: no profile
     .addNode("retrieveContext", retrieveContextNode)
     .addNode("buildPrompt", buildPromptNode)
     .addNode("llm", llmNode)
@@ -57,13 +65,24 @@ export function buildFitnessGraph() {
     // Entry point
     .addEdge(START, "classify")
 
-    // Intent → context (the node handles the skip internally)
-    .addEdge("classify", "retrieveContext")
+    // Three-way branch after intent classification:
+    //   GREETING          → greeting (returns template, bypasses LLM)
+    //   GENERAL_FITNESS   → buildSimplePrompt → llm  (no profile in prompt)
+    //   PERSONALIZED_FITNESS → retrieveContext → buildPrompt → llm
+    .addConditionalEdges("classify", routeAfterClassify, {
+      greeting: "greeting",
+      buildSimplePrompt: "buildSimplePrompt",
+      retrieveContext: "retrieveContext",
+    })
 
-    // Context → prompt builder
+    // Greeting fast-path → END immediately (no LLM call)
+    .addEdge("greeting", END)
+
+    // General fitness path: minimal prompt → LLM (no profile data)
+    .addEdge("buildSimplePrompt", "llm")
+
+    // Personalized path: context retrieval → profile-aware prompt → LLM
     .addEdge("retrieveContext", "buildPrompt")
-
-    // Prompt → first LLM call
     .addEdge("buildPrompt", "llm")
 
     // LLM → conditional:

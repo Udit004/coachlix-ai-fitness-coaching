@@ -121,6 +121,34 @@ export async function processChatWithGraph(params, onChunk) {
         const output = data?.output;
         if (!output) continue;
 
+        // ── Greeting fast-path: no LLM means no on_chat_model_stream events.
+        // Stream the template AIMessage content directly to the frontend.
+        // Only process ONCE (fullResponse should still be empty for greetings).
+        if (
+          metadata?.langgraph_node === "greeting" &&
+          !fullResponse &&
+          Array.isArray(output.messages) &&
+          output.messages.length > 0
+        ) {
+          for (const msg of output.messages) {
+            const text =
+              typeof msg.content === "string"
+                ? msg.content
+                : Array.isArray(msg.content)
+                ? msg.content
+                    .map((c) => (typeof c === "string" ? c : (c.text ?? "")))
+                    .join("")
+                : "";
+            if (text) {
+              fullResponse += text;
+              lastWord = await streamTextToFrontend(text, fullResponse, onChunk);
+              console.log(
+                `[Graph:stream] Greeting template streamed (${text.length} chars) — no LLM call`
+              );
+            }
+          }
+        }
+
         if (output.intent) {
           intentMeta = output.intent;
         }
@@ -194,7 +222,7 @@ export async function processChatWithGraph(params, onChunk) {
         keyPoints: [],
 
         // Tools (parallel execution)
-        llmCalls: toolsUsed.length > 0 ? toolsUsed.length + 1 : 1,
+        llmCalls: intentMeta?.intent === "greeting" ? 0 : toolsUsed.length > 0 ? toolsUsed.length + 1 : 1,
         toolsUsed,
         toolCallCount: toolsUsed.length,
 

@@ -15,6 +15,7 @@
 import { ToolMessage } from "@langchain/core/messages";
 
 import { analyzeIntent } from "../reasoning/intentClassifierV2.js";
+import { detectIntent, QueryType, getGreetingResponse } from "../reasoning/intentRouter.js";
 import { buildSmartContext } from "../search/semanticMemoryRetrieval.js";
 import { generateSmartPrompt } from "../prompts/ultraOptimizedPromptBuilder.js";
 import { generateOptimizedSystemPrompt } from "../prompts/dynamicPromptBuilder.js";
@@ -46,6 +47,12 @@ const SKIP_HISTORY_INTENTS = [
   "question_general",
 ];
 
+/**
+ * Only the profile fields that a PERSONALIZED_FITNESS prompt actually needs.
+ * Avoids dumping the full raw profile JSON into the system prompt.
+ */
+const PROFILE_FIELDS_FOR_PROMPT = ["activityLevel", "experience", "fitnessGoal"];
+
 // ─── Node 1: Intent Classification ───────────────────────────────────────────
 
 /**
@@ -56,6 +63,7 @@ export async function intentNode(state) {
   const { originalMessage, profile, conversationHistory } = state;
   const t0 = Date.now();
 
+  // ── V2 rule-based intent classification (~0 ms, no LLM) ─────────────────
   const intent = analyzeIntent(originalMessage, {
     profile,
     conversationHistory,
@@ -63,21 +71,128 @@ export async function intentNode(state) {
     hasWorkoutPlan: !!profile?.activeWorkoutPlan,
   });
 
+  // ── High-level routing tier (GREETING / GENERAL_FITNESS / PERSONALIZED) ──
+  // detectIntent uses the V2 result as primary signal so classification is
+  // done exactly once — this call is pure JS, O(1), no network.
+  const { queryType } = detectIntent(originalMessage, intent);
+
   const enableSearch = shouldEnableSearch(intent, originalMessage);
   logSearchUsage(state.userId, intent, enableSearch);
 
   console.log(
     `[Graph:intent] ${intent.intent} ` +
       `(${(intent.confidence * 100).toFixed(0)}%) ` +
+      `queryType=${queryType} ` +
       `priority=${intent.dataNeeds?.priority} ` +
       `search=${enableSearch}`
   );
 
   return {
     intent,
+    queryType,
     enableSearch,
     flowMetrics: { intentClassificationTime: Date.now() - t0 },
   };
+}
+
+// ─── Routing: after classify ─────────────────────────────────────────────────
+
+/**
+ * Three-way router executed after intentNode.
+ *
+ * GREETING          → "greeting"        (template reply, zero LLM cost)
+ * GENERAL_FITNESS   → "buildSimplePrompt" (LLM with no profile data)
+ * PERSONALIZED_FITNESS → "retrieveContext"  (full RAG + profile-aware prompt)
+ */
+export function routeAfterClassify(state) {
+  const { queryType, intent } = state;
+
+  if (queryType === QueryType.GREETING) {
+    console.log(
+      `[Graph:route] classify → greeting (BYPASS LLM — intent: ${intent?.intent})`
+    );
+    return "greeting";
+  }
+
+  if (queryType === QueryType.GENERAL_FITNESS) {
+    console.log(
+      `[Graph:route] classify → buildSimplePrompt (no profile — intent: ${intent?.intent})`
+    );
+    return "buildSimplePrompt";
+  }
+
+  console.log(
+    `[Graph:route] classify → retrieveContext (personalized — intent: ${intent?.intent})`
+  );
+  return "retrieveContext";
+}
+
+// ─── Node 1b: Greeting Node (zero-latency path) ──────────────────────────────
+
+/**
+ * Returns a pre-built template response directly to the caller — no LLM call,
+ * no RAG, no prompt building. Target latency: <200 ms (pure in-process).
+ *
+ * The graph routes to END immediately after this node, so the template string
+ * must be placed in `messages` as an AIMessage so the streaming layer can
+ * surface it normally.
+ */
+export async function greetingNode(state) {
+  const { originalMessage } = state;
+  const t0 = Date.now();
+
+  // Derive the template response from the original message.
+  // This is a pure synchronous call — no network I/O, no LLM.
+  const response = getGreetingResponse(originalMessage ?? "");
+
+  // Wrap in an AIMessage so the streaming formatter sees the expected structure.
+  const { AIMessage } = await import("@langchain/core/messages");
+  const aiMessage = new AIMessage({ content: response });
+
+  console.log(
+    `[Graph:greeting] Template response returned in ${Date.now() - t0} ms` +
+      " — LLM bypassed"
+  );
+
+  return {
+    messages: [aiMessage],
+    flowMetrics: { greetingResponseTime: Date.now() - t0 },
+  };
+}
+
+// ─── Node 1c: General Fitness Prompt Builder (no profile) ─────────────────────
+
+/**
+ * Builds a minimal prompt for general fitness / small-talk queries.
+ * Deliberately omits user profile data — only the raw question is sent.
+ * Skips RAG, DB queries, and the full prompt-tier logic.
+ * Target latency (LLM included): ~1.5 s.
+ */
+export async function buildSimplePromptNode(state) {
+  const { originalMessage, files, intent } = state;
+
+  // ── No profile data injected here (GENERAL_FITNESS path) ────────────────
+  const systemPrompt =
+    "You are Coachlix, a knowledgeable and encouraging AI fitness coach. " +
+    "Answer clearly and concisely. Do not ask for personal data unless the " +
+    "user explicitly provides it.";
+
+  let userContent;
+  if (isMultimodalContent(files)) {
+    console.log("[Graph:simplePrompt] Building multimodal content…");
+    userContent = await buildMultimodalContent(originalMessage, files);
+  } else {
+    userContent = originalMessage;
+  }
+
+  // Empty history — saves ~300 tokens for general questions
+  const messages = buildInitialMessages(systemPrompt, [], userContent);
+  console.log(
+    `[Graph:simplePrompt] Profile-free prompt built for "${intent?.intent}" ` +
+      `(${messages.length} msg — no RAG, no profile, no history)`
+  );
+
+  return { messages };
 }
 
 // ─── Node 2: RAG Context Retrieval ───────────────────────────────────────────
@@ -138,7 +253,46 @@ export async function buildPromptNode(state) {
     userContext,
     conversationHistory,
     userId,
+    profile,
   } = state;
+
+  // ── Selective profile injection (PERSONALIZED_FITNESS path only) ─────────
+  // Instead of forwarding the raw profile blob, extract only the three fields
+  // that meaningfully affect a fitness coaching response. This keeps the
+  // system prompt lean and avoids leaking irrelevant user data to the model.
+  if (userContext && profile) {
+    const relevantProfile = {};
+    for (const field of PROFILE_FIELDS_FOR_PROMPT) {
+      if (profile[field]) relevantProfile[field] = profile[field];
+    }
+
+    // Merge into userContext.profile so the prompt builders see it in the
+    // same location they always read from — no API changes needed downstream.
+    if (Object.keys(relevantProfile).length > 0) {
+      userContext.profile = {
+        ...userContext.profile,
+        ...relevantProfile,
+        // Concise human-readable summary avoids redundant raw-JSON in prompt
+        _profileSummary:
+          [
+            relevantProfile.fitnessGoal
+              ? `Goal: ${relevantProfile.fitnessGoal}`
+              : null,
+            relevantProfile.experience
+              ? `Experience: ${relevantProfile.experience}`
+              : null,
+            relevantProfile.activityLevel
+              ? `Activity: ${relevantProfile.activityLevel}`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" | ") || undefined,
+      };
+      console.log(
+        `[Graph:prompt] Profile injected — fields: ${Object.keys(relevantProfile).join(", ")}`
+      );
+    }
+  }
 
   // ── Select prompt tier ────────────────────────────────────────────────────
   let systemPrompt;
@@ -191,10 +345,27 @@ export async function buildPromptNode(state) {
  * to the frontend without any extra wiring in this node.
  */
 export async function llmNode(state) {
-  const { messages, enableSearch } = state;
+  const { messages, enableSearch, queryType } = state;
 
-  // ── Build tools list (optionally exclude nutrition_lookup with search) ────
-  const excludedTools = enableSearch ? ["nutrition_lookup"] : [];
+  // ── Tool filtering by execution path ─────────────────────────────────────
+  // GENERAL_FITNESS: only factual/lookup tools are available (nutrition_lookup
+  //   when search is off). Personal modification tools are excluded so the LLM
+  //   cannot accidentally trigger plan reads/writes for simple factual queries.
+  // PERSONALIZED_FITNESS: all 6 tools available.
+  const PERSONAL_TOOLS = [
+    "update_workout_plan",
+    "calculate_health_metrics",
+    "create_diet_plan",
+    "update_diet_plan",
+    "fetch_details",
+  ];
+
+  let excludedTools = enableSearch ? ["nutrition_lookup"] : [];
+  if (queryType === QueryType.GENERAL_FITNESS) {
+    excludedTools = [...new Set([...excludedTools, ...PERSONAL_TOOLS])];
+    console.log("[Graph:llm] GENERAL path — personal tools excluded");
+  }
+
   const tools = createGraphTools(excludedTools);
 
   // ── Create LLM instance ───────────────────────────────────────────────────

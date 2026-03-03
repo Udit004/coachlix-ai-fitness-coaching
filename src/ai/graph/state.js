@@ -88,6 +88,19 @@ export const GraphState = Annotation.Root({
     reducer: lastWrite,
     default: () => null,
   }),
+
+  /**
+   * High-level routing tier produced by the intentRouter.
+   * One of: "GREETING" | "GENERAL_FITNESS" | "PERSONALIZED_FITNESS"
+   *
+   * • GREETING          → greetingNode (template reply, no LLM)  <200 ms
+   * • GENERAL_FITNESS   → buildSimplePromptNode → llm            ~1.5 s
+   * • PERSONALIZED_FITNESS → retrieveContextNode → buildPromptNode → llm  ~2 s
+   */
+  queryType: Annotation({
+    reducer: lastWrite,
+    default: () => null,
+  }),
   /** Smart context object from buildSmartContext() / RAG retrieval */
   userContext: Annotation({
     reducer: lastWrite,
