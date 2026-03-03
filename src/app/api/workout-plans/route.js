@@ -81,9 +81,9 @@ export async function GET(request) {
 
     const plans = await queryBuilder.exec();
 
-    // Cache the list
+    // Cache the list — pass object directly, Upstash auto-serializes
     try {
-      await redis.setex(cacheKey, CACHE_TTL.PLAN_LIST, JSON.stringify(plans));
+      await redis.setex(cacheKey, CACHE_TTL.PLAN_LIST, plans);
       console.log(`💾 Cached workout plans list for ${user.uid}`);
     } catch (cacheError) {
       console.error("Cache write error:", cacheError);

@@ -49,9 +49,9 @@ export async function GET(request, { params }) {
       );
     }
 
-    // Cache individual plan for 30 minutes
+    // Cache individual plan for 30 minutes — pass object directly, Upstash auto-serializes
     try {
-      await redis.setex(cacheKey, 1800, JSON.stringify(plan));
+      await redis.setex(cacheKey, 1800, plan);
       console.log(`💾 Cached individual workout plan ${id}`);
     } catch (cacheError) {
       console.error("Cache write error:", cacheError);

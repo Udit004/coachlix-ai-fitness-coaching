@@ -5,6 +5,7 @@ import { processChatWithGraph } from "@/ai/graph/stream";
 import { addToHistory, getHistory } from "@/ai/memory";
 import { connectDB } from "@/lib/db";
 import ChatSession from "@/models/ChatSession";
+import { redis } from "@/lib/redis";
 
 // Initialize LangSmith tracing (if enabled in env)
 import "@/ai/config/langsmith";
@@ -45,30 +46,42 @@ export async function POST(request) {
       }
     }
 
-    // Fetch user profile from MongoDB
+    // Fetch user profile — Redis cache-first, falls back to MongoDB on cache miss
     let profile = null;
     try {
       console.log(`[Chat Route] Fetching profile for userId: ${userId}`);
-      const User = (await import('@/models/userProfileModel')).default;
-      const user = await User.findOne({ firebaseUid: userId });
-      
-      if (user) {
-        profile = {
-          name: user.name,
-          email: user.email,
-          fitnessGoal: user.fitnessGoal,
-          experience: user.experience,
-          gender: user.gender,
-          activityLevel: user.activityLevel,
-          age: user.age,
-          height: user.height,
-          weight: user.weight,
-          targetWeight: user.targetWeight,
-          bio: user.bio,
-        };
-        console.log(`[Chat Route] ✅ Loaded user profile for ${user.name}`);
+      const cacheKey = `user-profile:${userId}`;
+      const cachedProfile = await redis.get(cacheKey);
+
+      if (cachedProfile) {
+        // Upstash auto-deserializes JSON; handle legacy string entries during cache transition
+        profile = typeof cachedProfile === 'string'
+          ? JSON.parse(cachedProfile)
+          : cachedProfile;
+        console.log(`[Chat Route] ✅ Loaded user profile from Redis cache for ${userId}`);
       } else {
-        console.log(`[Chat Route] ⚠️ User profile not found for ${userId}`);
+        console.log(`[Chat Route] Cache miss — fetching profile from MongoDB for ${userId}`);
+        const User = (await import('@/models/userProfileModel')).default;
+        const user = await User.findOne({ firebaseUid: userId });
+
+        if (user) {
+          profile = {
+            name: user.name,
+            email: user.email,
+            fitnessGoal: user.fitnessGoal,
+            experience: user.experience,
+            gender: user.gender,
+            activityLevel: user.activityLevel,
+            age: user.age,
+            height: user.height,
+            weight: user.weight,
+            targetWeight: user.targetWeight,
+            bio: user.bio,
+          };
+          console.log(`[Chat Route] ✅ Loaded user profile from DB for ${user.name}`);
+        } else {
+          console.log(`[Chat Route] ⚠️ User profile not found for ${userId}`);
+        }
       }
     } catch (profileError) {
       console.error('[Chat Route] ❌ Error fetching profile:', profileError);

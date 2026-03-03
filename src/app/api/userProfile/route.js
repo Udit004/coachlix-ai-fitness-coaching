@@ -167,7 +167,8 @@ export async function GET(request) {
     };
 
     // Cache the profile data in Upstash Redis
-    await redis.setex(cacheKey, 900, JSON.stringify(profileData)); // 15 minutes
+    // Pass object directly — Upstash auto-serializes; manual JSON.stringify causes double-encoding
+    await redis.setex(cacheKey, 900, profileData); // 15 minutes
     console.log('✅ Profile cached in Redis');
 
     // Use Next.js built-in caching as well
@@ -317,18 +318,18 @@ export async function PUT(request) {
           },
         };
 
-        try {
-          const result = await NotificationService.sendCustomNotification(
-            updatedUser.pushToken,
-            notificationContent.title,
-            notificationContent.body,
-            notificationContent.data
-          );
+        // Fire-and-forget: do not await — FCM latency should not block the profile update response
+        NotificationService.sendCustomNotification(
+          updatedUser.pushToken,
+          notificationContent.title,
+          notificationContent.body,
+          notificationContent.data
+        ).then(result => {
           console.log("✅ Profile update notification sent:", result);
-          notificationsSent = true;
-        } catch (err) {
+        }).catch(err => {
           console.error("❌ Error sending update notification:", err);
-        }
+        });
+        notificationsSent = true;
       } else {
         console.log("❌ Notification criteria not met");
       }
@@ -343,40 +344,37 @@ export async function PUT(request) {
 
         // Send milestone notifications
         for (const milestone of milestones) {
-          try {
-            await NotificationService.sendMilestoneNotification(
-              updatedUser.pushToken,
-              milestone.title
-            );
+          // Fire-and-forget: send milestone notification without blocking
+          NotificationService.sendMilestoneNotification(
+            updatedUser.pushToken,
+            milestone.title
+          ).then(() => {
             console.log("✅ Milestone notification sent:", milestone.title);
+          }).catch(milestoneError => {
+            console.error("❌ Failed to send milestone notification:", milestoneError);
+          });
 
-            // Add milestone to user's achievements
-            await User.findOneAndUpdate(
-              { firebaseUid: userId },
-              {
-                $push: {
-                  achievements: {
-                    title: milestone.title,
-                    description: milestone.description,
-                    icon: getMilestoneIcon(milestone.type),
-                    earned: true,
-                    earnedDate: new Date(),
-                  },
+          // Fire-and-forget: save achievement without blocking
+          User.findOneAndUpdate(
+            { firebaseUid: userId },
+            {
+              $push: {
+                achievements: {
+                  title: milestone.title,
+                  description: milestone.description,
+                  icon: getMilestoneIcon(milestone.type),
+                  earned: true,
+                  earnedDate: new Date(),
                 },
-              }
-            );
-          } catch (milestoneError) {
-            console.error(
-              "❌ Failed to send milestone notification:",
-              milestoneError
-            );
-          }
+              },
+            }
+          ).catch(e => console.error("Achievement save error:", e));
         }
       }
 
-      // Log activity
+      // Log activity — fire-and-forget: does not affect the response
       const activityEntry = generateActivityLogEntry(analysis, isNewUser);
-      await User.findOneAndUpdate(
+      User.findOneAndUpdate(
         { firebaseUid: userId },
         {
           $push: {
@@ -386,7 +384,7 @@ export async function PUT(request) {
             },
           },
         }
-      );
+      ).catch(e => console.error("Activity log error:", e));
 
       // Send welcome notification for new users
       if (isNewUser && updatedUser.pushToken) {

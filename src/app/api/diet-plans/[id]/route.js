@@ -51,9 +51,9 @@ export async function GET(request, { params }) {
       );
     }
 
-    // Cache individual plan for longer - Detail zyada time tak cache
+    // Cache individual plan for 30 minutes — pass object directly, Upstash auto-serializes
     try {
-      await redis.setex(cacheKey, 1800, JSON.stringify(plan)); // 30 minutes
+      await redis.setex(cacheKey, 1800, plan); // 30 minutes
       console.log(`💾 Cached individual plan ${id}`);
     } catch (cacheError) {
       console.error("Cache write error:", cacheError);
