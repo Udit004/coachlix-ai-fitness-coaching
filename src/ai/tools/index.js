@@ -162,27 +162,3 @@ export function getToolDescriptions() {
    Use this when user asks: "What should I eat today?", "Show me my full diet plan", "What exercises today?"`;
 }
 
-/**
- * Legacy: Get all available fitness tools for LangChain agent (backward compatibility)
- * @deprecated Use direct function calls instead
- */
-export function getFitnessTools() {
-  return [
-    nutritionTool,
-    workoutTool,
-    healthTool,
-    createDietTool,
-    updateDietTool,
-    fetchDetailsTool,
-  ];
-}
-
-// Legacy exports for backward compatibility
-export {
-  NutritionLookupTool,
-  UpdateWorkoutPlanTool,
-  CreateDietPlanTool,
-  UpdateDietPlanTool,
-  HealthMetricsTool,
-  FetchDetailsTool,
-};

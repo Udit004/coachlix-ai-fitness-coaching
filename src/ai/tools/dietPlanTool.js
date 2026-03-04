@@ -477,23 +477,23 @@ export class UpdateDietPlanTool extends Tool {
       await dietPlan.save();
       console.log("✅ UpdateDietPlanTool: Diet plan updated successfully");
 
-      // Invalidate Redis cache so the updated plan is immediately visible
-      await invalidateDietPlanCache(userId, String(dietPlan._id));
-
-      // Log activity
-      await User.findOneAndUpdate(
-        { firebaseUid: userId },
-        {
-          $addToSet: {
-            recentActivities: {
-              type: "diet",
-              title: `Updated diet plan: ${dietPlan.name}`,
-              description: `Modified plan settings`,
-              date: new Date(),
+      // Invalidate Redis cache AND log activity in parallel — they are independent
+      await Promise.all([
+        invalidateDietPlanCache(userId, String(dietPlan._id)),
+        User.findOneAndUpdate(
+          { firebaseUid: userId },
+          {
+            $addToSet: {
+              recentActivities: {
+                type: "diet",
+                title: `Updated diet plan: ${dietPlan.name}`,
+                description: `Modified plan settings`,
+                date: new Date(),
+              },
             },
-          },
-        }
-      );
+          }
+        ),
+      ]);
 
       const response = `Successfully updated diet plan "${dietPlan.name}"! ✅\n\n` +
         `📋 Updated Details:\n` +

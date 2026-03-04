@@ -122,11 +122,23 @@ const GREETING_TEMPLATES = [
  * greeting doesn't always map to the same reply.
  *
  * @param {string} message
+ * @param {string|null} userName
  * @returns {string}
  */
-export function getGreetingResponse(message) {
+export function getGreetingResponse(message, userName = null) {
   const idx = message.length % GREETING_TEMPLATES.length;
-  return GREETING_TEMPLATES[idx];
+  const template = GREETING_TEMPLATES[idx];
+
+  if (!userName || typeof userName !== "string") {
+    return template;
+  }
+
+  const firstName = userName.trim().split(/\s+/)[0];
+  if (!firstName) {
+    return template;
+  }
+
+  return `${firstName}, ${template}`;
 }
 
 // ─── Core routing function ─────────────────────────────────────────────────────

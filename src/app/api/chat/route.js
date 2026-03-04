@@ -1,8 +1,8 @@
-// app/api/chat/route.js — SSE VERSION with Professional Conversational Flow
+// app/api/chat/route.js - SSE endpoint using the LangGraph pipeline
 
 import { NextResponse } from "next/server";
-import { processChatWithGraph } from "@/ai/graph/stream";
-import { addToHistory, getHistory } from "@/ai/memory";
+import { processAiChat } from "@/ai";
+import { addToHistory } from "@/ai/memory";
 import { connectDB } from "@/lib/db";
 import ChatSession from "@/models/ChatSession";
 import { redis } from "@/lib/redis";
@@ -157,14 +157,14 @@ async function handleStreamingResponse({
           
           let fullResponse = "";
           
-          const result = await processChatWithGraph(
+          const result = await processAiChat(
             {
               message,
               plan,
               conversationHistory,
               profile,
               userId,
-              files, // Pass files to orchestrator for multimodal processing
+              files, // Pass files to graph pipeline for multimodal processing
             },
             // Streaming callback - sends each word as it's generated
             async (chunk) => {
@@ -182,10 +182,15 @@ async function handleStreamingResponse({
           );
 
           fullResponse = result.response;
+
+          const totalTime =
+            result.metadata?.timings?.totalTime ??
+            result.metadata?.timeTaken ??
+            null;
           
           // Validate response before proceeding
           if (!fullResponse || fullResponse.trim().length === 0) {
-            console.error('[Chat Route] ❌ Empty response received from orchestrator');
+            console.error('[Chat Route] ❌ Empty response received from AI pipeline');
             fullResponse = "I'm having trouble generating a response. Please try again.";
           }
 
@@ -195,7 +200,7 @@ async function handleStreamingResponse({
           console.log('[Chat Route] Metrics:', {
             architecture: result.metadata?.architecture,
             llmCalls: result.metadata?.llmCalls,
-            timeTaken: result.metadata?.timeTaken,
+            timeTaken: totalTime,
             toolsUsed: result.metadata?.toolsUsed,
             responseLength: fullResponse?.length || 0
           });
@@ -211,7 +216,7 @@ async function handleStreamingResponse({
                 suggestions: [], // TODO: Implement suggestions if needed
                 metadata: {
                   llmCalls: result.metadata?.llmCalls,
-                  timeTaken: result.metadata?.timeTaken
+                  timeTaken: totalTime
                 }
               })}\n\n`
             )
@@ -263,3 +268,6 @@ async function handleStreamingResponse({
     );
   }
 }
+
+
+

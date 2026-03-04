@@ -355,8 +355,7 @@ export function generateOptimizedSystemPrompt(intent, userContext, userId, reaso
     
     case 'full':
     default:
-      // Fallback to existing full prompt
-      const { generateProfessionalSystemPrompt } = require('./systemPrompts');
-      return generateProfessionalSystemPrompt(userContext, userId, reasoning);
+      // Legacy full prompt path removed. Dynamic is now the safe fallback.
+      return buildDynamicSystemPrompt(intent, userContext, userId, reasoning);
   }
 }
