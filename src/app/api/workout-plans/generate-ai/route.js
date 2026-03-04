@@ -76,7 +76,8 @@ export async function POST(request) {
       const userData = await User.findOne({ firebaseUid: user.uid });
       
       if (userData && userData.pushToken) {
-        await NotificationService.sendCustomNotification(
+        // Fire-and-forget: do not await — FCM latency should not block the user response
+        NotificationService.sendCustomNotification(
           userData.pushToken,
           "AI Workout Plan Generated! 🤖",
           `Your personalized "${aiGeneratedPlan.name}" workout plan is ready!`,
@@ -86,10 +87,10 @@ export async function POST(request) {
             planName: aiGeneratedPlan.name,
             goal: goal,
           }
-        );
-        
-        // Add activity to user's recent activities
-        await User.findOneAndUpdate(
+        ).catch(e => console.error("FCM notification error:", e));
+
+        // Fire-and-forget: activity log write should not block the response
+        User.findOneAndUpdate(
           { firebaseUid: user.uid },
           {
             $push: {
@@ -109,7 +110,7 @@ export async function POST(request) {
               },
             },
           }
-        );
+        ).catch(e => console.error("Activity log error:", e));
       }
     } catch (notificationError) {
       console.error("Failed to send AI workout plan generation notification:", notificationError);

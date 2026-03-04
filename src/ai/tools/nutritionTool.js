@@ -5,6 +5,64 @@ import User from "../../models/userProfileModel";
 import DietPlan from "../../models/DietPlan";
 
 /**
+ * Standalone USDA FoodData Central lookup.
+ * Exported so retrieveContextNode can pre-fetch nutrition during the RAG phase
+ * (before the first LLM call) when food names are known from entity extraction.
+ *
+ * Returns null when: API key is missing, network error, or no result found.
+ *
+ * @param {string} query - Food name to look up
+ * @returns {Promise<{calories, protein, carbs, fat, fiber, per}|null>}
+ */
+export async function fetchNutritionFromUSDA(query) {
+  const apiKey = process.env.USDA_API_KEY;
+  if (!apiKey || apiKey.trim() === '') return null;
+
+  try {
+    const url = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(apiKey)}&pageSize=1&query=${encodeURIComponent(query)}`;
+    const res = await fetch(url, { method: 'GET' });
+    if (!res.ok) throw new Error(`USDA API ${res.status}`);
+
+    const data = await res.json();
+    const item = data?.foods?.[0];
+    if (!item) return null;
+
+    let calories, protein, carbs, fat, fiber, per;
+
+    if (item.labelNutrients) {
+      calories = item.labelNutrients?.calories?.value ?? undefined;
+      protein  = item.labelNutrients?.protein?.value ?? undefined;
+      carbs    = item.labelNutrients?.carbohydrates?.value ?? undefined;
+      fat      = item.labelNutrients?.fat?.value ?? undefined;
+      fiber    = item.labelNutrients?.fiber?.value ?? undefined;
+      per      = item.servingSize && item.servingSizeUnit
+        ? `${item.servingSize}${item.servingSizeUnit}`
+        : 'per serving';
+    }
+
+    if (calories === undefined || protein === undefined || carbs === undefined || fat === undefined) {
+      const nutrients = item.foodNutrients || [];
+      const byNumber  = (n) => nutrients.find((x) => x.nutrientNumber === n || x.nutrientId === n);
+      calories = calories ?? byNumber('208')?.value;
+      protein  = protein  ?? byNumber('203')?.value;
+      carbs    = carbs    ?? byNumber('205')?.value;
+      fat      = fat      ?? byNumber('204')?.value;
+      fiber    = fiber    ?? byNumber('291')?.value;
+      per      = per || 'per 100g';
+    }
+
+    if (calories === undefined && protein === undefined && carbs === undefined && fat === undefined) {
+      return null;
+    }
+
+    return { calories, protein, carbs, fat, fiber: fiber ?? 0, per };
+  } catch (err) {
+    console.error('[fetchNutritionFromUSDA] Error:', err.message);
+    return null;
+  }
+}
+
+/**
  * Enhanced tool for looking up nutritional information with user context
  */
 export class NutritionLookupTool extends Tool {
@@ -26,61 +84,9 @@ export class NutritionLookupTool extends Tool {
         foodInput = input;
       }
 
-      // Use USDA FoodData Central API when available
-      const apiKey = process.env.USDA_API_KEY;
       let response = "";
-
-      async function fetchFromUSDA(query) {
-        const url = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(apiKey)}&pageSize=1&query=${encodeURIComponent(query)}`;
-        const res = await fetch(url, { method: "GET" });
-        if (!res.ok) {
-          throw new Error(`USDA API error: ${res.status}`);
-        }
-        const data = await res.json();
-        const item = data?.foods?.[0];
-        if (!item) return null;
-
-        // Prefer labelNutrients if present (branded foods), else use foodNutrients
-        let calories, protein, carbs, fat, fiber, per;
-
-        if (item.labelNutrients) {
-          calories = item.labelNutrients?.calories?.value ?? undefined;
-          protein = item.labelNutrients?.protein?.value ?? undefined;
-          carbs = item.labelNutrients?.carbohydrates?.value ?? undefined;
-          fat = item.labelNutrients?.fat?.value ?? undefined;
-          fiber = item.labelNutrients?.fiber?.value ?? undefined;
-          per = item.servingSize && item.servingSizeUnit
-            ? `${item.servingSize}${item.servingSizeUnit}`
-            : "per serving";
-        }
-
-        if (calories === undefined || protein === undefined || carbs === undefined || fat === undefined) {
-          const nutrients = item.foodNutrients || [];
-          const byNumber = (n) => nutrients.find((x) => x.nutrientNumber === n || x.nutrientId === n);
-          // 208 kcal, 203 protein, 205 carbs, 204 fat, 291 fiber
-          calories = calories ?? byNumber("208")?.value;
-          protein = protein ?? byNumber("203")?.value;
-          carbs = carbs ?? byNumber("205")?.value;
-          fat = fat ?? byNumber("204")?.value;
-          fiber = fiber ?? byNumber("291")?.value;
-          per = per || "per 100g";
-        }
-
-        if (calories === undefined && protein === undefined && carbs === undefined && fat === undefined) {
-          return null;
-        }
-
-        return { calories, protein, carbs, fat, fiber: fiber ?? 0, per };
-      }
-
-      let nutritionInfo = null;
-      if (apiKey && typeof apiKey === "string" && apiKey.trim() !== "") {
-        try {
-          nutritionInfo = await fetchFromUSDA(foodInput);
-        } catch (err) {
-          console.error("Error calling USDA API:", err);
-        }
-      }
+      // Reuse the shared USDA fetch utility
+      const nutritionInfo = await fetchNutritionFromUSDA(foodInput);
 
       if (nutritionInfo) {
         response = `${foodInput}:\n• Calories: ${nutritionInfo.calories}\n• Protein: ${nutritionInfo.protein}g\n• Carbs: ${nutritionInfo.carbs}g\n• Fat: ${nutritionInfo.fat}g\n• Fiber: ${nutritionInfo.fiber}g\n• Per: ${nutritionInfo.per}`;
@@ -132,6 +138,7 @@ export class NutritionLookupTool extends Tool {
         }
       } else {
         // Graceful fallback if API key missing or no result
+        const apiKey = process.env.USDA_API_KEY;
         response = `I couldn't find reliable nutrition data for "${foodInput}" right now.`;
         if (!apiKey) {
           response += `\nNote: USDA API key is not configured on the server.`;

@@ -89,9 +89,9 @@ export async function GET(request) {
 
     const plans = await queryBuilder.exec();
 
-    // Cache the list - List ko cache karo
+    // Cache the list — pass object directly, Upstash auto-serializes
     try {
-      await redis.setex(cacheKey, CACHE_TTL.PLAN_LIST, JSON.stringify(plans));
+      await redis.setex(cacheKey, CACHE_TTL.PLAN_LIST, plans);
       console.log(`💾 Cached diet plans list for ${user.uid}`);
     } catch (cacheError) {
       console.error("Cache write error:", cacheError);
@@ -222,7 +222,8 @@ export async function POST(request) {
       if (userData && userData.pushToken) {
         console.log("📱 Sending diet plan creation notification...");
         
-        await NotificationService.sendCustomNotification(
+        // Fire-and-forget: do not await — FCM latency should not block the user response
+        NotificationService.sendCustomNotification(
           userData.pushToken,
           "New Diet Plan Created! 🥗",
           `Your "${name}" diet plan is ready to help you reach your ${goal.toLowerCase()} goal!`,
@@ -232,12 +233,14 @@ export async function POST(request) {
             planName: name,
             goal: goal,
           }
-        );
-        
-        console.log("✅ Diet plan creation notification sent successfully");
+        ).then(() => {
+          console.log("✅ Diet plan creation notification sent successfully");
+        }).catch(e => console.error("FCM notification error:", e));
+
         notificationSent = true;
-        
-        await User.findOneAndUpdate(
+
+        // Fire-and-forget: activity log write should not block the response
+        User.findOneAndUpdate(
           { firebaseUid: user.uid },
           {
             $push: {
@@ -256,7 +259,7 @@ export async function POST(request) {
               },
             },
           }
-        );
+        ).catch(e => console.error("Activity log error:", e));
       } else {
         console.log("❌ No push token found for user");
       }

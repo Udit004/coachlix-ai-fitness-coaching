@@ -149,34 +149,16 @@ export function getToolDescriptions() {
    Required args: { userId: string, planName?: string, goal?: string, targetCalories?: number, duration?: number, dietaryRestrictions?: Array }
 
 5. update_diet_plan - Update existing diet plans (NOT for viewing - use fetch_details instead)
+   ALWAYS call fetch_details first for partial updates so you have the current plan state.
    Required args: { userId: string, planId?: string, planName?: string, action: "update" }
+   Plan-level targets: { targetCalories?, targetProtein?, targetCarbs?, targetFats?, goal? }
+   Replace full day:  { updateDay: { dayNumber, meals: [{type, items:[{name,calories,protein,carbs,fats,quantity?}]}], waterIntake?, notes? } }
+   Patch one meal:    { updateMeal: { dayNumber, mealType: "Breakfast"|"Lunch"|"Dinner"|"Snacks"|"Pre-Workout"|"Post-Workout", items:[{name,calories,protein,carbs,fats,quantity?}] } }
+   Add food item:     { addFoodItem: { dayNumber, mealType, item: {name,calories,protein,carbs,fats,quantity?} } }
+   Remove food item:  { removeFoodItem: { dayNumber, mealType, foodName } }
 
 6. fetch_details - Fetch detailed meal or workout information when user needs specifics
    Required args: { userId: string, type: "diet"|"workout", detail?: "today"|"full"|"specific_day", dayNumber?: number }
    Use this when user asks: "What should I eat today?", "Show me my full diet plan", "What exercises today?"`;
 }
 
-/**
- * Legacy: Get all available fitness tools for LangChain agent (backward compatibility)
- * @deprecated Use direct function calls instead
- */
-export function getFitnessTools() {
-  return [
-    nutritionTool,
-    workoutTool,
-    healthTool,
-    createDietTool,
-    updateDietTool,
-    fetchDetailsTool,
-  ];
-}
-
-// Legacy exports for backward compatibility
-export {
-  NutritionLookupTool,
-  UpdateWorkoutPlanTool,
-  CreateDietPlanTool,
-  UpdateDietPlanTool,
-  HealthMetricsTool,
-  FetchDetailsTool,
-};

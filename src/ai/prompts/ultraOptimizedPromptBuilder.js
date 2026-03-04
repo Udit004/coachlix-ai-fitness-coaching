@@ -8,6 +8,8 @@
 // - Personalized: Progressive data based on intent
 // - Plans: RAG handles data, prompt stays minimal
 
+import { buildDynamicSystemPrompt } from "./dynamicPromptBuilder.js";
+
 /**
  * Ultra-minimal prompt templates optimized for Gemini 2.0 Flash
  */
@@ -115,12 +117,68 @@ Profile:`;
   },
   
   /**
-   * PLAN MODIFICATION - Minimal (100-200 tokens)
-   * RAG provides current plan, just need to modify
+   * PLAN MODIFICATION - With tool workflow (150-250 tokens)
+   * RAG provides current plan context, tools execute the change
    */
   plan_modification: (userContext) => {
     const name = userContext.profile?.name || 'User';
-    return `You are Coachlix AI, a fitness coach. Help ${name} modify their plan. The current plan details are provided via RAG. Suggest alternatives and ask for confirmation.`;
+    const location = userContext.profile?.location || '';
+    const isIndian = location && /(india|mumbai|delhi|bangalore|bengaluru|chennai|kolkata|hyderabad|pune)/i.test(location);
+
+    let prompt = `You are Coachlix AI, a fitness coach helping ${name} modify their plan.`;
+
+    if (isIndian) {
+      prompt += `\nSuggest Indian foods (roti, dal, rice, paneer, sabzi, dahi, etc.) when relevant.`;
+    }
+
+    // ── Inject preloaded plan data (planId + current day meals) ─────────────
+    // buildMinimalContext fetched this during the RAG phase so the LLM does NOT
+    // need to call fetch_details — that removes one full LLM round-trip.
+    const modData = userContext._modificationData;
+    if (modData?.planId) {
+      prompt += `\n\n=== PRELOADED PLAN DATA — use directly, do NOT call fetch_details ===`;
+      prompt += `\nPlan ID: ${modData.planId}`;
+      prompt += `\nPlan: "${modData.planName}" | Goal: ${modData.goal}`;
+      prompt += `\nTargets: ${modData.targetCalories} kcal | P:${modData.targetProtein}g C:${modData.targetCarbs}g F:${modData.targetFats}g`;
+      prompt += `\n\nCurrent Day ${modData.dayNumber} meals:\n${modData.currentMealsText}`;
+    }
+
+    // ── Inject pre-fetched USDA nutrition data ───────────────────────────────
+    // retrieveContextNode ran USDA lookups in parallel with the DB query for
+    // any named food items extracted from the message. If data is present the
+    // LLM can skip nutrition_lookup for those items entirely.
+    if (userContext.preloadedNutrition?.length > 0) {
+      prompt += `\n\n=== PRELOADED NUTRITION — use directly, do NOT call nutrition_lookup for these items ===`;
+      userContext.preloadedNutrition.forEach(({ food, calories, protein, carbs, fat, fiber, per }) => {
+        prompt += `\n${food}: ${calories} kcal | P:${protein}g C:${carbs}g F:${fat}g Fiber:${fiber}g (${per})`;
+      });
+    }
+
+    prompt += `\n\n**DIET PLAN UPDATE WORKFLOW:**`;
+
+    if (modData?.planId) {
+      // Fast path: plan data already injected above.
+      // Note: fetch_details and nutrition_lookup are excluded from the tool list
+      // by llmNode when planId is preloaded — instructions here are a safety belt only.
+      prompt += `
+1. Plan ID and current meals are provided in PRELOADED PLAN DATA above.
+2. For food macros: use PRELOADED NUTRITION values if listed, otherwise use your built-in knowledge for common Indian/Asian foods (chapati ~120 kcal, dal ~150 kcal/katori, sabzi ~80 kcal, rice ~130 kcal/100g, etc.).
+3. Call update_diet_plan with planId: "${modData.planId}", dayNumber, mealType, and complete food items with macros.
+4. Once update_diet_plan returns success, generate the final response immediately — do NOT call any more tools.`;
+    } else {
+      // Fallback: plan fetch failed, use original tool-call workflow
+      prompt += `
+1. Call fetch_details (type: "diet", detail: "specific_day") to get the Plan ID and current meals.
+2. For food macros, use your built-in knowledge for common foods OR call nutrition_lookup for unusual items.
+3. Call update_diet_plan with the planId from step 1.
+4. Once update_diet_plan returns success, generate the final response immediately — do NOT call any more tools.`;
+    }
+
+    prompt += `\n\n**NEVER ask the user for calorie or macro details.**`;
+    prompt += `\n**NEVER call update_diet_plan without planId.**`;
+    prompt += `\n**NEVER call any tool after update_diet_plan has already succeeded.**`;
+
+    return prompt;
   },
   
   /**
@@ -335,12 +393,10 @@ export function generateSmartPrompt(intent, userContext, userId) {
   // Fallback to dynamic prompt for medium confidence
   if (intent.confidence >= 0.50) {
     console.log('[SmartPrompt] Using DYNAMIC prompt (40-60% token reduction)');
-    const { buildDynamicSystemPrompt } = require('./dynamicPromptBuilder');
     return buildDynamicSystemPrompt(intent, userContext, userId);
   }
   
-  // Fallback to full prompt for low confidence (safety)
-  console.log('[SmartPrompt] Using FULL prompt (safety fallback)');
-  const { generateProfessionalSystemPrompt } = require('./systemPrompts');
-  return generateProfessionalSystemPrompt(userContext, userId);
+  // Fallback to dynamic prompt for low confidence (legacy full prompt removed)
+  console.log('[SmartPrompt] Using DYNAMIC prompt (safety fallback)');
+  return buildDynamicSystemPrompt(intent, userContext, userId);
 }

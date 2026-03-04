@@ -141,11 +141,12 @@ export async function buildEnhancedContext(userId, message, intent = null, optio
   console.log('[SemanticMemory] Message:', message.substring(0, 100) + '...');
   
   try {
-    // Step 1: Get basic user context (profile, current plans) - NOW WITH INTENT
-    const baseContext = await buildMinimalContext(userId, message, intent);
-    
-    // Step 2: Retrieve conversation history
-    const allMessages = await getRecentChatHistory(userId, 20);
+    // Step 1 + 2 run in PARALLEL — they hit different MongoDB collections and
+    // are fully independent, so there is no reason to await them sequentially.
+    const [baseContext, allMessages] = await Promise.all([
+      buildMinimalContext(userId, message, intent),
+      getRecentChatHistory(userId, 20),
+    ]);
     
     console.log('[SemanticMemory] Retrieved', allMessages.length, 'historical messages');
     

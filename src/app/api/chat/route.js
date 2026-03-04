@@ -1,10 +1,11 @@
-// app/api/chat/route.js — SSE VERSION with Professional Conversational Flow
+// app/api/chat/route.js - SSE endpoint using the LangGraph pipeline
 
 import { NextResponse } from "next/server";
-import { processChatWithProfessionalFlow } from "@/ai/orchestrator-professional-flow";
-import { addToHistory, getHistory } from "@/ai/memory";
+import { processAiChat } from "@/ai";
+import { addToHistory } from "@/ai/memory";
 import { connectDB } from "@/lib/db";
 import ChatSession from "@/models/ChatSession";
+import { redis } from "@/lib/redis";
 
 // Initialize LangSmith tracing (if enabled in env)
 import "@/ai/config/langsmith";
@@ -45,30 +46,42 @@ export async function POST(request) {
       }
     }
 
-    // Fetch user profile from MongoDB
+    // Fetch user profile — Redis cache-first, falls back to MongoDB on cache miss
     let profile = null;
     try {
       console.log(`[Chat Route] Fetching profile for userId: ${userId}`);
-      const User = (await import('@/models/userProfileModel')).default;
-      const user = await User.findOne({ firebaseUid: userId });
-      
-      if (user) {
-        profile = {
-          name: user.name,
-          email: user.email,
-          fitnessGoal: user.fitnessGoal,
-          experience: user.experience,
-          gender: user.gender,
-          activityLevel: user.activityLevel,
-          age: user.age,
-          height: user.height,
-          weight: user.weight,
-          targetWeight: user.targetWeight,
-          bio: user.bio,
-        };
-        console.log(`[Chat Route] ✅ Loaded user profile for ${user.name}`);
+      const cacheKey = `user-profile:${userId}`;
+      const cachedProfile = await redis.get(cacheKey);
+
+      if (cachedProfile) {
+        // Upstash auto-deserializes JSON; handle legacy string entries during cache transition
+        profile = typeof cachedProfile === 'string'
+          ? JSON.parse(cachedProfile)
+          : cachedProfile;
+        console.log(`[Chat Route] ✅ Loaded user profile from Redis cache for ${userId}`);
       } else {
-        console.log(`[Chat Route] ⚠️ User profile not found for ${userId}`);
+        console.log(`[Chat Route] Cache miss — fetching profile from MongoDB for ${userId}`);
+        const User = (await import('@/models/userProfileModel')).default;
+        const user = await User.findOne({ firebaseUid: userId });
+
+        if (user) {
+          profile = {
+            name: user.name,
+            email: user.email,
+            fitnessGoal: user.fitnessGoal,
+            experience: user.experience,
+            gender: user.gender,
+            activityLevel: user.activityLevel,
+            age: user.age,
+            height: user.height,
+            weight: user.weight,
+            targetWeight: user.targetWeight,
+            bio: user.bio,
+          };
+          console.log(`[Chat Route] ✅ Loaded user profile from DB for ${user.name}`);
+        } else {
+          console.log(`[Chat Route] ⚠️ User profile not found for ${userId}`);
+        }
       }
     } catch (profileError) {
       console.error('[Chat Route] ❌ Error fetching profile:', profileError);
@@ -138,20 +151,20 @@ async function handleStreamingResponse({
           );
 
           // -------------------------
-          // 2) Process Chat Message with Professional Flow Orchestrator
+          // 2) Process Chat Message with LangGraph Pipeline
           // -------------------------
-          console.log(`[Chat Route] Using Professional Conversational Flow orchestrator`);
+          console.log(`[Chat Route] Using LangGraph pipeline`);
           
           let fullResponse = "";
           
-          const result = await processChatWithProfessionalFlow(
+          const result = await processAiChat(
             {
               message,
               plan,
               conversationHistory,
               profile,
               userId,
-              files, // Pass files to orchestrator for multimodal processing
+              files, // Pass files to graph pipeline for multimodal processing
             },
             // Streaming callback - sends each word as it's generated
             async (chunk) => {
@@ -169,10 +182,15 @@ async function handleStreamingResponse({
           );
 
           fullResponse = result.response;
+
+          const totalTime =
+            result.metadata?.timings?.totalTime ??
+            result.metadata?.timeTaken ??
+            null;
           
           // Validate response before proceeding
           if (!fullResponse || fullResponse.trim().length === 0) {
-            console.error('[Chat Route] ❌ Empty response received from orchestrator');
+            console.error('[Chat Route] ❌ Empty response received from AI pipeline');
             fullResponse = "I'm having trouble generating a response. Please try again.";
           }
 
@@ -182,7 +200,7 @@ async function handleStreamingResponse({
           console.log('[Chat Route] Metrics:', {
             architecture: result.metadata?.architecture,
             llmCalls: result.metadata?.llmCalls,
-            timeTaken: result.metadata?.timeTaken,
+            timeTaken: totalTime,
             toolsUsed: result.metadata?.toolsUsed,
             responseLength: fullResponse?.length || 0
           });
@@ -198,7 +216,7 @@ async function handleStreamingResponse({
                 suggestions: [], // TODO: Implement suggestions if needed
                 metadata: {
                   llmCalls: result.metadata?.llmCalls,
-                  timeTaken: result.metadata?.timeTaken
+                  timeTaken: totalTime
                 }
               })}\n\n`
             )
@@ -250,3 +268,6 @@ async function handleStreamingResponse({
     );
   }
 }
+
+
+

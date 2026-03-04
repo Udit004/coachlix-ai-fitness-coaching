@@ -1,28 +1,47 @@
 // src/ai/index.js
-// Central export point for all AI functionality
+// Stable public entrypoint for active AI runtime modules.
 
-// PROFESSIONAL FLOW ORCHESTRATOR 🎓
-// Implements full professional conversational flow:
-// Intent Classification → Semantic Memory (RAG) → Chain-of-Thought → 
-// Response Generation → Self-Critique → Refined Response
 export {
-  processChatWithProfessionalFlow
-} from './orchestrator-professional-flow';
+  processAiChat,
+  processChatWithGraph,
+} from "./graph/stream.js";
 
-// Reasoning Modules
-export * from './reasoning';
+export {
+  buildFitnessGraph,
+  getCompiledGraph,
+} from "./graph/index.js";
 
-// Tools
-export * from './tools';
+export {
+  createChatMemory,
+  getRecentChatHistory,
+  addToHistory,
+  formatChatHistoryForContext,
+} from "./memory/chatMemory.js";
 
-// Prompts
-export * from './prompts';
+export {
+  analyzeIntent,
+} from "./reasoning/intentClassifierV2.js";
 
-// Memory
-export * from './memory';
+export {
+  detectIntent,
+  QueryType,
+  getGreetingResponse,
+} from "./reasoning/intentRouter.js";
 
-// Search
-export * from './search';
+export {
+  buildSmartContext,
+  getContextStats,
+} from "./search/semanticMemoryRetrieval.js";
 
-// Config
-export * from './config';
+export {
+  createStreamingLLM,
+  createLLMWithSearch,
+  LLM_CONFIG,
+} from "./config/llmconfig.js";
+
+export {
+  shouldEnableSearch,
+  getSearchGroundingConfig,
+} from "./config/searchGrounding.js";
+
+export * from "./tools/index.js";

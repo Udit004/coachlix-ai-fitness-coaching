@@ -1,4 +1,4 @@
-// page.jsx - Optimized version with proper code splitting
+// page.jsx - Optimized version with TanStack Query caching
 "use client";
 import React, { useState, useRef, useEffect, Suspense, lazy } from "react";
 import useUserProfileStore from "@/stores/useUserProfileStore";
@@ -6,6 +6,8 @@ import useChatStore from "@/stores/useChatStore";
 import useChatHistoryStore from "@/stores/useChatHistoryStore";
 import { toast, Toaster } from "react-hot-toast";
 import axios from "axios";
+// Import TanStack Query hooks
+import { useChatInitialization, useSaveChat, useUpdateChat, useDeleteChat } from "@/hooks/useChatQueries";
 // Import only necessary icons from centralized registry
 import {
   Activity,
@@ -59,7 +61,7 @@ const AIChatPage = () => {
     chat: false,
   });
 
-  // Zustand stores
+  // Zustand stores - for UI state only
   const {
     messages,
     currentChatId,
@@ -98,12 +100,21 @@ const AIChatPage = () => {
     clearError: clearProfileError,
   } = useUserProfileStore();
 
-  // Chat history store
+  // TanStack Query hooks for chat data management with caching
   const {
-    saveChat: saveHistoryChat,
-    updateChat: updateHistoryChat,
-    fetchChats,
-  } = useChatHistoryStore();
+    messages: cachedMessages,
+    history: chatHistory,
+    currentChat,
+    isLoading: isChatLoading,
+    isLoadingHistory: isHistoryLoading,
+    historyError,
+    chatError,
+  } = useChatInitialization(authUser?.uid, currentChatId);
+
+  // Mutations for chat operations
+  const saveChat = useSaveChat();
+  const updateChat = useUpdateChat();
+  const deleteChat = useDeleteChat();
 
   // Refs
   const messagesEndRef = useRef(null);
@@ -210,7 +221,7 @@ const AIChatPage = () => {
     };
   }, []);
 
-  // Enhanced loading sequence
+  // Enhanced loading sequence with TanStack Query integration
   useEffect(() => {
     const initializeApp = async () => {
       if (authLoading) return;
@@ -239,6 +250,8 @@ const AIChatPage = () => {
         }
 
         // Stage 3: Chat preparation
+        // TanStack Query will automatically fetch chat history and cache it
+        // No need to call fetchChats explicitly - the useChatInitialization hook handles it
         setInitializingStage("chat");
         await new Promise((resolve) => setTimeout(resolve, 600));
 
@@ -265,6 +278,40 @@ const AIChatPage = () => {
     setError,
   ]);
 
+  // Sync TanStack Query cache data back to Zustand store
+  // This ensures ChatHistory component can access cached chat history
+  useEffect(() => {
+    if (chatHistory && chatHistory.length > 0) {
+      // Update Zustand store with cached chat history
+      useChatHistoryStore.setState({
+        chats: chatHistory,
+        loading: false,
+        error: null,
+      });
+      
+      console.log('✅ Synced cached chat history to Zustand store');
+    }
+  }, [chatHistory]);
+
+  // Sync current chat data to messages when chat is selected
+  useEffect(() => {
+    if (currentChat && currentChat.messages && currentChatId) {
+      setMessages(currentChat.messages);
+      console.log('✅ Synced current chat messages from cache');
+    }
+  }, [currentChat, currentChatId, setMessages]);
+
+  // Handle loading errors from TanStack Query
+  useEffect(() => {
+    if (historyError) {
+      console.error('Error loading chat history:', historyError);
+      setError('Failed to load chat history');
+    }
+    if (chatError) {
+      console.error('Error loading chat:', chatError);
+      setError('Failed to load chat');
+    }
+  }, [historyError, chatError, setError]);
   // Component loading handlers
   const handleComponentLoad = (componentName) => {
     setComponentLoaded((prev) => ({
@@ -384,24 +431,35 @@ const AIChatPage = () => {
                   };
                   updateLastMessage(finalMessage);
                   
-                  // Auto-save chat
+                  // Auto-save chat using TanStack Query mutation
                   if (authUser?.uid) {
                     const updatedMessages = [...messages, userMessage, finalMessage];
                     
                     if (isNewChat && updatedMessages.length >= 2) {
                       const title = generateChatTitle(updatedMessages);
-                      const chatId = await saveHistoryChat(
-                        authUser.uid,
-                        title,
-                        selectedPlan,
-                        updatedMessages
-                      );
-                      if (chatId) {
-                        setCurrentChatId(chatId);
-                        setIsNewChat(false);
+                      try {
+                        const result = await saveChat.mutateAsync({
+                          userId: authUser.uid,
+                          title: title,
+                          plan: selectedPlan,
+                          messages: updatedMessages
+                        });
+                        if (result.chatId) {
+                          setCurrentChatId(result.chatId);
+                          setIsNewChat(false);
+                        }
+                      } catch (error) {
+                        console.error('Failed to save chat:', error);
                       }
                     } else if (currentChatId) {
-                      await updateHistoryChat(currentChatId, updatedMessages);
+                      try {
+                        await updateChat.mutateAsync({
+                          chatId: currentChatId,
+                          messages: updatedMessages
+                        });
+                      } catch (error) {
+                        console.error('Failed to update chat:', error);
+                      }
                     }
                   }
                   break;
@@ -472,14 +530,15 @@ const AIChatPage = () => {
 
   // Handle deleting a chat
   const handleDeleteChat = async (chatId) => {
-    const deleteChat = useChatHistoryStore.getState().deleteChat;
     try {
-      await deleteChat(chatId);
+      // Use TanStack Query mutation instead of store method
+      await deleteChat.mutateAsync(chatId);
       if (currentChatId === chatId) {
         handleNewChat(); // Start new chat if current chat was deleted
       }
       toast.success("Chat deleted successfully");
     } catch (error) {
+      console.error("Failed to delete chat:", error);
       toast.error("Failed to delete chat");
     }
   };

@@ -253,7 +253,10 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1 min-w-0"> {/* min-w-0 prevents text overflow issues */}
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 break-words">
+            <h3 
+              onClick={handleViewPlan}
+              className="text-xl font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 break-words cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            >
               {planName}
             </h3>
             <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getGoalColor(planGoal)}`}>
@@ -437,7 +440,7 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
             <span>View Plan</span>
           </button>
           
-          {planIsActive && planId && (
+          {/* {planIsActive && planId && (
             <button
               onClick={handleStartPlan}
               className="cursor-pointer inline-flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
@@ -445,7 +448,7 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
             >
               <Play className="h-4 w-4" />
             </button>
-          )}
+          )} */}
         </div>
       </div>
 

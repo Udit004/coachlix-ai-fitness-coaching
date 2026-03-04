@@ -7,6 +7,57 @@ import WorkoutPlan from "../../models/WorkoutPlan";
 import { getCachedProfile, getCachedDietPlan, getCachedWorkoutPlan } from "../config/cache.js";
 
 /**
+ * Fetch full plan data needed for plan_modification intent.
+ * Returns planId, plan name, target macros, and the specific day's meals
+ * so the LLM can call update_diet_plan directly without a fetch_details round-trip.
+ *
+ * @param {string} userId
+ * @param {number} dayNumber - 1-based day index extracted from intent.entities
+ * @returns {Promise<Object|null>}
+ */
+export async function getDietPlanForModification(userId, dayNumber = 1) {
+  try {
+    const plan = await DietPlan.findOne({ userId, isActive: true })
+      .select('_id name goal targetCalories targetProtein targetCarbs targetFats days')
+      .lean();
+
+    if (!plan) return null;
+
+    // Only send the one day the user mentioned — keeps payload small
+    const dayIndex = dayNumber - 1;
+    const day = plan.days?.[dayIndex] ?? plan.days?.[0] ?? null;
+
+    // Format the current meals for that day into a compact text block
+    let currentMealsText = '';
+    if (day?.meals?.length > 0) {
+      day.meals.forEach(meal => {
+        const itemsText = meal.items?.map(i =>
+          `    • ${i.name} — ${i.calories ?? 0} kcal | P:${i.protein ?? 0}g C:${i.carbs ?? 0}g F:${i.fats ?? 0}g${i.quantity ? ` (${i.quantity})` : ''}`
+        ).join('\n') ?? '    (no items)';
+        currentMealsText += `  ${meal.type}:\n${itemsText}\n`;
+      });
+    } else {
+      currentMealsText = '  (no meals set for this day yet)';
+    }
+
+    return {
+      planId: String(plan._id),
+      planName: plan.name,
+      goal: plan.goal,
+      targetCalories: plan.targetCalories,
+      targetProtein: plan.targetProtein,
+      targetCarbs: plan.targetCarbs,
+      targetFats: plan.targetFats,
+      dayNumber: day?.dayNumber ?? dayNumber,
+      currentMealsText,
+    };
+  } catch (error) {
+    console.error('[DietPlanForModification] Error:', error);
+    return null;
+  }
+}
+
+/**
  * OPTIMIZED: Build minimal context for new architecture
  * Only loads essential data to minimize tokens
  * Perfect for 1-2 LLM call architecture
@@ -21,7 +72,61 @@ export async function buildMinimalContext(userId, message = '', intent = null) {
     await connectDB();
     
     console.log('[MinimalContext] Building context for userId:', userId);
-    
+
+    // ── plan_modification fast path ──────────────────────────────────────────
+    // Fetch full plan data (planId + specific day meals) in one query so the
+    // LLM can call update_diet_plan directly — no fetch_details round-trip needed.
+    if (intent?.intent === 'plan_modification') {
+      // Pick day number from extracted entities (V2 extractor puts numbers in entities.numbers)
+      const dayNumber = intent.entities?.numbers?.[0] ?? 1;
+
+      const [profileData, modificationData, workoutSummary] = await Promise.all([
+        getBasicUserProfile(userId),
+        getDietPlanForModification(userId, dayNumber),
+        intent.dataNeeds?.needsWorkout ? getWorkoutPlanSummary(userId) : Promise.resolve(null),
+      ]);
+
+      const profile = typeof profileData === 'string' ? profileData : profileData.text;
+      const rawProfile = typeof profileData === 'object' ? profileData.rawProfile : null;
+
+      let combined = `=== USER PROFILE ===\n${profile}`;
+
+      if (modificationData) {
+        combined += `\n\n=== DIET PLAN FOR MODIFICATION ===\n`;
+        combined += `Plan ID: ${modificationData.planId}\n`;
+        combined += `Plan Name: ${modificationData.planName}\n`;
+        combined += `Goal: ${modificationData.goal}\n`;
+        combined += `Daily Targets: ${modificationData.targetCalories} kcal | P:${modificationData.targetProtein}g C:${modificationData.targetCarbs}g F:${modificationData.targetFats}g\n`;
+        combined += `\nCurrent Day ${modificationData.dayNumber} meals:\n${modificationData.currentMealsText}`;
+      }
+
+      if (workoutSummary) {
+        combined += `\n\n=== CURRENT WORKOUT PLAN ===\n${workoutSummary}`;
+      }
+
+      if (combined.length > 3000) {
+        combined = combined.substring(0, 3000) + '...\n[Context truncated]';
+      }
+
+      console.log('[MinimalContext] ✅ plan_modification context built (planId preloaded)', {
+        hasPlanId: !!modificationData?.planId,
+        dayNumber,
+        totalLength: combined.length,
+      });
+
+      return {
+        profile: rawProfile,
+        profileText: profile,
+        diet: modificationData ? `Plan: "${modificationData.planName}"` : null,
+        workout: workoutSummary,
+        combined,
+        totalLength: combined.length,
+        // Carry structured data forward so retrieveContextNode can attach it to state
+        _modificationData: modificationData,
+      };
+    }
+
+    // ── Default path (all other intents) ────────────────────────────────────
     // Load only essential user profile data (cached)
     const profileData = await getBasicUserProfile(userId);
     const profile = typeof profileData === 'string' ? profileData : profileData.text;
@@ -85,8 +190,8 @@ export async function buildMinimalContext(userId, message = '', intent = null) {
     });
     
     return {
-      profile: rawProfile, // Return raw profile object for access to fields
-      profileText: profile, // Keep text version for display
+      profile: rawProfile,
+      profileText: profile,
       diet: dietSummary,
       workout: workoutSummary,
       combined,

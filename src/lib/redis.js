@@ -20,10 +20,13 @@ export const cache = {
   },
   
   set: async (key, value, expirationSeconds) => {
+    // Pass value directly — Upstash client auto-serializes objects to JSON.
+    // Do NOT JSON.stringify here: manual stringification causes double-encoding
+    // resulting in cache reads returning a string instead of the original object.
     if (expirationSeconds) {
-      return await redis.setex(key, expirationSeconds, JSON.stringify(value));
+      return await redis.setex(key, expirationSeconds, value);
     }
-    return await redis.set(key, JSON.stringify(value));
+    return await redis.set(key, value);
   },
   
   delete: async (key) => {

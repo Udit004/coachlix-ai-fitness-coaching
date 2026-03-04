@@ -1,4 +1,5 @@
 // hooks/useChatQueries.js
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
@@ -11,25 +12,67 @@ const CHAT_KEYS = {
   detail: (id) => [...CHAT_KEYS.details(), id],
 };
 
-// Fetch chat history
+// Fetch chat history with pagination
 export const useChatHistory = (userId, options = {}) => {
   return useQuery({
     queryKey: CHAT_KEYS.list(userId),
     queryFn: async () => {
       if (!userId) return [];
       
-      const response = await axios.get(`/api/chat-history?userId=${userId}`);
+      const response = await axios.get(`/api/chat-history?userId=${userId}`, {
+        params: {
+          limit: 50,
+          sortBy: 'newest',
+        }
+      });
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to fetch chat history');
       }
       return response.data.chats || [];
     },
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutes - data fresh for 5 mins
+    gcTime: 10 * 60 * 1000, // 10 minutes - keep in cache for 10 mins
     refetchOnWindowFocus: false,
+    refetchOnMount: 'stale', // Only refetch if data is stale
+    refetchOnReconnect: 'stale',
     ...options,
   });
+};
+
+// Combined hook for chat initialization - returns chat data + history
+// This replaces the need to fetch individual chats since chat history includes all chat data
+export const useChatInitialization = (userId, chatId = null) => {
+  // Fetch chat history - this contains all chat data we need
+  const history = useChatHistory(userId);
+  
+  // Find the current chat from history by ID
+  const currentChat = React.useMemo(() => {
+    if (!chatId || !history.data) return null;
+    return history.data.find(chat => chat._id === chatId) || null;
+  }, [chatId, history.data]);
+  
+  // Get current messages from loaded chat or empty array
+  const messages = currentChat?.messages || [];
+  
+  return {
+    // Chat data
+    messages,
+    history: history.data || [],
+    currentChat,
+    
+    // Loading states
+    isLoadingHistory: history.isLoading,
+    isLoadingChat: false, // No separate chat loading since we get it from history
+    isLoading: history.isLoading,
+    
+    // Error states
+    historyError: history.error,
+    chatError: null,
+    
+    // Refetch functions
+    refetchHistory: history.refetch,
+  };
 };
 
 // Save new chat
@@ -65,11 +108,19 @@ export const useSaveChat = () => {
       return response.data;
     },
     onSuccess: (data, variables) => {
-      // Update the chat list cache
+      // Update the chat list cache with optimistic update
       queryClient.setQueryData(
         CHAT_KEYS.list(variables.userId),
         (old = []) => [data.chat, ...old]
       );
+      
+      // Also add to detail cache
+      if (data.chat?._id) {
+        queryClient.setQueryData(
+          CHAT_KEYS.detail(data.chat._id),
+          data.chat
+        );
+      }
       
       // Show success message
       toast.success('Chat saved successfully');

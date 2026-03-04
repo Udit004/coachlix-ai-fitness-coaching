@@ -3,6 +3,39 @@ import { Tool } from "@langchain/core/tools";
 import { connectDB } from "../../lib/db";
 import User from "../../models/userProfileModel";
 import DietPlan from "../../models/DietPlan";
+import { redis } from "../../lib/redis";
+
+/**
+ * Invalidate all Redis cache entries for a user's diet plans.
+ * Clears both the list variants and any cached individual plan.
+ * @param {string} userId - Firebase UID
+ * @param {string|null} planId - Specific plan ID to also invalidate (optional)
+ */
+async function invalidateDietPlanCache(userId, planId = null) {
+  try {
+    const keys = [];
+
+    // Invalidate all list cache variants for this user
+    const listPattern = `user:diet-plans-list:${userId}:*`;
+    const listKeys = await redis.keys(listPattern);
+    if (listKeys && listKeys.length > 0) {
+      keys.push(...listKeys);
+    }
+
+    // Invalidate specific plan detail cache if provided
+    if (planId) {
+      keys.push(`user:diet-plan:${userId}:${planId}`);
+    }
+
+    if (keys.length > 0) {
+      await Promise.all(keys.map((k) => redis.del(k)));
+      console.log(`🗑️ Cache invalidated for user ${userId}: [${keys.join(", ")}]`);
+    }
+  } catch (err) {
+    // Cache errors should never block the tool response
+    console.error("⚠️ Diet plan cache invalidation error:", err.message);
+  }
+}
 
 /**
  * Enhanced tool for creating diet plans with AI assistance
@@ -197,6 +230,9 @@ export class CreateDietPlanTool extends Tool {
 
       console.log("✅ CreateDietPlanTool: User activity updated");
 
+      // Invalidate Redis cache so the new plan is immediately visible
+      await invalidateDietPlanCache(userId, String(dietPlan._id));
+
       let response = `Successfully created your diet plan "${dietPlan.name}"! 🎉\n\n` +
         `📋 Plan Details:\n` +
         `• Goal: ${userGoal}\n` +
@@ -254,7 +290,10 @@ export class UpdateDietPlanTool extends Tool {
         targetFats,
         addDay,
         updateDay,
+        updateMeal,
         addMeal,
+        addFoodItem,
+        removeFoodItem,
         goal,
         isActive,
         notes
@@ -365,6 +404,72 @@ export class UpdateDietPlanTool extends Tool {
         }
       }
 
+      // ── Smart single-meal patch (does NOT touch other meals on the day) ──
+      if (updateMeal) {
+        console.log(`🔄 UpdateDietPlanTool: Patching ${updateMeal.mealType} on day ${updateMeal.dayNumber}...`);
+        const dayIndex = dietPlan.days.findIndex(d => d.dayNumber === updateMeal.dayNumber);
+        if (dayIndex === -1) {
+          return `Error: Day ${updateMeal.dayNumber} not found in this plan.`;
+        }
+        const mealIndex = dietPlan.days[dayIndex].meals.findIndex(
+          m => m.type === updateMeal.mealType
+        );
+        if (mealIndex !== -1) {
+          // Replace only this meal's items; type stays the same
+          dietPlan.days[dayIndex].meals[mealIndex].items = updateMeal.items;
+        } else {
+          // Meal type doesn't exist yet on this day — create it
+          dietPlan.days[dayIndex].meals.push({
+            type: updateMeal.mealType,
+            items: updateMeal.items,
+          });
+        }
+        console.log(`✅ UpdateDietPlanTool: ${updateMeal.mealType} on day ${updateMeal.dayNumber} patched successfully`);
+      }
+
+      // ── Add a single food item to an existing meal ────────────────────────
+      if (addFoodItem) {
+        console.log(`➕ UpdateDietPlanTool: Adding food item to ${addFoodItem.mealType} on day ${addFoodItem.dayNumber}...`);
+        const dayIndex = dietPlan.days.findIndex(d => d.dayNumber === addFoodItem.dayNumber);
+        if (dayIndex === -1) {
+          return `Error: Day ${addFoodItem.dayNumber} not found in this plan.`;
+        }
+        let mealIndex = dietPlan.days[dayIndex].meals.findIndex(
+          m => m.type === addFoodItem.mealType
+        );
+        if (mealIndex === -1) {
+          // Create the meal type if it doesn't exist
+          dietPlan.days[dayIndex].meals.push({ type: addFoodItem.mealType, items: [] });
+          mealIndex = dietPlan.days[dayIndex].meals.length - 1;
+        }
+        dietPlan.days[dayIndex].meals[mealIndex].items.push(addFoodItem.item);
+        console.log(`✅ UpdateDietPlanTool: Added "${addFoodItem.item.name}" to ${addFoodItem.mealType} on day ${addFoodItem.dayNumber}`);
+      }
+
+      // ── Remove a food item from an existing meal ──────────────────────────
+      if (removeFoodItem) {
+        console.log(`🗑️ UpdateDietPlanTool: Removing "${removeFoodItem.foodName}" from ${removeFoodItem.mealType} on day ${removeFoodItem.dayNumber}...`);
+        const dayIndex = dietPlan.days.findIndex(d => d.dayNumber === removeFoodItem.dayNumber);
+        if (dayIndex === -1) {
+          return `Error: Day ${removeFoodItem.dayNumber} not found in this plan.`;
+        }
+        const mealIndex = dietPlan.days[dayIndex].meals.findIndex(
+          m => m.type === removeFoodItem.mealType
+        );
+        if (mealIndex === -1) {
+          return `Error: ${removeFoodItem.mealType} not found on day ${removeFoodItem.dayNumber}.`;
+        }
+        const before = dietPlan.days[dayIndex].meals[mealIndex].items.length;
+        dietPlan.days[dayIndex].meals[mealIndex].items = dietPlan.days[dayIndex].meals[mealIndex].items.filter(
+          item => item.name.toLowerCase() !== removeFoodItem.foodName.toLowerCase()
+        );
+        const after = dietPlan.days[dayIndex].meals[mealIndex].items.length;
+        if (before === after) {
+          return `Warning: No item named "${removeFoodItem.foodName}" found in ${removeFoodItem.mealType} on day ${removeFoodItem.dayNumber}. No changes made.`;
+        }
+        console.log(`✅ UpdateDietPlanTool: Removed "${removeFoodItem.foodName}" from ${removeFoodItem.mealType} on day ${removeFoodItem.dayNumber}`);
+      }
+
       // Apply updates
       Object.assign(dietPlan, updates);
       
@@ -372,20 +477,23 @@ export class UpdateDietPlanTool extends Tool {
       await dietPlan.save();
       console.log("✅ UpdateDietPlanTool: Diet plan updated successfully");
 
-      // Log activity
-      await User.findOneAndUpdate(
-        { firebaseUid: userId },
-        {
-          $addToSet: {
-            recentActivities: {
-              type: "diet",
-              title: `Updated diet plan: ${dietPlan.name}`,
-              description: `Modified plan settings`,
-              date: new Date(),
+      // Invalidate Redis cache AND log activity in parallel — they are independent
+      await Promise.all([
+        invalidateDietPlanCache(userId, String(dietPlan._id)),
+        User.findOneAndUpdate(
+          { firebaseUid: userId },
+          {
+            $addToSet: {
+              recentActivities: {
+                type: "diet",
+                title: `Updated diet plan: ${dietPlan.name}`,
+                description: `Modified plan settings`,
+                date: new Date(),
+              },
             },
-          },
-        }
-      );
+          }
+        ),
+      ]);
 
       const response = `Successfully updated diet plan "${dietPlan.name}"! ✅\n\n` +
         `📋 Updated Details:\n` +
