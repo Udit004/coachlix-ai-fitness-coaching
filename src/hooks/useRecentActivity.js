@@ -1,4 +1,5 @@
 // hooks/useRecentActivity.js
+
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import useChatHistoryStore from '../stores/useChatHistoryStore';
