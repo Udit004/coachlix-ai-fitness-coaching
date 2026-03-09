@@ -4,14 +4,25 @@ import nextPwa from 'next-pwa';
 
 const withPWA = nextPwa({
   dest: 'public',
-  register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
+  register: false, // Disable registration completely - we'll manage manually
+  skipWaiting: false,
+  disable: true, // DISABLE PWA COMPLETELY - causing caching issues
 });
 
 const nextConfig = {
   reactStrictMode: true,
   turbopack: {}, // Enable Turbopack explicitly for Next.js 16
+  headers: async () => [
+    {
+      source: '/:path*',
+      headers: [
+        {
+          key: 'Cache-Control',
+          value: 'public, max-age=0, s-maxage=60, stale-while-revalidate=604800',
+        },
+      ],
+    },
+  ],
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Don't bundle Node.js modules on the client side
@@ -26,7 +37,11 @@ const nextConfig = {
     }
     return config;
   },
-  // other config options
+  // Disable SWR caching for development
+  onDemandEntries: {
+    maxInactiveAge: 60 * 1000,
+    pagesBufferLength: 5,
+  },
 };
 
-export default withPWA(nextConfig);
+export default nextConfig;
