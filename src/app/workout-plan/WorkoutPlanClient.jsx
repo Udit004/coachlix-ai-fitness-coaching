@@ -2,7 +2,6 @@
 import React, { useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
   Filter,
@@ -76,15 +75,14 @@ const difficulties = ["Beginner", "Intermediate", "Advanced"];
 // Default sort key — must match the initial queryOptions sort value
 const DEFAULT_SORT = "-createdAt";
 
-export default function WorkoutPlanClient({ initialPlans = [] }) {
-  const queryClient = useQueryClient();
-
-  // Pre-populate TanStack Query cache with SSR data so useWorkoutPlans
-  // skips the loading state on first render.
-  const defaultQueryKey = workoutKeys.list(JSON.stringify({ sort: DEFAULT_SORT }));
-  if (initialPlans.length > 0 && !queryClient.getQueryData(defaultQueryKey)) {
-    queryClient.setQueryData(defaultQueryKey, { plans: initialPlans });
-  }
+/**
+ * WorkoutPlanClient — Client component that manages UI state and data fetching.
+ *
+ * The parent Server Component (page.jsx) uses HydrationBoundary + dehydrate
+ * to pre-populate the TanStack Query cache before this component renders,
+ * so the first paint is instant with real data and no extra round-trip.
+ */
+export default function WorkoutPlanClient() {
 
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -139,9 +137,8 @@ export default function WorkoutPlanClient({ initialPlans = [] }) {
         : Array.isArray(workoutPlansData)
         ? workoutPlansData
         : [];
-    // Fall back to SSR data while client query loads
-    return initialPlans;
-  }, [workoutPlansData, initialPlans]);
+    return [];
+  }, [workoutPlansData]);
 
   // Filter plans based on search term
   const filteredPlans = useMemo(() => {

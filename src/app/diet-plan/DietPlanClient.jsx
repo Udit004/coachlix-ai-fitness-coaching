@@ -22,9 +22,7 @@ import {
   useDeleteDietPlan,
   useCloneDietPlan,
   useToggleDietPlanActive,
-  DIET_PLAN_KEYS,
 } from "../../hooks/useDietPlanQueries";
-import { useQueryClient } from "@tanstack/react-query";
 
 const CreatePlanModal = dynamic(() => import("./CreatePlanModal"), {
   loading: () => (
@@ -70,21 +68,11 @@ const goals = [
 /**
  * DietPlanClient — Client component that manages UI state and data fetching.
  *
- * Hydrates TanStack Query with SSR-provided initialPlans so the first paint
- * is instant and no extra round-trip is needed on mount.
+ * The parent Server Component (page.jsx) uses HydrationBoundary + dehydrate
+ * to pre-populate the TanStack Query cache before this component renders,
+ * so the first paint is instant with real data and no extra round-trip.
  */
-export default function DietPlanClient({ initialPlans = [] }) {
-  const queryClient = useQueryClient();
-
-  // Pre-populate query cache with SSR data so useDietPlans doesn't refetch on mount
-  // We seed the default (no-filter) query key.
-  const defaultQueryKey = DIET_PLAN_KEYS.list({});
-  if (
-    initialPlans.length > 0 &&
-    !queryClient.getQueryData(defaultQueryKey)
-  ) {
-    queryClient.setQueryData(defaultQueryKey, { plans: initialPlans });
-  }
+export default function DietPlanClient() {
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   const { loading: authLoading, error: authError, isAuthenticated } = useAuth();
@@ -121,7 +109,7 @@ export default function DietPlanClient({ initialPlans = [] }) {
 
   // ── Server state ──────────────────────────────────────────────────────────
   const {
-    data: dietPlans = initialPlans,
+    data: dietPlans = [],
     isLoading,
     error,
     refetch,

@@ -1,11 +1,10 @@
 // AIChatClient.jsx — Client component for AI Chat page
-// Accepts SSR-provided initialChatHistory and initialProfile to skip loading stages
+// SSR chat history is pre-loaded via HydrationBoundary; initialProfile seeds Zustand.
 "use client";
 import React, { useState, useRef, useEffect, Suspense, lazy } from "react";
 import useUserProfileStore from "@/stores/useUserProfileStore";
 import useChatStore from "@/stores/useChatStore";
 import useChatHistoryStore from "@/stores/useChatHistoryStore";
-import { useQueryClient } from "@tanstack/react-query";
 import { toast, Toaster } from "react-hot-toast";
 import axios from "axios";
 import { useChatInitialization, useSaveChat, useUpdateChat, useDeleteChat } from "@/hooks/useChatQueries";
@@ -43,25 +42,18 @@ const ComponentLoading = ({ type = "default" }) => (
   </div>
 );
 
-// TanStack Query key — must match CHAT_KEYS.list in useChatQueries.js
-const chatListKey = (userId) => ["chats", "list", userId];
-
-const AIChatClient = ({ initialChatHistory = [], initialProfile = null }) => {
+const AIChatClient = ({ initialProfile = null }) => {
   const { user: authUser, loading: authLoading } = useAuthContext();
-  const queryClient = useQueryClient();
 
-  // ── Seed query cache & profile store from SSR data ───────────────────────
-  // This runs synchronously before any renders, so there's no loading flash.
-  if (authUser?.uid) {
-    const key = chatListKey(authUser.uid);
-    if (initialChatHistory.length > 0 && !queryClient.getQueryData(key)) {
-      queryClient.setQueryData(key, initialChatHistory);
-    }
-  }
+  // ── Determine initial stage — skip directly to "ready" if SSR data present ──
+  const hasSSRData = initialProfile !== null;
+  const [initializingStage, setInitializingStage] = useState(
+    hasSSRData ? "ready" : "initial"
+  );
 
-  if (initialProfile) {
-    const store = useUserProfileStore.getState();
-    if (!store.profile) {
+  // ── Seed Zustand profile store from SSR prop (runs once after mount) ──────────
+  useEffect(() => {
+    if (initialProfile && !useUserProfileStore.getState().profile) {
       useUserProfileStore.setState({
         profile: initialProfile,
         loading: false,
@@ -69,13 +61,8 @@ const AIChatClient = ({ initialChatHistory = [], initialProfile = null }) => {
         lastFetched: Date.now(),
       });
     }
-  }
-
-  // ── Determine initial stage — skip directly to "ready" if SSR data present ──
-  const hasSSRData = initialChatHistory.length > 0 || initialProfile !== null;
-  const [initializingStage, setInitializingStage] = useState(
-    hasSSRData ? "ready" : "initial"
-  );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [componentLoaded, setComponentLoaded] = useState({
     header: false,
     sidebar: false,
