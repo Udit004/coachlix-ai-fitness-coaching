@@ -5,6 +5,8 @@ import { verifySessionCookie } from "@/lib/verifyUser";
 import { connectDB } from "@/lib/db";
 import ChatSession from "@/models/ChatSession";
 import User from "@/models/userProfileModel";
+import { QueryClient, HydrationBoundary, dehydrate } from "@tanstack/react-query";
+import { CHAT_KEYS } from "@/hooks/useChatQueries";
 
 export const metadata = {
   title: "AI Chat - Coachlix",
@@ -13,18 +15,18 @@ export const metadata = {
 
 /**
  * Fetches chat history and user profile server-side via the __session cookie.
- * Both are passed as props to AIChatClient, which seeds TanStack Query cache
- * and Zustand profile store immediately — eliminating the 1.8 s staged
- * loading sequence for authenticated users.
+ * Chat history is loaded into TanStack Query cache via HydrationBoundary.
+ * Profile is passed as a prop to AIChatClient for Zustand seeding.
+ * Both eliminate the 1.8 s staged loading sequence for authenticated users.
  */
 async function fetchSSRData() {
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get("__session")?.value;
-    if (!sessionCookie) return { chatHistory: [], profile: null };
+    if (!sessionCookie) return { uid: null, chatHistory: [], profile: null };
 
     const user = await verifySessionCookie(sessionCookie);
-    if (!user?.uid) return { chatHistory: [], profile: null };
+    if (!user?.uid) return { uid: null, chatHistory: [], profile: null };
 
     await connectDB();
 
@@ -46,15 +48,27 @@ async function fetchSSRData() {
     ]);
 
     return {
+      uid: user.uid,
       chatHistory: JSON.parse(JSON.stringify(chats || [])),
       profile: profile ? JSON.parse(JSON.stringify(profile)) : null,
     };
   } catch {
-    return { chatHistory: [], profile: null };
+    return { uid: null, chatHistory: [], profile: null };
   }
 }
 
 export default async function AIChatPage() {
-  const { chatHistory, profile } = await fetchSSRData();
-  return <AIChatClient initialChatHistory={chatHistory} initialProfile={profile} />;
+  const queryClient = new QueryClient();
+  const { uid, chatHistory, profile } = await fetchSSRData();
+
+  if (uid && chatHistory.length > 0) {
+    // useChatHistory(userId) stores an array directly — cache in the same shape
+    queryClient.setQueryData(CHAT_KEYS.list(uid), chatHistory);
+  }
+
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <AIChatClient initialProfile={profile} />
+    </HydrationBoundary>
+  );
 }

@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
-const CHAT_KEYS = {
+export const CHAT_KEYS = {
   all: ['chats'],
   lists: () => [...CHAT_KEYS.all, 'list'],
   list: (userId) => [...CHAT_KEYS.lists(), userId],

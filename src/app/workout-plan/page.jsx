@@ -4,40 +4,44 @@ import WorkoutPlanClient from "./WorkoutPlanClient";
 import { verifySessionCookie } from "@/lib/verifyUser";
 import { connectDB } from "@/lib/db";
 import WorkoutPlan from "@/models/WorkoutPlan";
+import { QueryClient, HydrationBoundary, dehydrate } from "@tanstack/react-query";
+import { workoutKeys } from "@/hooks/useWorkoutQueries";
 
 export const metadata = {
   title: "Workout Plans",
   description: "Design and track your fitness journey with personalized workout plans",
 };
 
-/**
- * Reads the __session cookie set by /api/auth/session, verifies it with
- * Firebase Admin, and queries MongoDB directly — no extra HTTP round-trip,
- * no wait for the client to load a token, instant first paint with real data.
- */
-async function fetchInitialWorkoutPlans() {
+// Must match WorkoutPlanClient's DEFAULT_SORT and initial queryOptions
+const INITIAL_SORT = "-createdAt";
+
+export default async function WorkoutPlansPage() {
+  const queryClient = new QueryClient();
+
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get("__session")?.value;
-    if (!sessionCookie) return [];
-
-    const user = await verifySessionCookie(sessionCookie);
-    if (!user?.uid) return [];
-
-    await connectDB();
-    const plans = await WorkoutPlan.find({ userId: user.uid })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    // .lean() returns plain objects; JSON round-trip strips non-serializable fields
-    return JSON.parse(JSON.stringify(plans));
+    if (sessionCookie) {
+      const user = await verifySessionCookie(sessionCookie);
+      if (user?.uid) {
+        await connectDB();
+        const plans = await WorkoutPlan.find({ userId: user.uid })
+          .sort({ createdAt: -1 })
+          .lean();
+        // Cache in the same shape the API returns so useWorkoutPlans works correctly
+        queryClient.setQueryData(
+          workoutKeys.list(JSON.stringify({ sort: INITIAL_SORT })),
+          { plans: JSON.parse(JSON.stringify(plans)) }
+        );
+      }
+    }
   } catch {
     // Not authenticated or any error — client will fetch on mount
-    return [];
   }
-}
 
-export default async function WorkoutPlansPage() {
-  const initialPlans = await fetchInitialWorkoutPlans();
-  return <WorkoutPlanClient initialPlans={initialPlans} />;
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <WorkoutPlanClient />
+    </HydrationBoundary>
+  );
 }
