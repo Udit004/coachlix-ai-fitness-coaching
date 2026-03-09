@@ -81,33 +81,33 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
           <Link href="/" className="inline-block">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
               Coachlix
             </h1>
           </Link>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Welcome back</h2>
-          <p className="mt-2 text-sm text-gray-600">Sign in to continue your fitness journey</p>
+          <h2 className="mt-6 text-3xl font-extrabold text-white">Welcome back</h2>
+          <p className="mt-2 text-sm text-gray-400">Sign in to continue your fitness journey</p>
         </div>
 
-        <div className="bg-white shadow-2xl rounded-2xl p-8 border border-gray-100">
+        <div className="bg-gray-800 shadow-2xl rounded-2xl p-8 border border-gray-700">
           {loginSuccess && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <span className="text-green-700 font-medium">Login successful! Redirecting...</span>
+            <div className="mb-6 p-4 bg-green-900 border border-green-700 rounded-lg flex items-center space-x-2">
+              <CheckCircle className="h-5 w-5 text-green-400" />
+              <span className="text-green-300 font-medium">Login successful! Redirecting...</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
+                  <Mail className="h-5 w-5 text-gray-500" />
                 </div>
                 <input
                   id="email"
@@ -117,21 +117,21 @@ export default function LoginPage() {
                   value={formData.email}
                   onChange={handleInputChange}
                   className={`appearance-none relative block w-full pl-10 pr-3 py-3 border ${
-                    errors.email ? 'border-red-300' : 'border-gray-300'
-                  } placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                    errors.email ? 'border-red-500' : 'border-gray-600'
+                  } placeholder-gray-500 text-white bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                   placeholder="Enter your email"
                 />
               </div>
               {errors.email && (
-                <p className="mt-1 text-sm text-red-600 flex items-center"><AlertCircle className="w-4 h-4 mr-1" />{errors.email}</p>
+                <p className="mt-1 text-sm text-red-400 flex items-center"><AlertCircle className="w-4 h-4 mr-1" />{errors.email}</p>
               )}
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">Password</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
+                  <Lock className="h-5 w-5 text-gray-500" />
                 </div>
                 <input
                   id="password"
@@ -141,21 +141,21 @@ export default function LoginPage() {
                   value={formData.password}
                   onChange={handleInputChange}
                   className={`appearance-none relative block w-full pl-10 pr-10 py-3 border ${
-                    errors.password ? 'border-red-300' : 'border-gray-300'
-                  } placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                    errors.password ? 'border-red-500' : 'border-gray-600'
+                  } placeholder-gray-500 text-white bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                   placeholder="Enter your password"
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-0 inset-y-0 pr-3 flex items-center">
-                  {showPassword ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
+                  {showPassword ? <EyeOff className="h-5 w-5 text-gray-500" /> : <Eye className="h-5 w-5 text-gray-500" />}
                 </button>
               </div>
               {errors.password && (
-                <p className="mt-1 text-sm text-red-600 flex items-center"><AlertCircle className="w-4 h-4 mr-1" />{errors.password}</p>
+                <p className="mt-1 text-sm text-red-400 flex items-center"><AlertCircle className="w-4 h-4 mr-1" />{errors.password}</p>
               )}
             </div>
 
             {errors.submit && (
-              <p className="p-2 text-sm bg-red-50 text-red-700 border border-red-200 rounded flex items-center">
+              <p className="p-2 text-sm bg-red-900 text-red-300 border border-red-700 rounded flex items-center">
                 <AlertCircle className="w-4 h-4 mr-1" /> {errors.submit}
               </p>
             )}
@@ -170,9 +170,9 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-400">
               Don't have an account?{' '}
-              <Link href="/signup" className="text-indigo-600 hover:text-indigo-500 font-medium">
+              <Link href="/signup" className="text-indigo-400 hover:text-indigo-300 font-medium">
                 Sign up for free
               </Link>
             </p>
@@ -181,10 +181,10 @@ export default function LoginPage() {
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
+                <div className="w-full border-t border-gray-700" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                <span className="px-2 bg-gray-800 text-gray-400">Or continue with</span>
               </div>
             </div>
 
@@ -192,7 +192,7 @@ export default function LoginPage() {
               <button
                 onClick={handleGoogleLogin}
                 disabled={isLoading}
-                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                className="w-full inline-flex justify-center py-2 px-4 border border-gray-600 rounded-lg shadow-sm bg-gray-700 text-sm font-medium text-gray-300 hover:bg-gray-600"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24">
                   <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

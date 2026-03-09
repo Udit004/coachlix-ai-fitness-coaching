@@ -96,13 +96,15 @@ export default function Navbar() {
   const handleLogout = async () => {
     await signOut(auth);
     closeDropdown();
-    setProfileImage(null); // Clear profile image on logout
-    setUserName(""); // Clear user name on logout
-    router.push("/loginPage");
+    setProfileImage(null);
+    setUserName("");
+    router.push("/");
   };
 
   const navLinks = [
-    { name: "Home", href: "/" },
+    user
+      ? { name: "Dashboard", href: "/dashboard" }
+      : { name: "Home", href: "/" },
     { name: "AI Chat", href: "/ai-chat" },
     { name: "Diet Plan", href: "/diet-plan" },
     { name: "Workout Plan", href: "/workout-plan" },
