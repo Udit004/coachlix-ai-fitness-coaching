@@ -3,8 +3,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { X, Search, Plus, Clock, Star } from "lucide-react";
 import dietPlanService from "@/service/dietPlanService";
+import { useToast } from "@/hooks/useToast";
 
 export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
+  const { success, error: toastError } = useToast();
   const [activeTab, setActiveTab] = useState("manual"); // 'manual' or 'search'
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -116,12 +118,12 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
 
       // Validate required fields
       if (!formData.name.trim()) {
-        alert("Food name is required");
+        toastError("Food name is required");
         return;
       }
 
       if (!formData.calories || parseFloat(formData.calories) < 0) {
-        alert("Please enter valid calories");
+        toastError("Please enter valid calories");
         return;
       }
 
@@ -139,13 +141,16 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
         };
 
         await onAdd(foodData);
+        success(`${foodData.name} added to ${mealType}!`);
+        handleClose();
       } catch (error) {
         console.error("Error in handleSubmit:", error);
+        toastError(error.message || "Failed to add food");
       } finally {
         setIsSubmitting(false);
       }
     },
-    [formData, onAdd, isSubmitting]
+    [formData, onAdd, isSubmitting, mealType, success, toastError]
   );
 
   const handleClose = useCallback(

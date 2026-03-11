@@ -12,9 +12,11 @@ import {
   Copy,
   AlertCircle,
 } from "lucide-react";
+import { useToast } from "@/hooks/useToast";
 
 import DietDayCard from "../components/DietDayCard";
 import DietPlanActions from "../components/DietPlanActions";
+import DeleteModal from "../../components/DeleteModal";
 import useDietPlanStore from "../store/useDietPlanStore";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -30,9 +32,11 @@ export default function SingleDietPlanClient({ planId }) {
   const authResult = useAuth();
   const user = authResult?.user || null;
   const authLoading = authResult?.loading || false;
+  const { success, error: toastError } = useToast();
 
   // Local state for day visibility
   const [showAllDays, setShowAllDays] = React.useState(false);
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
 
   // UI state from Zustand
   const {
@@ -84,16 +88,15 @@ export default function SingleDietPlanClient({ planId }) {
   }, [dietPlan, activeDay, setActiveDay]);
 
   const handleDeletePlan = async () => {
-    if (!confirm("Are you sure you want to delete this entire diet plan?"))
-      return;
-
     try {
       await deletePlanMutation.mutateAsync(planId);
+      success("Diet plan deleted successfully!");
       router.push("/diet-plan");
     } catch (err) {
       console.error("Error deleting plan:", err);
-      alert("Failed to delete plan. Please try again.");
+      toastError(err.message || "Failed to delete plan. Please try again.");
     }
+    setShowDeleteModal(false);
   };
 
   const handleClonePlan = async () => {
@@ -110,10 +113,11 @@ export default function SingleDietPlanClient({ planId }) {
         planId: planId, 
         newName 
       });
+      success(`Plan cloned as "${newName}"!`);
       router.push(`/diet-plan/${clonedPlan._id}`);
     } catch (err) {
       console.error("Error cloning plan:", err);
-      alert("Failed to clone plan. Please try again.");
+      toastError(err.message || "Failed to clone plan. Please try again.");
     }
   };
 
@@ -133,12 +137,13 @@ export default function SingleDietPlanClient({ planId }) {
       };
 
       await addDayMutation.mutateAsync({ planId: planId, dayData });
+      success(`Day ${newDayNumber} added successfully!`);
       
       // Set the newly created day as active
       setActiveDay(newDayNumber);
     } catch (err) {
       console.error("Error adding day:", err);
-      alert("Failed to add day. Please try again.");
+      toastError(err.message || "Failed to add day. Please try again.");
     }
   };
 
@@ -296,9 +301,20 @@ export default function SingleDietPlanClient({ planId }) {
             <DietPlanActions
               onClone={handleClonePlan}
               onEdit={() => router.push(`/diet-plan/${planId}/edit`)}
-              onDelete={handleDeletePlan}
+              onDelete={() => setShowDeleteModal(true)}
               isCloning={clonePlanMutation.isPending}
               isDeleting={deletePlanMutation.isPending}
+            />
+            
+            {/* Delete Modal */}
+            <DeleteModal
+              isOpen={showDeleteModal}
+              onClose={() => setShowDeleteModal(false)}
+              onConfirm={handleDeletePlan}
+              title="Delete Diet Plan"
+              description="Are you sure you want to delete this entire diet plan? This action cannot be undone."
+              itemName={dietPlan?.name}
+              isLoading={deletePlanMutation.isPending}
             />
           </div>
         </div>

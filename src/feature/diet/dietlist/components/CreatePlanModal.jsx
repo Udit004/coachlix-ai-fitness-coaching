@@ -2,8 +2,10 @@
 import React, { useState } from "react";
 import { X, Sparkles, Calculator, Plus } from "lucide-react";
 import dietPlanService from "@/service/dietPlanService";
+import { useToast } from "@/hooks/useToast";
 
 export default function CreatePlanModal({ onClose, onCreate }) {
+  const { success, error: toastError, loading: toastLoading } = useToast();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -141,9 +143,10 @@ export default function CreatePlanModal({ onClose, onCreate }) {
       }
 
       await onCreate(planData);
+      success(`Diet plan "${formData.name}" created successfully!`);
     } catch (error) {
       console.error("Error creating plan:", error);
-      alert("Error creating plan: " + error.message);
+      toastError("Error creating plan: " + error.message);
     } finally {
       setLoading(false);
     }

@@ -4,8 +4,10 @@ import React, { useState } from 'react';
 import { Plus, Droplets, FileText, TrendingUp } from 'lucide-react';
 import MealCard from './MealCard';
 import { useAddMeal, useUpdateDay } from '../hooks/useDietPlanDetailQueries';
+import { useToast } from '@/hooks/useToast';
 
 export default function DietDayCard({ day, planId, onUpdate }) {
+  const { success, error: toastError } = useToast();
   const [isAddingMeal, setIsAddingMeal] = useState(false);
   const [showAddMealUI, setShowAddMealUI] = useState(false);
   const [newMealType, setNewMealType] = useState('');
@@ -36,12 +38,13 @@ export default function DietDayCard({ day, planId, onUpdate }) {
         dayNumber: day.dayNumber,
         mealData  // Correct parameter name for the mutation
       });
+      success(`${newMealType} meal added successfully!`);
       // Mutation's onSuccess updates the cache automatically
       setIsAddingMeal(false);
       setNewMealType('');
     } catch (err) {
       console.error('Error adding meal:', err);
-      alert('Failed to add meal. Please try again.');
+      toastError(err.message || 'Failed to add meal. Please try again.');
     }
   };
 
@@ -57,10 +60,12 @@ export default function DietDayCard({ day, planId, onUpdate }) {
         dayNumber: day.dayNumber,
         dayData
       });
+      success(`Water intake updated to ${newWaterIntake}ml!`);
       // Mutation's onSuccess updates the cache automatically
       setWaterIntake(newWaterIntake);
     } catch (err) {
       console.error('Error updating water intake:', err);
+      toastError(err.message || 'Failed to update water intake.');
     }
   };
 
@@ -76,11 +81,12 @@ export default function DietDayCard({ day, planId, onUpdate }) {
         dayNumber: day.dayNumber,
         dayData
       });
+      success('Day notes updated successfully!');
       // Mutation's onSuccess updates the cache automatically
       setIsEditingNotes(false);
     } catch (err) {
       console.error('Error updating notes:', err);
-      alert('Failed to update notes. Please try again.');
+      toastError(err.message || 'Failed to update notes. Please try again.');
     }
   };
 

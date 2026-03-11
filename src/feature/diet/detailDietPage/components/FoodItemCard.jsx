@@ -2,8 +2,10 @@
 "use client"
 import React, { useState } from 'react';
 import { Edit, Trash2, Save, X } from 'lucide-react';
+import { useToast } from '@/hooks/useToast';
 
 export default function FoodItemCard({ item, itemIndex, onUpdate, onDelete }) {
+  const { success, error: toastError } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isNameExpanded, setIsNameExpanded] = useState(false);
   const [editData, setEditData] = useState({
@@ -19,12 +21,12 @@ export default function FoodItemCard({ item, itemIndex, onUpdate, onDelete }) {
   const handleSave = () => {
     // Validate required fields
     if (!editData.name.trim()) {
-      alert('Food name is required');
+      toastError('Food name is required');
       return;
     }
     
     if (editData.calories < 0) {
-      alert('Calories cannot be negative');
+      toastError('Calories cannot be negative');
       return;
     }
 
@@ -38,7 +40,7 @@ export default function FoodItemCard({ item, itemIndex, onUpdate, onDelete }) {
       quantity: editData.quantity.trim() || '1 serving',
       notes: editData.notes.trim()
     });
-    
+    success(`${editData.name} updated successfully!`);
     setIsEditing(false);
   };
 
