@@ -1,8 +1,8 @@
 // SSR Server Component — rendered on each request (never statically cached)
 export const dynamic = "force-dynamic";
 
-import HomeDashboard from "@/components/home/HomeDashboard";
-import RecentActivitySection from "@/components/RecentActivitySection";
+import HomeDashboard from "@/feature/Dashboard/components/HomeDashboard";
+import RecentActivitySection from "@/feature/Dashboard/components/RecentActivitySection";
 
 /**
  * Dashboard page — SSR shell that renders client-side interactive widgets.

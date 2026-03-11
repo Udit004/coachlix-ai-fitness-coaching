@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import useChatHistoryStore from '../stores/useChatHistoryStore';
-import { useWorkoutPlans } from './useWorkoutQueries';
-import { useDietPlans } from './useDietPlanQueries';
+import useChatHistoryStore from '../../../stores/useChatHistoryStore';
+import { useWorkoutPlans } from '../../../hooks/useWorkoutQueries';
+import { useDietPlans } from '../../../hooks/useDietPlanQueries';
 
 export const useRecentActivity = (userId) => {
   const [refreshing, setRefreshing] = useState(false);

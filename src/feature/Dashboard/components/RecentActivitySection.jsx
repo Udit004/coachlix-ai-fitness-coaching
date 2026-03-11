@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthContext } from '../auth/AuthContext';
+import { useAuthContext } from '../../../auth/AuthContext';
 import useRecentActivity from '../hooks/useRecentActivity';
 import {
   MessageSquare,

@@ -1,6 +1,6 @@
 // Server Component — SSR data fetch + delegate rendering to SingleDietPlanClient
 import { cookies } from "next/headers";
-import SingleDietPlanClient from "./SingleDietPlanClient";
+import SingleDietPlanClient from "@/feature/diet/detailDietPage/pages/SingleDietPlanClient";
 import { verifySessionCookie } from "@/lib/verifyUser";
 import { connectDB } from "@/lib/db";
 import DietPlan from "@/models/DietPlan";

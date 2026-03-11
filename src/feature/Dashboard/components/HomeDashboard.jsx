@@ -10,11 +10,11 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bot, Play, TrendingUp, Calendar } from "lucide-react";
-import MacroProgressRing from "@/components/home/MacroProgressRing";
-import WaterIntakeTracker from "@/components/home/WaterIntakeTracker";
-import PersonalRecordsWidget from "@/components/home/PersonalRecordsWidget";
-import WeeklyCalendarView from "@/components/home/WeeklyCalendarView";
-import StreakCounter from "@/components/home/StreakCounter";
+import MacroProgressRing from "@/feature/home/MacroProgressRing";
+import WaterIntakeTracker from "@/feature/home/WaterIntakeTracker";
+import PersonalRecordsWidget from "@/feature/home/PersonalRecordsWidget";
+import WeeklyCalendarView from "@/feature/home/WeeklyCalendarView";
+import StreakCounter from "@/feature/home/StreakCounter";
 
 function WorkoutTodaySummary({ plan, onStart }) {
   try {
