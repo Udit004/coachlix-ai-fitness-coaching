@@ -5,7 +5,7 @@ import { verifySessionCookie } from "@/lib/verifyUser";
 import { connectDB } from "@/lib/db";
 import DietPlan from "@/models/DietPlan";
 import { QueryClient, HydrationBoundary, dehydrate } from "@tanstack/react-query";
-import { DIET_PLAN_KEYS } from "@/hooks/useDietPlanQueries";
+import { DIET_PLAN_KEYS } from "@/feature/diet/detailDietPage/hooks/useDietPlanDetailQueries";
 
 export const metadata = {
   title: "Diet Plan Details",
