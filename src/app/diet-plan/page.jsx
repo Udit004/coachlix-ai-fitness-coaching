@@ -1,11 +1,11 @@
 // Server Component — SSR data fetch + delegate rendering to DietPlanClient
 import { cookies } from "next/headers";
-import DietPlanClient from "./DietPlanClient";
+import DietPlanClient from "@/feature/diet/dietlist/pages/DietPlanListClient";
 import { verifySessionCookie } from "@/lib/verifyUser";
 import { connectDB } from "@/lib/db";
 import DietPlan from "@/models/DietPlan";
 import { QueryClient, HydrationBoundary, dehydrate } from "@tanstack/react-query";
-import { DIET_PLAN_KEYS } from "@/hooks/useDietPlanQueries";
+import { DIET_PLAN_KEYS } from "@/feature/diet/dietlist/hooks/useDietPlanListQueries";
 
 export const metadata = {
   title: "Diet Plans",

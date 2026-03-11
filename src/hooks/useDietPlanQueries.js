@@ -86,11 +86,14 @@ export const useUpdateDietPlan = () => {
   return useMutation({
     mutationFn: ({ planId, updateData }) => dietPlanService.updateDietPlan(planId, updateData),
     onSuccess: (updatedPlan, { planId }) => {
-      // Update the specific plan in cache
+      // Set the data and mark as fresh
       queryClient.setQueryData(DIET_PLAN_KEYS.detail(planId), updatedPlan);
       
-      // Invalidate lists to ensure consistency
-      queryClient.invalidateQueries({ queryKey: DIET_PLAN_KEYS.lists() });
+      // Only invalidate without refetching immediately
+      queryClient.invalidateQueries({ 
+        queryKey: DIET_PLAN_KEYS.lists(),
+        refetchType: 'none'
+      });
     },
     onError: (error) => {
       console.error('Failed to update diet plan:', error);
@@ -144,17 +147,21 @@ export const useAddDay = () => {
   return useMutation({
     mutationFn: ({ planId, dayData }) => dietPlanService.addDay(planId, dayData),
     onSuccess: (updatedPlan, { planId }) => {
-      // Update the plan in cache
+      // Set the data and mark as fresh
       queryClient.setQueryData(DIET_PLAN_KEYS.detail(planId), updatedPlan);
       
-      // Invalidate nutrition summary as it may have changed
-      queryClient.invalidateQueries({ queryKey: DIET_PLAN_KEYS.nutrition(planId) });
+      // Mark nutrition as stale without immediate refetch
+      queryClient.invalidateQueries({ 
+        queryKey: DIET_PLAN_KEYS.nutrition(planId),
+        refetchType: 'none'
+      });
     },
     onError: (error) => {
       console.error('Failed to add day:', error);
     },
   });
 };
+
 
 // Mutation to update day
 export const useUpdateDay = () => {
@@ -164,8 +171,13 @@ export const useUpdateDay = () => {
     mutationFn: ({ planId, dayNumber, dayData }) => 
       dietPlanService.updateDay(planId, dayNumber, dayData),
     onSuccess: (updatedPlan, { planId }) => {
+      // Set the data and mark as fresh
       queryClient.setQueryData(DIET_PLAN_KEYS.detail(planId), updatedPlan);
-      queryClient.invalidateQueries({ queryKey: DIET_PLAN_KEYS.nutrition(planId) });
+      // Mark nutrition as stale without immediate refetch
+      queryClient.invalidateQueries({ 
+        queryKey: DIET_PLAN_KEYS.nutrition(planId),
+        refetchType: 'none'
+      });
     },
     onError: (error) => {
       console.error('Failed to update day:', error);
@@ -181,8 +193,13 @@ export const useAddMeal = () => {
     mutationFn: ({ planId, dayNumber, mealData }) => 
       dietPlanService.addMeal(planId, dayNumber, mealData),
     onSuccess: (updatedPlan, { planId }) => {
+      // Set the data and mark as fresh
       queryClient.setQueryData(DIET_PLAN_KEYS.detail(planId), updatedPlan);
-      queryClient.invalidateQueries({ queryKey: DIET_PLAN_KEYS.nutrition(planId) });
+      // Mark nutrition as stale without immediate refetch
+      queryClient.invalidateQueries({ 
+        queryKey: DIET_PLAN_KEYS.nutrition(planId),
+        refetchType: 'none'
+      });
     },
     onError: (error) => {
       console.error('Failed to add meal:', error);
@@ -198,8 +215,13 @@ export const useAddFoodItem = () => {
     mutationFn: ({ planId, dayNumber, mealType, foodItem }) => 
       dietPlanService.addFoodItem(planId, dayNumber, mealType, foodItem),
     onSuccess: (updatedPlan, { planId }) => {
+      // Set the data and mark as fresh (not stale)
       queryClient.setQueryData(DIET_PLAN_KEYS.detail(planId), updatedPlan);
-      queryClient.invalidateQueries({ queryKey: DIET_PLAN_KEYS.nutrition(planId) });
+      // Mark nutrition as stale only - it will refetch when needed
+      queryClient.invalidateQueries({ 
+        queryKey: DIET_PLAN_KEYS.nutrition(planId),
+        refetchType: 'none' // Don't refetch immediately
+      });
     },
     onError: (error) => {
       console.error('Failed to add food item:', error);
@@ -215,8 +237,13 @@ export const useUpdateFoodItem = () => {
     mutationFn: ({ planId, dayNumber, mealType, itemIndex, foodItem }) => 
       dietPlanService.updateFoodItem(planId, dayNumber, mealType, itemIndex, foodItem),
     onSuccess: (updatedPlan, { planId }) => {
+      // Set the data and mark as fresh (not stale)
       queryClient.setQueryData(DIET_PLAN_KEYS.detail(planId), updatedPlan);
-      queryClient.invalidateQueries({ queryKey: DIET_PLAN_KEYS.nutrition(planId) });
+      // Mark nutrition as stale only - it will refetch when needed
+      queryClient.invalidateQueries({ 
+        queryKey: DIET_PLAN_KEYS.nutrition(planId),
+        refetchType: 'none' // Don't refetch immediately
+      });
     },
     onError: (error) => {
       console.error('Failed to update food item:', error);
@@ -232,8 +259,13 @@ export const useDeleteFoodItem = () => {
     mutationFn: ({ planId, dayNumber, mealType, itemIndex }) => 
       dietPlanService.deleteFoodItem(planId, dayNumber, mealType, itemIndex),
     onSuccess: (updatedPlan, { planId }) => {
+      // Set the data and mark as fresh (not stale)
       queryClient.setQueryData(DIET_PLAN_KEYS.detail(planId), updatedPlan);
-      queryClient.invalidateQueries({ queryKey: DIET_PLAN_KEYS.nutrition(planId) });
+      // Mark nutrition as stale only - it will refetch when needed
+      queryClient.invalidateQueries({ 
+        queryKey: DIET_PLAN_KEYS.nutrition(planId),
+        refetchType: 'none' // Don't refetch immediately
+      });
     },
     onError: (error) => {
       console.error('Failed to delete food item:', error);

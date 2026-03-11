@@ -1,8 +1,10 @@
 "use client";
 import React, { useMemo, useState } from "react";
 import { X, Save } from "lucide-react";
+import { useToast } from "@/hooks/useToast";
 
 export default function EditPlanModal({ plan, onClose, onSave }) {
+  const { success, error: toastError } = useToast();
   const initial = useMemo(() => ({
     name: plan?.name || "",
     description: plan?.description || "",
@@ -54,10 +56,11 @@ export default function EditPlanModal({ plan, onClose, onSave }) {
     setLoading(true);
     try {
       await onSave(plan._id || plan.id, formData);
+      success(`Diet plan "${formData.name}" updated successfully!`);
       onClose();
     } catch (error) {
       console.error("Failed to update plan:", error);
-      alert(error?.message || "Failed to update plan");
+      toastError(error?.message || "Failed to update plan");
     } finally {
       setLoading(false);
     }
@@ -228,5 +231,3 @@ export default function EditPlanModal({ plan, onClose, onSave }) {
     </div>
   );
 }
-
-

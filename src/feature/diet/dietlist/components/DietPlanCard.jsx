@@ -382,22 +382,6 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
           </div>
         </div>
 
-        {/* Progress Bar */}
-        {/* {planDuration > 1 && (
-          <div className="mb-4">
-            <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
-              <span>Progress</span>
-              <span>{daysCompleted} of {planDuration} days</span>
-            </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div 
-                className="bg-purple-500 h-2 rounded-full transition-all duration-300" 
-                style={{ width: `${progressPercentage}%` }}
-              ></div>
-            </div>
-          </div>
-        )} */}
-
         {/* Meta Info */}
         <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-4">
           <div className="flex items-center space-x-1">
@@ -439,16 +423,6 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
             <Eye className="h-4 w-4 flex-shrink-0" />
             <span>View Plan</span>
           </button>
-          
-          {/* {planIsActive && planId && (
-            <button
-              onClick={handleStartPlan}
-              className="cursor-pointer inline-flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-              title="Start Plan"
-            >
-              <Play className="h-4 w-4" />
-            </button>
-          )} */}
         </div>
       </div>
 

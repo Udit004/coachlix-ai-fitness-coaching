@@ -1,10 +1,10 @@
 // SSG Server Component — statically generated at build time
 import Link from "next/link";
-import HomeStatic from "@/components/home/HomeStatic";
-import FeaturesSection from "@/components/home/FeaturesSection";
-import HowItWorks from "@/components/home/HowItWorks";
-import Testimonials from "@/components/home/Testimonials";
-import HomeAuthRedirect from "@/components/home/HomeAuthRedirect";
+import HomeStatic from "@/feature/home/HomeStatic";
+import FeaturesSection from "@/feature/home/FeaturesSection";
+import HowItWorks from "@/feature/home/HowItWorks";
+import Testimonials from "@/feature/home/Testimonials";
+import HomeAuthRedirect from "@/feature/home/HomeAuthRedirect";
 import { ArrowRight, CheckCircle, Heart, Users } from "lucide-react";
 
 // Opt into static generation explicitly

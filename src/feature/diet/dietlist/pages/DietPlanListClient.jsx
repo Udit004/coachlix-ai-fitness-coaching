@@ -12,9 +12,11 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import DietPlanCard from "./DietPlanCard";
-import useDietPlanStore from "../../stores/useDietPlanStore";
-import { useAuth } from "../../hooks/useAuth";
+import DietPlanCard from "../components/DietPlanCard";
+import useDietPlanStore from "../store/useDietPlanStore";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/useToast";
+import DeleteModal from "../../components/DeleteModal";
 import {
   useDietPlans,
   useCreateDietPlan,
@@ -22,9 +24,9 @@ import {
   useDeleteDietPlan,
   useCloneDietPlan,
   useToggleDietPlanActive,
-} from "../../hooks/useDietPlanQueries";
+} from "../hooks/useDietPlanListQueries";
 
-const CreatePlanModal = dynamic(() => import("./CreatePlanModal"), {
+const CreatePlanModal = dynamic(() => import("../components/CreatePlanModal"), {
   loading: () => (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
       <div className="w-[90%] max-w-xl bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
@@ -40,7 +42,7 @@ const CreatePlanModal = dynamic(() => import("./CreatePlanModal"), {
   ssr: false,
 });
 
-const EditPlanModal = dynamic(() => import("./EditPlanModal"), {
+const EditPlanModal = dynamic(() => import("../components/EditPlanModal"), {
   loading: () => (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
       <div className="w-[90%] max-w-xl bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
@@ -66,13 +68,16 @@ const goals = [
 ];
 
 /**
- * DietPlanClient — Client component that manages UI state and data fetching.
+ * DietPlanListClient — Client component that manages UI state and data fetching
+ * for the diet plan list feature.
  *
  * The parent Server Component (page.jsx) uses HydrationBoundary + dehydrate
  * to pre-populate the TanStack Query cache before this component renders,
  * so the first paint is instant with real data and no extra round-trip.
  */
-export default function DietPlanClient() {
+export default function DietPlanListClient() {
+  // ── Toast notifications ──────────────────────────────────────────────────
+  const { success, error: toastError, dismiss } = useToast();
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   const { loading: authLoading, error: authError, isAuthenticated } = useAuth();
@@ -92,6 +97,8 @@ export default function DietPlanClient() {
 
   const [editingPlan, setEditingPlan] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [deletingPlanId, setDeletingPlanId] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // ── Query options derived from UI state ───────────────────────────────────
   const queryOptions = useMemo(
@@ -155,25 +162,31 @@ export default function DietPlanClient() {
         if (!planData?.name?.trim()) throw new Error("Plan name is required");
         await createPlanMutation.mutateAsync(planData);
         setShowCreateModal(false);
+        success(`Diet plan "${planData.name}" created successfully!`);
         if (selectedGoal && selectedGoal !== planData.goal) setSelectedGoal("");
       } catch (err) {
         console.error("Error creating plan:", err);
+        toastError(err.message || "Failed to create diet plan");
       }
     },
-    [createPlanMutation, setShowCreateModal, selectedGoal, setSelectedGoal]
+    [createPlanMutation, setShowCreateModal, selectedGoal, setSelectedGoal, success, toastError]
   );
 
   const handleDeletePlan = useCallback(
     async (planId) => {
       if (!planId) return;
-      if (!confirm("Are you sure you want to delete this diet plan?")) return;
       try {
         await deletePlanMutation.mutateAsync(planId);
+        success("Diet plan deleted successfully!");
       } catch (err) {
         console.error("Error deleting plan:", err);
+        toastError(err.message || "Failed to delete diet plan");
+      } finally {
+        setShowDeleteModal(false);
+        setDeletingPlanId(null);
       }
     },
-    [deletePlanMutation]
+    [deletePlanMutation, success, toastError]
   );
 
   const handleClonePlan = useCallback(
@@ -181,20 +194,28 @@ export default function DietPlanClient() {
       if (!planId || !newName?.trim()) return;
       try {
         await clonePlanMutation.mutateAsync({ planId, newName });
+        success(`Plan cloned as "${newName}"!`);
       } catch (err) {
         console.error("Error cloning plan:", err);
+        toastError(err.message || "Failed to clone diet plan");
       }
     },
-    [clonePlanMutation]
+    [clonePlanMutation, success, toastError]
   );
 
   const handleEditOpen = useCallback((plan) => setEditingPlan(plan), []);
 
   const handleEditSave = useCallback(
     async (planId, updateData) => {
-      await updatePlanMutation.mutateAsync({ planId, updateData });
+      try {
+        await updatePlanMutation.mutateAsync({ planId, updateData });
+        success("Diet plan updated successfully!");
+      } catch (err) {
+        console.error("Error updating plan:", err);
+        toastError(err.message || "Failed to update diet plan");
+      }
     },
-    [updatePlanMutation]
+    [updatePlanMutation, success, toastError]
   );
 
   const handleToggleActive = useCallback(
@@ -202,12 +223,13 @@ export default function DietPlanClient() {
       if (!planId) return;
       try {
         await toggleActiveMutation.mutateAsync({ planId, isActive });
+        success(isActive ? "Diet plan activated!" : "Diet plan deactivated!");
       } catch (err) {
         console.error("Error toggling plan active status:", err);
-        alert("Failed to update plan status. Please try again.");
+        toastError("Failed to update plan status. Please try again.");
       }
     },
-    [toggleActiveMutation]
+    [toggleActiveMutation, success, toastError]
   );
 
   // ── Auth error ────────────────────────────────────────────────────────────
@@ -493,7 +515,10 @@ export default function DietPlanClient() {
                 <DietPlanCard
                   key={plan._id}
                   plan={plan}
-                  onDelete={handleDeletePlan}
+                  onDelete={() => {
+                    setDeletingPlanId(plan._id);
+                    setShowDeleteModal(true);
+                  }}
                   onClone={handleClonePlan}
                   onEdit={handleEditOpen}
                   onToggleActive={handleToggleActive}
@@ -520,6 +545,25 @@ export default function DietPlanClient() {
             plan={editingPlan}
             onClose={() => setEditingPlan(null)}
             onSave={handleEditSave}
+          />
+        )}
+
+        {/* Delete Plan Modal */}
+        {deletingPlanId && (
+          <DeleteModal
+            isOpen={showDeleteModal}
+            onClose={() => {
+              setShowDeleteModal(false);
+              setDeletingPlanId(null);
+            }}
+            onConfirm={() => {
+              const plan = dietPlans.find(p => p._id === deletingPlanId);
+              handleDeletePlan(deletingPlanId);
+            }}
+            title="Delete Diet Plan"
+            description="Are you sure you want to delete this diet plan? This action cannot be undone."
+            itemName={dietPlans.find(p => p._id === deletingPlanId)?.name}
+            isLoading={deletePlanMutation.isPending}
           />
         )}
       </div>

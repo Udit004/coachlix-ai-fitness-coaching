@@ -10,6 +10,7 @@ import AuthGuard from "@/components/AuthGuard";
 import { AuthProvider } from "@/auth/AuthContext";
 import { CustomThemeProvider } from "@/context/CustomThemeProvider";
 import QueryProvider from "@/providers/QueryProvider";
+import ToastProvider from "@/providers/ToastProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -72,6 +73,7 @@ export default function RootLayout({ children }) {
         <CustomThemeProvider>
           <AuthProvider>
             <QueryProvider>
+              <ToastProvider />
               <Navbar />
               <AuthGuard>
                 {children}
