@@ -4,9 +4,9 @@ import React, { useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Plus, Edit, Trash2, Utensils, Calculator } from "lucide-react";
 import FoodItemCard from "./FoodItemCard";
-import dietPlanService from "@/service/dietPlanService";
+import { useAddFoodItem, useUpdateFoodItem, useDeleteFoodItem } from "@/hooks/useDietPlanQueries";
 
-export default function MealCard({ meal, planId, dayNumber, onUpdate }) {
+export default function MealCard({ meal, planId, dayNumber }) {
   const AddFoodModal = dynamic(() => import("./AddFoodModal"), {
     loading: () => (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
@@ -25,6 +25,11 @@ export default function MealCard({ meal, planId, dayNumber, onUpdate }) {
   const [isAddingFood, setIsAddingFood] = useState(false);
   const isProcessingRef = useRef(false);
 
+  // React Query mutations for food operations
+  const addFoodMutation = useAddFoodItem();
+  const updateFoodMutation = useUpdateFoodItem();
+  const deleteFoodMutation = useDeleteFoodItem();
+
   // Calculate meal totals
   const mealTotals = meal.items.reduce(
     (totals, item) => ({
@@ -39,58 +44,63 @@ export default function MealCard({ meal, planId, dayNumber, onUpdate }) {
   const handleAddFood = useCallback(
     async (foodData) => {
       try {
-        await dietPlanService.addFoodItem(
+        await addFoodMutation.mutateAsync({
           planId,
           dayNumber,
-          meal.type,
-          foodData
-        );
-        // Use setTimeout to ensure state is set after modal operations complete
+          mealType: meal.type,
+          foodItem: foodData
+        });
+        // Mutation's onSuccess updates the cache automatically - no need to call onUpdate
         setTimeout(() => {
           setIsAddingFood(false);
         }, 0);
-        onUpdate?.();
       } catch (error) {
         console.error("Error adding food item:", error);
         alert("Failed to add food item. Please try again.");
         setIsAddingFood(false);
       }
     },
-    [planId, dayNumber, meal.type, onUpdate]
+    [planId, dayNumber, meal.type, addFoodMutation]
   );
 
-  const handleUpdateFood = async (itemIndex, foodData) => {
-    try {
-      await dietPlanService.updateFoodItem(
-        planId,
-        dayNumber,
-        meal.type,
-        itemIndex,
-        foodData
-      );
-      onUpdate?.();
-    } catch (error) {
-      console.error("Error updating food item:", error);
-      alert("Failed to update food item. Please try again.");
-    }
-  };
+  const handleUpdateFood = useCallback(
+    async (itemIndex, foodData) => {
+      try {
+        await updateFoodMutation.mutateAsync({
+          planId,
+          dayNumber,
+          mealType: meal.type,
+          itemIndex,
+          foodItem: foodData
+        });
+        // Mutation's onSuccess updates the cache automatically - no need to call onUpdate
+      } catch (error) {
+        console.error("Error updating food item:", error);
+        alert("Failed to update food item. Please try again.");
+      }
+    },
+    [planId, dayNumber, meal.type, updateFoodMutation]
+  );
 
-  const handleDeleteFood = async (itemIndex) => {
-    if (!confirm("Are you sure you want to remove this food item?")) return;
+  const handleDeleteFood = useCallback(
+    async (itemIndex) => {
+      if (!confirm("Are you sure you want to remove this food item?")) return;
 
-    try {
-      await dietPlanService.deleteFoodItem(
-        planId,
-        dayNumber,
-        meal.type,
-        itemIndex
-      );
-      onUpdate?.();
-    } catch (error) {
-      console.error("Error deleting food item:", error);
-      alert("Failed to delete food item. Please try again.");
-    }
-  };
+      try {
+        await deleteFoodMutation.mutateAsync({
+          planId,
+          dayNumber,
+          mealType: meal.type,
+          itemIndex
+        });
+        // Mutation's onSuccess updates the cache automatically - no need to call onUpdate
+      } catch (error) {
+        console.error("Error deleting food item:", error);
+        alert("Failed to delete food item. Please try again.");
+      }
+    },
+    [planId, dayNumber, meal.type, deleteFoodMutation]
+  );
 
   const handleOpenModal = useCallback((e) => {
     e.preventDefault();

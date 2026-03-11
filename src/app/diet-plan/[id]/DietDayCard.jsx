@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Plus, Droplets, FileText, TrendingUp } from 'lucide-react';
 import MealCard from './MealCard';
-import dietPlanService from '@/service/dietPlanService';
+import { useAddMeal, useUpdateDay } from '@/hooks/useDietPlanQueries';
 
 export default function DietDayCard({ day, planId, onUpdate }) {
   const [isAddingMeal, setIsAddingMeal] = useState(false);
@@ -12,6 +12,10 @@ export default function DietDayCard({ day, planId, onUpdate }) {
   const [waterIntake, setWaterIntake] = useState(day.waterIntake || 0);
   const [dayNotes, setDayNotes] = useState(day.notes || '');
   const [isEditingNotes, setIsEditingNotes] = useState(false);
+
+  // React Query mutations
+  const addMealMutation = useAddMeal();
+  const updateDayMutation = useUpdateDay();
 
   const mealTypes = ['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Pre-Workout', 'Post-Workout'];
   const availableMealTypes = mealTypes.filter(type => 
@@ -27,10 +31,14 @@ export default function DietDayCard({ day, planId, onUpdate }) {
         items: []
       };
       
-      await dietPlanService.addMeal(planId, day.dayNumber, mealData);
+      await addMealMutation.mutateAsync({
+        planId,
+        dayNumber: day.dayNumber,
+        mealData  // Correct parameter name for the mutation
+      });
+      // Mutation's onSuccess updates the cache automatically
       setIsAddingMeal(false);
       setNewMealType('');
-      onUpdate?.();
     } catch (err) {
       console.error('Error adding meal:', err);
       alert('Failed to add meal. Please try again.');
@@ -44,9 +52,13 @@ export default function DietDayCard({ day, planId, onUpdate }) {
         waterIntake: newWaterIntake
       };
       
-      await dietPlanService.updateDay(planId, day.dayNumber, dayData);
+      await updateDayMutation.mutateAsync({
+        planId,
+        dayNumber: day.dayNumber,
+        dayData
+      });
+      // Mutation's onSuccess updates the cache automatically
       setWaterIntake(newWaterIntake);
-      onUpdate?.();
     } catch (err) {
       console.error('Error updating water intake:', err);
     }
@@ -59,9 +71,13 @@ export default function DietDayCard({ day, planId, onUpdate }) {
         notes: dayNotes
       };
       
-      await dietPlanService.updateDay(planId, day.dayNumber, dayData);
+      await updateDayMutation.mutateAsync({
+        planId,
+        dayNumber: day.dayNumber,
+        dayData
+      });
+      // Mutation's onSuccess updates the cache automatically
       setIsEditingNotes(false);
-      onUpdate?.();
     } catch (err) {
       console.error('Error updating notes:', err);
       alert('Failed to update notes. Please try again.');
@@ -276,7 +292,6 @@ export default function DietDayCard({ day, planId, onUpdate }) {
                 meal={meal}
                 planId={planId}
                 dayNumber={day.dayNumber}
-                onUpdate={onUpdate}
               />
             ))}
           </div>

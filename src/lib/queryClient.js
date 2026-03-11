@@ -22,7 +22,7 @@ const queryClient = new QueryClient({
         return failureCount < 3;
       },
       refetchOnWindowFocus: false,
-      refetchOnMount: true,
+      refetchOnMount: false, // Changed from true - prevents unnecessary refetches for fresh data
       refetchOnReconnect: true,
       // Network mode options
       networkMode: 'online',
