@@ -12,9 +12,9 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import DietPlanCard from "./DietPlanCard";
-import useDietPlanStore from "../../stores/useDietPlanStore";
-import { useAuth } from "../../hooks/useAuth";
+import DietPlanCard from "../components/DietPlanCard";
+import useDietPlanStore from "../store/useDietPlanStore";
+import { useAuth } from "@/hooks/useAuth";
 import {
   useDietPlans,
   useCreateDietPlan,
@@ -22,9 +22,9 @@ import {
   useDeleteDietPlan,
   useCloneDietPlan,
   useToggleDietPlanActive,
-} from "../../hooks/useDietPlanQueries";
+} from "../hooks/useDietPlanListQueries";
 
-const CreatePlanModal = dynamic(() => import("./CreatePlanModal"), {
+const CreatePlanModal = dynamic(() => import("../components/CreatePlanModal"), {
   loading: () => (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
       <div className="w-[90%] max-w-xl bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
@@ -40,7 +40,7 @@ const CreatePlanModal = dynamic(() => import("./CreatePlanModal"), {
   ssr: false,
 });
 
-const EditPlanModal = dynamic(() => import("./EditPlanModal"), {
+const EditPlanModal = dynamic(() => import("../components/EditPlanModal"), {
   loading: () => (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
       <div className="w-[90%] max-w-xl bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
@@ -66,13 +66,14 @@ const goals = [
 ];
 
 /**
- * DietPlanClient — Client component that manages UI state and data fetching.
+ * DietPlanListClient — Client component that manages UI state and data fetching
+ * for the diet plan list feature.
  *
  * The parent Server Component (page.jsx) uses HydrationBoundary + dehydrate
  * to pre-populate the TanStack Query cache before this component renders,
  * so the first paint is instant with real data and no extra round-trip.
  */
-export default function DietPlanClient() {
+export default function DietPlanListClient() {
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   const { loading: authLoading, error: authError, isAuthenticated } = useAuth();

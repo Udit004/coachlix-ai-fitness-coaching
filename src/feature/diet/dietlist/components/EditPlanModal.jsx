@@ -228,5 +228,3 @@ export default function EditPlanModal({ plan, onClose, onSave }) {
     </div>
   );
 }
-
-

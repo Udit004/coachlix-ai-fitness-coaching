@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { X, Sparkles, Calculator, Plus } from "lucide-react";
-import dietPlanService from "../../service/dietPlanService";
+import dietPlanService from "@/service/dietPlanService";
 
 export default function CreatePlanModal({ onClose, onCreate }) {
   const [loading, setLoading] = useState(false);
@@ -595,8 +595,6 @@ export default function CreatePlanModal({ onClose, onCreate }) {
           </div>
         </div>
 
-
-        
         {/* Content */}
         <div className="flex flex-col flex-1 min-h-0">
           {step === 1 ? (
