@@ -24,11 +24,7 @@ export const useDietPlans = (options = {}) => {
     queryFn: () => dietPlanService.getDietPlans(options),
     enabled: !!user && !authLoading,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    select: (data) => {
-      // Normalize the response structure
-      const plans = data && Array.isArray(data.plans) ? data.plans : Array.isArray(data) ? data : [];
-      return plans;
-    },
+    // No select() — getDietPlans already returns a plain array.
   });
 };
 
@@ -86,14 +82,10 @@ export const useUpdateDietPlan = () => {
   return useMutation({
     mutationFn: ({ planId, updateData }) => dietPlanService.updateDietPlan(planId, updateData),
     onSuccess: (updatedPlan, { planId }) => {
-      // Set the data and mark as fresh
+      // Update the detail cache with the fresh server response.
+      // The list query refetch is handled explicitly by the component via refetch()
+      // to avoid TanStack Query structural sharing suppressing re-renders.
       queryClient.setQueryData(DIET_PLAN_KEYS.detail(planId), updatedPlan);
-      
-      // Only invalidate without refetching immediately
-      queryClient.invalidateQueries({ 
-        queryKey: DIET_PLAN_KEYS.lists(),
-        refetchType: 'none'
-      });
     },
     onError: (error) => {
       console.error('Failed to update diet plan:', error);

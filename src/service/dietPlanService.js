@@ -49,9 +49,17 @@ export const getDietPlans = async (options = {}) => {
     const url = `${BASE_URL}${
       params.toString() ? `?${params.toString()}` : ""
     }`;
-    const response = await fetch(url, { headers });
+    // cache: 'no-store' prevents the browser / Next.js from serving a stale
+    // cached response after a mutation — this is what caused the "second edit
+    // doesn't update the UI" bug.
+    const response = await fetch(url, { headers, cache: 'no-store' });
 
-    return handleResponse(response);
+    const data = await handleResponse(response);
+    // Always return a plain array so the TanStack Query cache stores a
+    // consistent shape (no select() transformation layer needed).
+    return Array.isArray(data?.plans) ? data.plans
+      : Array.isArray(data) ? data
+      : [];
   } catch (error) {
     console.error("Error fetching diet plans:", error);
     throw error;

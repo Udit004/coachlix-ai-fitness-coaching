@@ -103,7 +103,12 @@ export async function GET(request) {
       count: plans.length,
     });
     
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    // Prevent browser caching to ensure fresh data
+    response.headers.set('Cache-Control', 'no-store, no-cache, no-transform, must-revalidate, max-age=0');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    response.headers.set('ETag', Buffer.from(JSON.stringify(plans)).toString('base64').substring(0, 27));
+    
     return response;
     
   } catch (error) {
@@ -201,14 +206,19 @@ export async function POST(request) {
     // Invalidate cache - Saari related cache clear karo
     try {
       const pattern = `user:diet-plans-list:${user.uid}:*`;
-      // Redis pattern matching ke liye keys command
+      console.log(`🔍 Searching for cache keys with pattern: ${pattern}`);
+      
       const keys = await redis.keys(pattern);
+      console.log(`📋 Found ${keys?.length || 0} cache keys to invalidate:`, keys);
+      
       if (keys && keys.length > 0) {
-        await Promise.all(keys.map(key => redis.del(key)));
-        console.log(`🗑️ Invalidated ${keys.length} cache entries for user ${user.uid}`);
+        const deleteResults = await Promise.all(keys.map(key => redis.del(key)));
+        console.log(`🗑️ Deleted ${deleteResults.length} cache entries for user ${user.uid}`);
+      } else {
+        console.log(`⚠️ No cache keys found for pattern: ${pattern}`);
       }
     } catch (cacheError) {
-      console.error("Cache invalidation error:", cacheError);
+      console.error("❌ Cache invalidation error:", cacheError);
     }
 
     let notificationSent = false;
@@ -359,18 +369,24 @@ export async function PUT(request) {
     try {
       // Clear list cache
       const listPattern = `user:diet-plans-list:${user.uid}:*`;
+      console.log(`🔍 Searching for cache keys with pattern: ${listPattern}`);
+      
       const listKeys = await redis.keys(listPattern);
+      console.log(`📋 Found ${listKeys?.length || 0} list cache keys to invalidate:`, listKeys);
+      
       if (listKeys && listKeys.length > 0) {
-        await Promise.all(listKeys.map(key => redis.del(key)));
+        const deleteResults = await Promise.all(listKeys.map(key => redis.del(key)));
+        console.log(`🗑️ Deleted ${deleteResults.length} list cache entries`);
+      } else {
+        console.log(`⚠️ No list cache keys found for pattern: ${listPattern}`);
       }
       
       // Clear individual plan cache
       const planKey = `user:diet-plan:${user.uid}:${planId}`;
-      await redis.del(planKey);
-      
-      console.log(`🗑️ Invalidated cache for plan ${planId}`);
+      const planDeleted = await redis.del(planKey);
+      console.log(`🗑️ Invalidated plan cache for ${planId} (result: ${planDeleted})`);
     } catch (cacheError) {
-      console.error("Cache invalidation error:", cacheError);
+      console.error("❌ Cache invalidation error:", cacheError);
     }
 
     let notificationSent = false;

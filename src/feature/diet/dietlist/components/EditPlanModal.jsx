@@ -56,7 +56,6 @@ export default function EditPlanModal({ plan, onClose, onSave }) {
     setLoading(true);
     try {
       await onSave(plan._id || plan.id, formData);
-      success(`Diet plan "${formData.name}" updated successfully!`);
       onClose();
     } catch (error) {
       console.error("Failed to update plan:", error);
