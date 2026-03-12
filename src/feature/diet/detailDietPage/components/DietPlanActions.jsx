@@ -67,14 +67,14 @@ export default function DietPlanActions({
         <button
           onClick={onClone}
           disabled={isCloning}
-          className="flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 disabled:opacity-50 text-white rounded-lg transition-all text-sm"
+          className="flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 disabled:opacity-50 text-white rounded-lg transition-all text-sm cursor-pointer"
         >
           <Copy className="h-4 w-4" />
           <span>{isCloning ? "Cloning..." : "Clone"}</span>
         </button>
         <button
           onClick={onEdit}
-          className="flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 text-white rounded-lg transition-all text-sm"
+          className="flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 text-white rounded-lg transition-all text-sm cursor-pointer"
         >
           <Edit className="h-4 w-4" />
           <span>Edit</span>
@@ -82,7 +82,7 @@ export default function DietPlanActions({
         <button
           onClick={onDelete}
           disabled={isDeleting}
-          className="flex items-center justify-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg transition-colors text-sm"
+          className="flex items-center justify-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg transition-colors text-sm cursor-pointer"
         >
           <Trash2 className="h-4 w-4" />
           <span>{isDeleting ? "Deleting..." : "Delete"}</span>
