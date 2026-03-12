@@ -109,17 +109,23 @@ export async function PUT(request, { params }) {
     // Invalidate cache
     try {
       const listPattern = `user:diet-plans-list:${user.uid}:*`;
+      console.log(`🔍 Searching for cache keys with pattern: ${listPattern}`);
+      
       const listKeys = await redis.keys(listPattern);
+      console.log(`📋 Found ${listKeys?.length || 0} cache keys to invalidate:`, listKeys);
+      
       if (listKeys && listKeys.length > 0) {
-        await Promise.all(listKeys.map(key => redis.del(key)));
+        const deleteResults = await Promise.all(listKeys.map(key => redis.del(key)));
+        console.log(`🗑️ Deleted ${deleteResults.length} list cache entries`);
+      } else {
+        console.log(`⚠️ No list cache keys found for pattern: ${listPattern}`);
       }
       
       const planKey = `user:diet-plan:${user.uid}:${id}`;
-      await redis.del(planKey);
-      
-      console.log(`🗑️ Invalidated cache for plan ${id}`);
+      const planDeleted = await redis.del(planKey);
+      console.log(`🗑️ Invalidated cache for plan ${id} (result: ${planDeleted})`);
     } catch (cacheError) {
-      console.error("Cache invalidation error:", cacheError);
+      console.error("❌ Cache invalidation error:", cacheError);
     }
 
     return NextResponse.json({

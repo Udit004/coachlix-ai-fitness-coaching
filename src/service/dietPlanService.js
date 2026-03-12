@@ -1,4 +1,5 @@
-// services/dietPlanService.js
+// service/dietPlanService.js
+// Core diet plan service - single source of truth for all API calls
 import { auth } from "@/lib/firebase";
 
 const BASE_URL = "/api/diet-plans";
@@ -9,11 +10,9 @@ const getAuthHeaders = async () => {
   if (!user) throw new Error("User not authenticated");
 
   const token = await user.getIdToken();
-  console.log("Token:", token); // Log the token for debugging
   return {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
-
   };
 };
 
@@ -27,12 +26,10 @@ const handleResponse = async (response) => {
   }
 
   const data = await response.json();
-  // Many endpoints return { plan: {...} } after mutations; normalize to the plan object
-  // while preserving list endpoints like { plans: [...] }
   if (data && typeof data === "object" && "plan" in data && data.plan) {
     return data.plan;
   }
-  return data; // Return the full response data when no single plan wrapper is present
+  return data;
 };
 
 // Get all diet plans for current user
@@ -49,9 +46,12 @@ export const getDietPlans = async (options = {}) => {
     const url = `${BASE_URL}${
       params.toString() ? `?${params.toString()}` : ""
     }`;
-    const response = await fetch(url, { headers });
+    const response = await fetch(url, { headers, cache: 'no-store' });
 
-    return handleResponse(response);
+    const data = await handleResponse(response);
+    return Array.isArray(data?.plans) ? data.plans
+      : Array.isArray(data) ? data
+      : [];
   } catch (error) {
     console.error("Error fetching diet plans:", error);
     throw error;
@@ -63,7 +63,6 @@ export const getDietPlan = async (planId) => {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${BASE_URL}/${planId}`, { headers });
-
     return handleResponse(response);
   } catch (error) {
     console.error("Error fetching diet plan:", error);
@@ -82,9 +81,7 @@ export const createDietPlan = async (planData) => {
     });
 
     const data = await handleResponse(response);
-
-    // Based on your API, return the plan object
-    return data.plan || data; // Handle both response formats
+    return data.plan || data;
   } catch (error) {
     console.error("Error creating diet plan:", error);
     throw error;
@@ -100,7 +97,6 @@ export const updateDietPlan = async (planId, updateData) => {
       headers,
       body: JSON.stringify(updateData),
     });
-
     return handleResponse(response);
   } catch (error) {
     console.error("Error updating diet plan:", error);
@@ -116,7 +112,6 @@ export const deleteDietPlan = async (planId) => {
       method: "DELETE",
       headers,
     });
-
     return handleResponse(response);
   } catch (error) {
     console.error("Error deleting diet plan:", error);
@@ -133,7 +128,6 @@ export const addDay = async (planId, dayData) => {
       headers,
       body: JSON.stringify(dayData),
     });
-
     return handleResponse(response);
   } catch (error) {
     console.error("Error adding day to diet plan:", error);
@@ -150,7 +144,6 @@ export const updateDay = async (planId, dayNumber, dayData) => {
       headers,
       body: JSON.stringify(dayData),
     });
-
     return handleResponse(response);
   } catch (error) {
     console.error("Error updating day:", error);
@@ -170,7 +163,6 @@ export const addMeal = async (planId, dayNumber, mealData) => {
         body: JSON.stringify(mealData),
       }
     );
-
     return handleResponse(response);
   } catch (error) {
     console.error("Error adding meal:", error);
@@ -190,7 +182,6 @@ export const addFoodItem = async (planId, dayNumber, mealType, foodItem) => {
         body: JSON.stringify(foodItem),
       }
     );
-
     return handleResponse(response);
   } catch (error) {
     console.error("Error adding food item:", error);
@@ -216,7 +207,6 @@ export const updateFoodItem = async (
         body: JSON.stringify(foodItem),
       }
     );
-
     return handleResponse(response);
   } catch (error) {
     console.error("Error updating food item:", error);
@@ -240,7 +230,6 @@ export const deleteFoodItem = async (
         headers,
       }
     );
-
     return handleResponse(response);
   } catch (error) {
     console.error("Error deleting food item:", error);
@@ -257,7 +246,6 @@ export const generateAIPlan = async (preferences) => {
       headers,
       body: JSON.stringify(preferences),
     });
-
     return handleResponse(response);
   } catch (error) {
     console.error("Error generating AI diet plan:", error);
@@ -274,7 +262,6 @@ export const cloneDietPlan = async (planId, newName) => {
       headers,
       body: JSON.stringify({ name: newName }),
     });
-
     return handleResponse(response);
   } catch (error) {
     console.error("Error cloning diet plan:", error);
@@ -289,7 +276,6 @@ export const getNutritionSummary = async (planId) => {
     const response = await fetch(`${BASE_URL}/${planId}/nutrition-summary`, {
       headers,
     });
-
     return handleResponse(response);
   } catch (error) {
     console.error("Error getting nutrition summary:", error);
@@ -305,7 +291,6 @@ export const searchFoods = async (query) => {
       `/api/foods/search?q=${encodeURIComponent(query)}`,
       { headers }
     );
-
     return handleResponse(response);
   } catch (error) {
     console.error("Error searching foods:", error);
@@ -321,7 +306,6 @@ export const getPopularFoods = async (category = null) => {
       ? `/api/foods/popular?category=${category}`
       : "/api/foods/popular";
     const response = await fetch(url, { headers });
-
     return handleResponse(response);
   } catch (error) {
     console.error("Error fetching popular foods:", error);
@@ -329,8 +313,7 @@ export const getPopularFoods = async (category = null) => {
   }
 };
 
-// Add this method to your dietPlanService.js file
-
+// Get food details with AI
 export const getFoodDetailsWithAI = async (foodName) => {
   try {
     const token = localStorage.getItem("token");
@@ -354,8 +337,7 @@ export const getFoodDetailsWithAI = async (foodName) => {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json();
-    return data;
+    return await response.json();
   } catch (error) {
     console.error("Service: Error getting AI food details:", error);
     throw error;
@@ -371,7 +353,6 @@ export const togglePlanActive = async (planId, isActive) => {
       method,
       headers,
     });
-
     return handleResponse(response);
   } catch (error) {
     console.error('Error toggling diet plan active status:', error);
@@ -379,7 +360,7 @@ export const togglePlanActive = async (planId, isActive) => {
   }
 };
 
-// Default export with all functions for convenience
+// Default export with all functions
 const dietPlanService = {
   getDietPlans,
   getDietPlan,

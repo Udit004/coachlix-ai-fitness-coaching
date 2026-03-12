@@ -264,14 +264,14 @@ export default function FoodItemCard({ item, itemIndex, onUpdate, onDelete }) {
         <div className="flex items-center space-x-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
           <button
             onClick={() => setIsEditing(true)}
-            className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors"
+            className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors cursor-pointer"
             title="Edit food item"
           >
             <Edit className="h-4 w-4" />
           </button>
           <button
             onClick={onDelete}
-            className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+            className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors cursor-pointer"
             title="Delete food item"
           >
             <Trash2 className="h-4 w-4" />

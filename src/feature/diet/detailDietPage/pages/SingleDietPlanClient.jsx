@@ -271,7 +271,7 @@ export default function SingleDietPlanClient({ planId }) {
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/diet-plan")}
-              className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+              className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0 cursor-pointer"
             >
               <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             </button>

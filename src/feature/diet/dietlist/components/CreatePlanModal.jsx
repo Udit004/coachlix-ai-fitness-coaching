@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { X, Sparkles, Calculator, Plus } from "lucide-react";
-import dietPlanService from "@/service/dietPlanService";
+import dietPlanService from '../services/dietPlanService';
 import { useToast } from "@/hooks/useToast";
 
 export default function CreatePlanModal({ onClose, onCreate }) {
