@@ -2,7 +2,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { X, Search, Plus, Clock, Star } from "lucide-react";
-import dietPlanService from "@/service/dietPlanService";
+import dietPlanService from "../services/dietPlanService";
 import { useToast } from "@/hooks/useToast";
 
 export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
@@ -141,7 +141,6 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
         };
 
         await onAdd(foodData);
-        success(`${foodData.name} added to ${mealType}!`);
         handleClose();
       } catch (error) {
         console.error("Error in handleSubmit:", error);
@@ -267,7 +266,7 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
             <button
               onClick={() => setActiveTab("manual")}
               disabled={isSubmitting}
-              className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md transition-colors disabled:opacity-50 ${
+              className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md transition-colors disabled:opacity-50 cursor-pointer ${
                 activeTab === "manual"
                   ? "bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm"
                   : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
@@ -278,7 +277,7 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
             <button
               onClick={() => setActiveTab("search")}
               disabled={isSubmitting}
-              className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md transition-colors disabled:opacity-50 ${
+              className={`flex-1 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md transition-colors disabled:opacity-50 cursor-pointer ${
                 activeTab === "search"
                   ? "bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm"
                   : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
@@ -542,7 +541,7 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                     disabled={
                       isSearching || !searchQuery.trim() || isSubmitting
                     }
-                    className="px-4 sm:px-6 py-2.5 sm:py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg transition-colors font-medium text-sm sm:text-base"
+                    className="px-4 sm:px-6 py-2.5 sm:py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg transition-colors font-medium text-sm sm:text-base cursor-pointer"
                   >
                     {isSearching ? "Searching..." : "Search"}
                   </button>
@@ -809,7 +808,7 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                 type="button"
                 onClick={handleClose}
                 disabled={isSubmitting}
-                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors disabled:opacity-50 font-medium text-sm sm:text-base"
+                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors disabled:opacity-50 font-medium text-sm sm:text-base cursor-pointer"
               >
                 Cancel
               </button>
@@ -817,7 +816,7 @@ export default function AddFoodModal({ isOpen, onClose, onAdd, mealType }) {
                 type="submit"
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg transition-colors font-medium text-sm sm:text-base"
+                className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg transition-colors font-medium text-sm sm:text-base cursor-pointer"
               >
                 {isSubmitting ? "Adding..." : "Add Food"}
               </button>

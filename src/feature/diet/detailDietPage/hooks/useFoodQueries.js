@@ -1,11 +1,12 @@
-// hooks/useFoodQueries.js
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import dietPlanService from '../service/dietPlanService';
-import { useAuth } from './useAuth';
+// feature/diet/detailDietPage/hooks/useFoodQueries.js
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import dietPlanService from '../services/dietPlanService';
+import { useAuth } from '@/hooks/useAuth';
 
-// Query Keys for Foods
+// Query Keys for Foods - specific to detail page
 export const FOOD_KEYS = {
-  all: ['foods'],
+  all: ['detailPageFoods'],
   search: (query) => [...FOOD_KEYS.all, 'search', query],
   popular: (category) => [...FOOD_KEYS.all, 'popular', category],
   details: (foodName) => [...FOOD_KEYS.all, 'details', foodName],
@@ -66,11 +67,4 @@ export const useDebouncedFoodSearch = (query, delay = 300) => {
   return useSearchFoods(debouncedQuery, {
     enabled: debouncedQuery.length >= 2
   });
-};
-
-// Export individual functions for backwards compatibility
-export {
-  useSearchFoods as searchFoods,
-  usePopularFoods as getPopularFoods,
-  useFoodDetailsWithAI as getFoodDetailsWithAI,
 };

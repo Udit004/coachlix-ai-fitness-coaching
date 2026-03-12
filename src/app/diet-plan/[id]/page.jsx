@@ -5,7 +5,7 @@ import { verifySessionCookie } from "@/lib/verifyUser";
 import { connectDB } from "@/lib/db";
 import DietPlan from "@/models/DietPlan";
 import { QueryClient, HydrationBoundary, dehydrate } from "@tanstack/react-query";
-import { DIET_PLAN_KEYS } from "@/feature/diet/detailDietPage/hooks/useDietPlanDetailQueries";
+import { DIET_PLAN_DETAIL_KEYS } from "@/feature/diet/detailDietPage/hooks/useDietPlanDetailQueries";
 
 export const metadata = {
   title: "Diet Plan Details",
@@ -34,7 +34,7 @@ export default async function SingleDietPlanPage({ params }) {
         if (plan) {
           // Cache the plan data in the same shape the hook expects
           queryClient.setQueryData(
-            DIET_PLAN_KEYS.detail(id),
+            DIET_PLAN_DETAIL_KEYS.detail(id),
             JSON.parse(JSON.stringify(plan))
           );
         }
