@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthContext } from '@/auth/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
-import useUserProfileStore from '@/stores/useUserProfileStore';
+import useUserProfileStore from '@/feature/profile/hooks/useUserProfileStore';
 
 export const useOnboardingCheck = () => {
   const { user, loading: authLoading } = useAuthContext();

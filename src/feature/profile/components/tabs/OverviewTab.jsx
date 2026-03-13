@@ -1,0 +1,366 @@
+import { Mail, Phone, MapPin, Calendar, Target } from "lucide-react";
+
+export default function OverviewTab({
+  profileData,
+  tempData,
+  isEditing,
+  onInputChange,
+  authUser,
+  success,
+  error
+}) {
+  const data = isEditing ? tempData : profileData;
+
+  if (!data) return null;
+
+  return (
+    <div className="space-y-6">
+      <h3 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-6">Profile Overview</h3>
+      
+      {/* Success/Error messages */}
+      {success && (
+        <div className="p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg">
+          {success}
+        </div>
+      )}
+      {error && (
+        <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      {/* Personal Information */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          {/* Full Name */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              Full Name
+            </label>
+            {isEditing ? (
+              <input
+                type="text"
+                value={data.name || ""}
+                onChange={(e) => onInputChange("name", e.target.value)}
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-400"
+                placeholder="Enter your full name"
+              />
+            ) : (
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100">
+                {data.name}
+              </p>
+            )}
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              Email
+            </label>
+            <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100 flex items-center">
+              <Mail className="h-4 w-4 mr-2 text-gray-500 dark:text-slate-400" />
+              {authUser?.email || data.email}
+            </p>
+          </div>
+
+          {/* Phone */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              Phone
+            </label>
+            {isEditing ? (
+              <input
+                type="tel"
+                value={data.phone || ""}
+                onChange={(e) => onInputChange("phone", e.target.value)}
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-400"
+                placeholder="Enter your phone number"
+              />
+            ) : (
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100 flex items-center">
+                <Phone className="h-4 w-4 mr-2 text-gray-500 dark:text-slate-400" />
+                {data.phone}
+              </p>
+            )}
+          </div>
+
+          {/* Experience */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              Experience
+            </label>
+            {isEditing ? (
+              <select
+                value={data.experience || ""}
+                onChange={(e) => onInputChange("experience", e.target.value)}
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+              >
+                <option value="Beginner">Beginner</option>
+                <option value="Intermediate">Intermediate</option>
+                <option value="Advanced">Advanced</option>
+              </select>
+            ) : (
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100">
+                {data.experience}
+              </p>
+            )}
+          </div>
+
+          {/* Dietary Preference */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              Dietary Preference
+            </label>
+            {isEditing ? (
+              <select
+                value={data.dietaryPreference || "non-vegetarian"}
+                onChange={(e) => onInputChange("dietaryPreference", e.target.value)}
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+              >
+                <option value="non-vegetarian">Non-Vegetarian</option>
+                <option value="vegetarian">Vegetarian</option>
+                <option value="vegan">Vegan</option>
+                <option value="eggetarian">Eggetarian</option>
+              </select>
+            ) : (
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100 capitalize">
+                {data.dietaryPreference || "non-vegetarian"}
+              </p>
+            )}
+          </div>
+
+          {/* Gender */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              Gender <span className="text-red-500">*</span>
+            </label>
+            {isEditing ? (
+              <select
+                value={data.gender || ""}
+                onChange={(e) => onInputChange("gender", e.target.value)}
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+                required
+              >
+                <option value="">Select gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            ) : (
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100 capitalize">
+                {data.gender || "Not specified"}
+              </p>
+            )}
+          </div>
+
+          {/* Height */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              Height (cm)
+            </label>
+            {isEditing ? (
+              <input
+                type="number"
+                value={data.height || ""}
+                onChange={(e) => onInputChange("height", parseFloat(e.target.value) || "")}
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-400"
+                placeholder="Enter your height in cm (e.g. 170)"
+                min="50"
+                max="300"
+                step="0.1"
+              />
+            ) : (
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100">
+                {data.height ? `${data.height} cm` : "Not specified"}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {/* Location */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              Location
+            </label>
+            {isEditing ? (
+              <input
+                type="text"
+                value={data.location || ""}
+                onChange={(e) => onInputChange("location", e.target.value)}
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-400"
+                placeholder="Enter your location"
+              />
+            ) : (
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100 flex items-center">
+                <MapPin className="h-4 w-4 mr-2 text-gray-500 dark:text-slate-400" />
+                {data.location}
+              </p>
+            )}
+          </div>
+
+          {/* Birth Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              Birth Date
+            </label>
+            {isEditing ? (
+              <input
+                type="date"
+                value={data.birthDate || ""}
+                onChange={(e) => onInputChange("birthDate", e.target.value)}
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+              />
+            ) : (
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100 flex items-center">
+                <Calendar className="h-4 w-4 mr-2 text-gray-500 dark:text-slate-400" />
+                {data.birthDate
+                  ? new Date(data.birthDate).toLocaleDateString()
+                  : ""}
+              </p>
+            )}
+          </div>
+
+          {/* Age */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              Age (optional)
+            </label>
+            {isEditing ? (
+              <input
+                type="number"
+                value={data.age || ""}
+                onChange={(e) => onInputChange("age", parseInt(e.target.value) || "")}
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-400"
+                placeholder="Enter your age"
+                min="10"
+                max="120"
+              />
+            ) : (
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100">
+                {data.age || "Not specified"}
+              </p>
+            )}
+          </div>
+
+          {/* Activity Level */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              Activity Level
+            </label>
+            {isEditing ? (
+              <select
+                value={data.activityLevel || "moderately active"}
+                onChange={(e) => onInputChange("activityLevel", e.target.value)}
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+              >
+                <option value="sedentary">Sedentary (little or no exercise)</option>
+                <option value="lightly active">Lightly Active (1-3 days/week)</option>
+                <option value="moderately active">Moderately Active (3-5 days/week)</option>
+                <option value="very active">Very Active (6-7 days/week)</option>
+                <option value="extra active">Extra Active (intense daily training)</option>
+              </select>
+            ) : (
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100 capitalize">
+                {data.activityLevel || "moderately active"}
+              </p>
+            )}
+          </div>
+
+          {/* Weight */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              Weight (kg)
+            </label>
+            {isEditing ? (
+              <input
+                type="number"
+                value={data.weight || ""}
+                onChange={(e) => onInputChange("weight", parseFloat(e.target.value) || "")}
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-400"
+                placeholder="Enter your current weight in kg (e.g. 70)"
+                min="20"
+                max="500"
+                step="0.1"
+              />
+            ) : (
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100">
+                {data.weight ? `${data.weight} kg` : "Not specified"}
+              </p>
+            )}
+          </div>
+
+          {/* Target Weight */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              Target Weight (kg)
+            </label>
+            {isEditing ? (
+              <input
+                type="number"
+                value={data.targetWeight || ""}
+                onChange={(e) => onInputChange("targetWeight", parseFloat(e.target.value) || "")}
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-400"
+                placeholder="Enter your target weight in kg (e.g. 65)"
+                min="20"
+                max="500"
+                step="0.1"
+              />
+            ) : (
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100">
+                {data.targetWeight ? `${data.targetWeight} kg` : "Not specified"}
+              </p>
+            )}
+          </div>
+
+          {/* Fitness Goal */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              Fitness Goal
+            </label>
+            {isEditing ? (
+              <select
+                value={data.fitnessGoal || ""}
+                onChange={(e) => onInputChange("fitnessGoal", e.target.value)}
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+              >
+                <option value="Weight Loss">Weight Loss</option>
+                <option value="Muscle Gain">Muscle Gain</option>
+                <option value="Weight Loss & Muscle Gain">
+                  Weight Loss & Muscle Gain
+                </option>
+                <option value="Maintain Weight">Maintain Weight</option>
+                <option value="Athletic Performance">Athletic Performance</option>
+              </select>
+            ) : (
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100 flex items-center">
+                <Target className="h-4 w-4 mr-2 text-gray-500 dark:text-slate-400" />
+                {data.fitnessGoal}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Bio */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+          Bio
+        </label>
+        {isEditing ? (
+          <textarea
+            value={data.bio || ""}
+            onChange={(e) => onInputChange("bio", e.target.value)}
+            rows={4}
+            className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-400 resize-none"
+            placeholder="Tell us about yourself and your fitness journey..."
+          />
+        ) : (
+          <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100">
+            {data.bio}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
