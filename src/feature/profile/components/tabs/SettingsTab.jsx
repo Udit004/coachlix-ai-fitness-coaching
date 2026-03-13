@@ -7,16 +7,16 @@ export default function SettingsTab() {
 
   return (
     <div className="space-y-6">
-      <h3 className="text-2xl font-bold text-gray-900 mb-6">Settings</h3>
+      <h3 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-6">Settings</h3>
 
       <div className="space-y-4">
-        <div className="p-4 bg-gray-50 rounded-xl">
+        <div className="p-4 bg-gray-50 dark:bg-slate-800 rounded-xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Bell className="h-5 w-5 text-gray-600" />
+              <Bell className="h-5 w-5 text-gray-600 dark:text-slate-300" />
               <div>
-                <h4 className="font-medium text-gray-900">Notifications</h4>
-                <p className="text-sm text-gray-600">Manage your notification preferences</p>
+                <h4 className="font-medium text-gray-900 dark:text-slate-100">Notifications</h4>
+                <p className="text-sm text-gray-600 dark:text-slate-300">Manage your notification preferences</p>
               </div>
             </div>
             <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
@@ -25,13 +25,13 @@ export default function SettingsTab() {
           </div>
         </div>
 
-        <div className="p-4 bg-gray-50 rounded-xl">
+        <div className="p-4 bg-gray-50 dark:bg-slate-800 rounded-xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Shield className="h-5 w-5 text-gray-600" />
+              <Shield className="h-5 w-5 text-gray-600 dark:text-slate-300" />
               <div>
-                <h4 className="font-medium text-gray-900">Privacy & Security</h4>
-                <p className="text-sm text-gray-600">Control your privacy settings</p>
+                <h4 className="font-medium text-gray-900 dark:text-slate-100">Privacy & Security</h4>
+                <p className="text-sm text-gray-600 dark:text-slate-300">Control your privacy settings</p>
               </div>
             </div>
             <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
@@ -40,13 +40,13 @@ export default function SettingsTab() {
           </div>
         </div>
 
-        <div className="p-4 bg-red-50 rounded-xl border border-red-200">
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-900/40">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <LogOut className="h-5 w-5 text-red-600" />
+              <LogOut className="h-5 w-5 text-red-600 dark:text-red-300" />
               <div>
-                <h4 className="font-medium text-red-900">Sign Out</h4>
-                <p className="text-sm text-red-600">Sign out of your account</p>
+                <h4 className="font-medium text-red-900 dark:text-red-200">Sign Out</h4>
+                <p className="text-sm text-red-600 dark:text-red-300">Sign out of your account</p>
               </div>
             </div>
             <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { User, Bell, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,6 +21,7 @@ export default function ProfilePageClient() {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [tempData, setTempData] = useState(null);
+  const tabContentScrollRef = useRef(null);
 
   const {
     data: profileData,
@@ -33,6 +34,10 @@ export default function ProfilePageClient() {
   const uploadProfileImageMutation = useUploadProfileImage();
 
   const [success, setSuccess] = useState(null);
+
+  useEffect(() => {
+    tabContentScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [activeTab]);
 
   useEffect(() => {
     if (authLoading || !authUser || !profileData) return;
@@ -108,8 +113,8 @@ export default function ProfilePageClient() {
     null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
-      <div className="bg-white/90 backdrop-blur-lg border-b border-gray-200/50 sticky top-0 z-50 shadow-sm">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      {/* <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-b border-gray-200/50 dark:border-slate-700/60 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -117,21 +122,21 @@ export default function ProfilePageClient() {
                 <User className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Profile</h1>
-                <p className="text-sm text-gray-600">Manage your fitness journey</p>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100">Profile</h1>
+                <p className="text-sm text-gray-600 dark:text-slate-300">Manage your fitness journey</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+              <button className="p-2 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
                 <Bell className="h-5 w-5" />
               </button>
-              <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+              <button className="p-2 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
                 <Settings className="h-5 w-5" />
               </button>
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -148,18 +153,22 @@ export default function ProfilePageClient() {
             />
           </div>
 
-          <div className="lg:col-span-3">
-            <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
-            <ProfileTabContent
-              activeTab={activeTab}
-              profileData={profileData}
-              tempData={tempData}
-              isEditing={isEditing}
-              onInputChange={handleInputChange}
-              authUser={authUser}
-              success={success}
-              error={viewError}
-            />
+          <div className="lg:col-span-3 flex flex-col lg:max-h-[calc(100vh-10rem)]">
+            <div className="shrink-0">
+              <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
+            </div>
+            <div ref={tabContentScrollRef} className="min-h-0 flex-1 overflow-y-auto pr-1">
+              <ProfileTabContent
+                activeTab={activeTab}
+                profileData={profileData}
+                tempData={tempData}
+                isEditing={isEditing}
+                onInputChange={handleInputChange}
+                authUser={authUser}
+                success={success}
+                error={viewError}
+              />
+            </div>
           </div>
         </div>
       </div>

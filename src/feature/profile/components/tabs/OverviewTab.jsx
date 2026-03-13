@@ -15,16 +15,16 @@ export default function OverviewTab({
 
   return (
     <div className="space-y-6">
-      <h3 className="text-2xl font-bold text-gray-900 mb-6">Profile Overview</h3>
+      <h3 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-6">Profile Overview</h3>
       
       {/* Success/Error messages */}
       {success && (
-        <div className="p-3 bg-green-100 text-green-700 rounded-lg">
+        <div className="p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg">
           {success}
         </div>
       )}
       {error && (
-        <div className="p-3 bg-red-100 text-red-700 rounded-lg">
+        <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg">
           {error}
         </div>
       )}
@@ -34,7 +34,7 @@ export default function OverviewTab({
         <div className="space-y-4">
           {/* Full Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               Full Name
             </label>
             {isEditing ? (
@@ -42,11 +42,11 @@ export default function OverviewTab({
                 type="text"
                 value={data.name || ""}
                 onChange={(e) => onInputChange("name", e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-400"
                 placeholder="Enter your full name"
               />
             ) : (
-              <p className="p-3 bg-gray-50 rounded-lg text-gray-900">
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100">
                 {data.name}
               </p>
             )}
@@ -54,18 +54,18 @@ export default function OverviewTab({
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               Email
             </label>
-            <p className="p-3 bg-gray-50 rounded-lg text-gray-900 flex items-center">
-              <Mail className="h-4 w-4 mr-2 text-gray-500" />
+            <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100 flex items-center">
+              <Mail className="h-4 w-4 mr-2 text-gray-500 dark:text-slate-400" />
               {authUser?.email || data.email}
             </p>
           </div>
 
           {/* Phone */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               Phone
             </label>
             {isEditing ? (
@@ -73,12 +73,12 @@ export default function OverviewTab({
                 type="tel"
                 value={data.phone || ""}
                 onChange={(e) => onInputChange("phone", e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-400"
                 placeholder="Enter your phone number"
               />
             ) : (
-              <p className="p-3 bg-gray-50 rounded-lg text-gray-900 flex items-center">
-                <Phone className="h-4 w-4 mr-2 text-gray-500" />
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100 flex items-center">
+                <Phone className="h-4 w-4 mr-2 text-gray-500 dark:text-slate-400" />
                 {data.phone}
               </p>
             )}
@@ -86,21 +86,21 @@ export default function OverviewTab({
 
           {/* Experience */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               Experience
             </label>
             {isEditing ? (
               <select
                 value={data.experience || ""}
                 onChange={(e) => onInputChange("experience", e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               >
                 <option value="Beginner">Beginner</option>
                 <option value="Intermediate">Intermediate</option>
                 <option value="Advanced">Advanced</option>
               </select>
             ) : (
-              <p className="p-3 bg-gray-50 rounded-lg text-gray-900">
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100">
                 {data.experience}
               </p>
             )}
@@ -108,14 +108,14 @@ export default function OverviewTab({
 
           {/* Dietary Preference */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               Dietary Preference
             </label>
             {isEditing ? (
               <select
                 value={data.dietaryPreference || "non-vegetarian"}
                 onChange={(e) => onInputChange("dietaryPreference", e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               >
                 <option value="non-vegetarian">Non-Vegetarian</option>
                 <option value="vegetarian">Vegetarian</option>
@@ -123,7 +123,7 @@ export default function OverviewTab({
                 <option value="eggetarian">Eggetarian</option>
               </select>
             ) : (
-              <p className="p-3 bg-gray-50 rounded-lg text-gray-900 capitalize">
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100 capitalize">
                 {data.dietaryPreference || "non-vegetarian"}
               </p>
             )}
@@ -131,14 +131,14 @@ export default function OverviewTab({
 
           {/* Gender */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               Gender <span className="text-red-500">*</span>
             </label>
             {isEditing ? (
               <select
                 value={data.gender || ""}
                 onChange={(e) => onInputChange("gender", e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                 required
               >
                 <option value="">Select gender</option>
@@ -147,7 +147,7 @@ export default function OverviewTab({
                 <option value="other">Other</option>
               </select>
             ) : (
-              <p className="p-3 bg-gray-50 rounded-lg text-gray-900 capitalize">
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100 capitalize">
                 {data.gender || "Not specified"}
               </p>
             )}
@@ -155,7 +155,7 @@ export default function OverviewTab({
 
           {/* Height */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               Height (cm)
             </label>
             {isEditing ? (
@@ -163,14 +163,14 @@ export default function OverviewTab({
                 type="number"
                 value={data.height || ""}
                 onChange={(e) => onInputChange("height", parseFloat(e.target.value) || "")}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-400"
                 placeholder="Enter your height in cm (e.g. 170)"
                 min="50"
                 max="300"
                 step="0.1"
               />
             ) : (
-              <p className="p-3 bg-gray-50 rounded-lg text-gray-900">
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100">
                 {data.height ? `${data.height} cm` : "Not specified"}
               </p>
             )}
@@ -180,7 +180,7 @@ export default function OverviewTab({
         <div className="space-y-4">
           {/* Location */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               Location
             </label>
             {isEditing ? (
@@ -188,12 +188,12 @@ export default function OverviewTab({
                 type="text"
                 value={data.location || ""}
                 onChange={(e) => onInputChange("location", e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-400"
                 placeholder="Enter your location"
               />
             ) : (
-              <p className="p-3 bg-gray-50 rounded-lg text-gray-900 flex items-center">
-                <MapPin className="h-4 w-4 mr-2 text-gray-500" />
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100 flex items-center">
+                <MapPin className="h-4 w-4 mr-2 text-gray-500 dark:text-slate-400" />
                 {data.location}
               </p>
             )}
@@ -201,7 +201,7 @@ export default function OverviewTab({
 
           {/* Birth Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               Birth Date
             </label>
             {isEditing ? (
@@ -209,11 +209,11 @@ export default function OverviewTab({
                 type="date"
                 value={data.birthDate || ""}
                 onChange={(e) => onInputChange("birthDate", e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               />
             ) : (
-              <p className="p-3 bg-gray-50 rounded-lg text-gray-900 flex items-center">
-                <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100 flex items-center">
+                <Calendar className="h-4 w-4 mr-2 text-gray-500 dark:text-slate-400" />
                 {data.birthDate
                   ? new Date(data.birthDate).toLocaleDateString()
                   : ""}
@@ -223,7 +223,7 @@ export default function OverviewTab({
 
           {/* Age */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               Age (optional)
             </label>
             {isEditing ? (
@@ -231,13 +231,13 @@ export default function OverviewTab({
                 type="number"
                 value={data.age || ""}
                 onChange={(e) => onInputChange("age", parseInt(e.target.value) || "")}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-400"
                 placeholder="Enter your age"
                 min="10"
                 max="120"
               />
             ) : (
-              <p className="p-3 bg-gray-50 rounded-lg text-gray-900">
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100">
                 {data.age || "Not specified"}
               </p>
             )}
@@ -245,14 +245,14 @@ export default function OverviewTab({
 
           {/* Activity Level */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               Activity Level
             </label>
             {isEditing ? (
               <select
                 value={data.activityLevel || "moderately active"}
                 onChange={(e) => onInputChange("activityLevel", e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               >
                 <option value="sedentary">Sedentary (little or no exercise)</option>
                 <option value="lightly active">Lightly Active (1-3 days/week)</option>
@@ -261,7 +261,7 @@ export default function OverviewTab({
                 <option value="extra active">Extra Active (intense daily training)</option>
               </select>
             ) : (
-              <p className="p-3 bg-gray-50 rounded-lg text-gray-900 capitalize">
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100 capitalize">
                 {data.activityLevel || "moderately active"}
               </p>
             )}
@@ -269,7 +269,7 @@ export default function OverviewTab({
 
           {/* Weight */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               Weight (kg)
             </label>
             {isEditing ? (
@@ -277,14 +277,14 @@ export default function OverviewTab({
                 type="number"
                 value={data.weight || ""}
                 onChange={(e) => onInputChange("weight", parseFloat(e.target.value) || "")}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-400"
                 placeholder="Enter your current weight in kg (e.g. 70)"
                 min="20"
                 max="500"
                 step="0.1"
               />
             ) : (
-              <p className="p-3 bg-gray-50 rounded-lg text-gray-900">
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100">
                 {data.weight ? `${data.weight} kg` : "Not specified"}
               </p>
             )}
@@ -292,7 +292,7 @@ export default function OverviewTab({
 
           {/* Target Weight */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               Target Weight (kg)
             </label>
             {isEditing ? (
@@ -300,14 +300,14 @@ export default function OverviewTab({
                 type="number"
                 value={data.targetWeight || ""}
                 onChange={(e) => onInputChange("targetWeight", parseFloat(e.target.value) || "")}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-400"
                 placeholder="Enter your target weight in kg (e.g. 65)"
                 min="20"
                 max="500"
                 step="0.1"
               />
             ) : (
-              <p className="p-3 bg-gray-50 rounded-lg text-gray-900">
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100">
                 {data.targetWeight ? `${data.targetWeight} kg` : "Not specified"}
               </p>
             )}
@@ -315,14 +315,14 @@ export default function OverviewTab({
 
           {/* Fitness Goal */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               Fitness Goal
             </label>
             {isEditing ? (
               <select
                 value={data.fitnessGoal || ""}
                 onChange={(e) => onInputChange("fitnessGoal", e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               >
                 <option value="Weight Loss">Weight Loss</option>
                 <option value="Muscle Gain">Muscle Gain</option>
@@ -333,8 +333,8 @@ export default function OverviewTab({
                 <option value="Athletic Performance">Athletic Performance</option>
               </select>
             ) : (
-              <p className="p-3 bg-gray-50 rounded-lg text-gray-900 flex items-center">
-                <Target className="h-4 w-4 mr-2 text-gray-500" />
+              <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100 flex items-center">
+                <Target className="h-4 w-4 mr-2 text-gray-500 dark:text-slate-400" />
                 {data.fitnessGoal}
               </p>
             )}
@@ -344,7 +344,7 @@ export default function OverviewTab({
 
       {/* Bio */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
           Bio
         </label>
         {isEditing ? (
@@ -352,11 +352,11 @@ export default function OverviewTab({
             value={data.bio || ""}
             onChange={(e) => onInputChange("bio", e.target.value)}
             rows={4}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500 resize-none"
+            className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-400 resize-none"
             placeholder="Tell us about yourself and your fitness journey..."
           />
         ) : (
-          <p className="p-3 bg-gray-50 rounded-lg text-gray-900">
+          <p className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-gray-900 dark:text-slate-100">
             {data.bio}
           </p>
         )}
