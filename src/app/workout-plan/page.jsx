@@ -28,10 +28,10 @@ export default async function WorkoutPlansPage() {
         const plans = await WorkoutPlan.find({ userId: user.uid })
           .sort({ createdAt: -1 })
           .lean();
-        // Cache in the same shape the API returns so useWorkoutPlans works correctly
+        // Cache in the same shape useWorkoutPlans/getWorkoutPlans returns: plain array.
         queryClient.setQueryData(
-          workoutKeys.list(JSON.stringify({ sort: INITIAL_SORT })),
-          { plans: JSON.parse(JSON.stringify(plans)) }
+          workoutKeys.list({ sort: INITIAL_SORT }),
+          JSON.parse(JSON.stringify(plans))
         );
       }
     }

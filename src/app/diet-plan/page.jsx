@@ -28,15 +28,12 @@ export default async function DietPlansPage() {
         const plans = await DietPlan.find({ userId: user.uid })
           .sort({ createdAt: -1 })
           .lean();
-        
-        // Store as a plain array — matches what getDietPlans() now returns.
-        // This keeps the SSR cache shape identical to the client-side shape.
-        if (Array.isArray(plans) && plans.length > 0) {
-          queryClient.setQueryData(
-            DIET_PLAN_KEYS.list(INITIAL_QUERY_OPTIONS),
-            JSON.parse(JSON.stringify(plans)),
-          );
-        }
+
+        // Always hydrate as plain array (including empty) to keep SSR/client shape identical.
+        queryClient.setQueryData(
+          DIET_PLAN_KEYS.list(INITIAL_QUERY_OPTIONS),
+          JSON.parse(JSON.stringify(Array.isArray(plans) ? plans : [])),
+        );
       }
     }
   } catch {

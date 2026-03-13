@@ -3,11 +3,24 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import dietPlanService from '../services/dietPlanService';
 import { useAuth } from '@/hooks/useAuth';
 
+const normalizeListOptions = (options = {}) => {
+  const normalized = {};
+  Object.keys(options)
+    .sort()
+    .forEach((key) => {
+      const value = options[key];
+      if (value !== undefined && value !== null && value !== '') {
+        normalized[key] = value;
+      }
+    });
+  return normalized;
+};
+
 // Query Keys
 export const DIET_PLAN_KEYS = {
   all: ['dietPlans'],
   lists: () => [...DIET_PLAN_KEYS.all, 'list'],
-  list: (filters) => [...DIET_PLAN_KEYS.lists(), filters],
+  list: (filters = {}) => [...DIET_PLAN_KEYS.lists(), normalizeListOptions(filters)],
   details: () => [...DIET_PLAN_KEYS.all, 'detail'],
   detail: (id) => [...DIET_PLAN_KEYS.details(), id],
   nutrition: (id) => [...DIET_PLAN_KEYS.all, 'nutrition', id],
@@ -18,10 +31,11 @@ export const useDietPlans = (options = {}) => {
   const authResult = useAuth();
   const user = authResult?.user || null;
   const authLoading = authResult?.loading || false;
+  const normalizedOptions = normalizeListOptions(options);
   
   return useQuery({
-    queryKey: DIET_PLAN_KEYS.list(options),
-    queryFn: () => dietPlanService.getDietPlans(options),
+    queryKey: DIET_PLAN_KEYS.list(normalizedOptions),
+    queryFn: () => dietPlanService.getDietPlans(normalizedOptions),
     enabled: !!user && !authLoading,
     staleTime: 5 * 60 * 1000, // 5 minutes
     // No select() — getDietPlans already returns a plain array.

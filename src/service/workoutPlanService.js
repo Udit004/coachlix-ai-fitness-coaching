@@ -52,9 +52,15 @@ export const getWorkoutPlans = async (options = {}) => {
     const url = `${BASE_URL}${
       params.toString() ? `?${params.toString()}` : ""
     }`;
-    const response = await fetch(url, { headers });
+    // Prevent stale list reads after mutations; keep client cache as the source of truth.
+    const response = await fetch(url, { headers, cache: "no-store" });
 
-    return handleResponse(response);
+    const data = await handleResponse(response);
+    return Array.isArray(data?.plans)
+      ? data.plans
+      : Array.isArray(data)
+      ? data
+      : [];
   } catch (error) {
     console.error("Error fetching workout plans:", error);
     throw error;

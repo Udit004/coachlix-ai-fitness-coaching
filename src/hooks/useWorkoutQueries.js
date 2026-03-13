@@ -3,11 +3,24 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import workoutPlanService from '@/service/workoutPlanService';
 import { useAuth } from '@/hooks/useAuth';
 
+const normalizeListOptions = (options = {}) => {
+  const normalized = {};
+  Object.keys(options)
+    .sort()
+    .forEach((key) => {
+      const value = options[key];
+      if (value !== undefined && value !== null && value !== '') {
+        normalized[key] = value;
+      }
+    });
+  return normalized;
+};
+
 // Query Keys (same as before)
 export const workoutKeys = {
   all: ['workouts'],
   lists: () => [...workoutKeys.all, 'list'],
-  list: (filters) => [...workoutKeys.lists(), { filters }],
+  list: (filters = {}) => [...workoutKeys.lists(), normalizeListOptions(filters)],
   details: () => [...workoutKeys.all, 'detail'],
   detail: (id) => [...workoutKeys.details(), id],
   sessions: () => [...workoutKeys.all, 'sessions'],
@@ -22,9 +35,11 @@ export const workoutKeys = {
 // Get all workout plans
 export const useWorkoutPlans = (options = {}) => {
   const { user, loading } = useAuth();
+  const normalizedOptions = normalizeListOptions(options);
+
   return useQuery({
-    queryKey: workoutKeys.list(JSON.stringify(options)),
-    queryFn: () => user ? workoutPlanService.getWorkoutPlans(options) : Promise.resolve([]),
+    queryKey: workoutKeys.list(normalizedOptions),
+    queryFn: () => user ? workoutPlanService.getWorkoutPlans(normalizedOptions) : Promise.resolve([]),
     enabled: !!user && !loading,
     staleTime: 5 * 60 * 1000, // 5 minutes
     cacheTime: 10 * 60 * 1000, // 10 minutes
