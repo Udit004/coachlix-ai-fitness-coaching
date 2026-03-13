@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, Trophy } from "lucide-react";
 
 export default function AchievementsTab({ profileData }) {
   const achievements = profileData?.achievements || [];
@@ -30,12 +30,8 @@ export default function AchievementsTab({ profileData }) {
                   <IconComponent className="h-6 w-6" />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 mb-1">
-                    {achievement.title}
-                  </h4>
-                  <p className="text-sm text-gray-600">
-                    {achievement.description}
-                  </p>
+                  <h4 className="font-semibold text-gray-900 mb-1">{achievement.title}</h4>
+                  <p className="text-sm text-gray-600">{achievement.description}</p>
                   {achievement.earned && (
                     <div className="flex items-center mt-2 text-green-600">
                       <Check className="h-4 w-4 mr-1" />
@@ -54,12 +50,8 @@ export default function AchievementsTab({ profileData }) {
           <div className="text-gray-400 mb-4">
             <Trophy className="h-16 w-16 mx-auto" />
           </div>
-          <h4 className="text-lg font-medium text-gray-900 mb-2">
-            No Achievements Yet
-          </h4>
-          <p className="text-gray-600">
-            Complete workouts and reach your goals to earn achievements!
-          </p>
+          <h4 className="text-lg font-medium text-gray-900 mb-2">No Achievements Yet</h4>
+          <p className="text-gray-600">Complete workouts and reach your goals to earn achievements!</p>
         </div>
       )}
     </div>

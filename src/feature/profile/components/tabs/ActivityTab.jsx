@@ -9,10 +9,7 @@ export default function ActivityTab({ profileData }) {
 
       <div className="space-y-4">
         {recentActivities.map((activity, index) => (
-          <div
-            key={index}
-            className="flex items-start space-x-4 p-4 bg-gray-50 rounded-xl"
-          >
+          <div key={index} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-xl">
             <div
               className={`p-2 rounded-lg ${
                 activity.type === "workout"
@@ -31,9 +28,7 @@ export default function ActivityTab({ profileData }) {
             </div>
             <div className="flex-1">
               <h4 className="font-semibold text-gray-900">{activity.title}</h4>
-              {activity.description && (
-                <p className="text-sm text-gray-600">{activity.description}</p>
-              )}
+              {activity.description && <p className="text-sm text-gray-600">{activity.description}</p>}
               {activity.duration && (
                 <div className="flex items-center mt-1 text-sm text-gray-500">
                   <Timer className="h-4 w-4 mr-1" />
@@ -58,12 +53,8 @@ export default function ActivityTab({ profileData }) {
           <div className="text-gray-400 mb-4">
             <Activity className="h-16 w-16 mx-auto" />
           </div>
-          <h4 className="text-lg font-medium text-gray-900 mb-2">
-            No Recent Activity
-          </h4>
-          <p className="text-gray-600">
-            Your recent workouts and activities will appear here.
-          </p>
+          <h4 className="text-lg font-medium text-gray-900 mb-2">No Recent Activity</h4>
+          <p className="text-gray-600">Your recent workouts and activities will appear here.</p>
         </div>
       )}
     </div>

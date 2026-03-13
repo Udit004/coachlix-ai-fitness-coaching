@@ -12,7 +12,7 @@ export default function ProfileTabContent({
   onInputChange,
   authUser,
   success,
-  error
+  error,
 }) {
   const renderTabContent = () => {
     switch (activeTab) {

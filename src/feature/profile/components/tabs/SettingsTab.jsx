@@ -2,7 +2,6 @@ import { Bell, Shield, LogOut } from "lucide-react";
 
 export default function SettingsTab() {
   const handleSignOut = () => {
-    // Implement sign out logic here
     console.log("Signing out...");
   };
 
@@ -17,9 +16,7 @@ export default function SettingsTab() {
               <Bell className="h-5 w-5 text-gray-600" />
               <div>
                 <h4 className="font-medium text-gray-900">Notifications</h4>
-                <p className="text-sm text-gray-600">
-                  Manage your notification preferences
-                </p>
+                <p className="text-sm text-gray-600">Manage your notification preferences</p>
               </div>
             </div>
             <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
@@ -34,9 +31,7 @@ export default function SettingsTab() {
               <Shield className="h-5 w-5 text-gray-600" />
               <div>
                 <h4 className="font-medium text-gray-900">Privacy & Security</h4>
-                <p className="text-sm text-gray-600">
-                  Control your privacy settings
-                </p>
+                <p className="text-sm text-gray-600">Control your privacy settings</p>
               </div>
             </div>
             <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">

@@ -2,7 +2,7 @@
 // SSR chat history is pre-loaded via HydrationBoundary; initialProfile seeds Zustand.
 "use client";
 import React, { useState, useRef, useEffect, Suspense, lazy } from "react";
-import useUserProfileStore from "@/stores/useUserProfileStore";
+import useUserProfileStore from "@/feature/profile/hooks/useUserProfileStore";
 import useChatStore from "@/stores/useChatStore";
 import useChatHistoryStore from "@/stores/useChatHistoryStore";
 import { toast, Toaster } from "react-hot-toast";

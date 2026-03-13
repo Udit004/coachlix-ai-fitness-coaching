@@ -1,4 +1,4 @@
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw } from "lucide-react";
 
 export default function ErrorMessage({ message, onRetry }) {
   return (
@@ -8,11 +8,11 @@ export default function ErrorMessage({ message, onRetry }) {
           <div className="text-red-600 mb-4">
             <AlertCircle className="h-16 w-16 mx-auto" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-3">
-            Unable to Load Profile
-          </h3>
-          <p className="text-gray-600 mb-6">{message || 'Something went wrong while loading your profile.'}</p>
-          
+          <h3 className="text-xl font-bold text-gray-900 mb-3">Unable to Load Profile</h3>
+          <p className="text-gray-600 mb-6">
+            {message || "Something went wrong while loading your profile."}
+          </p>
+
           {onRetry && (
             <button
               onClick={onRetry}
@@ -22,7 +22,7 @@ export default function ErrorMessage({ message, onRetry }) {
               Try Again
             </button>
           )}
-          
+
           <p className="text-sm text-gray-500 mt-4">
             If this problem persists, please try refreshing the page or contact support.
           </p>

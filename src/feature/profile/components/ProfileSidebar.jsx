@@ -9,7 +9,7 @@ export default function ProfileSidebar({
   onCancel,
   onImageUpload,
   success,
-  error
+  error,
 }) {
   const [profileImage, setProfileImage] = useState(null);
   const fileInputRef = useRef(null);
@@ -28,7 +28,6 @@ export default function ProfileSidebar({
 
   return (
     <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 p-6">
-      {/* Profile Image */}
       <div className="relative flex flex-col items-center mb-6">
         <div className="relative group">
           <div className="w-24 h-24 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg overflow-hidden">
@@ -59,57 +58,32 @@ export default function ProfileSidebar({
             className="hidden"
           />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mt-4 text-center">
-          {profileData.name}
-        </h2>
-        <p className="text-sm text-gray-600 text-center">
-          {profileData.fitnessGoal}
-        </p>
+        <h2 className="text-xl font-bold text-gray-900 mt-4 text-center">{profileData.name}</h2>
+        <p className="text-sm text-gray-600 text-center">{profileData.fitnessGoal}</p>
         <div className="flex items-center mt-2 text-xs text-gray-500">
           <MapPin className="h-3 w-3 mr-1" />
           {profileData.location}
         </div>
       </div>
 
-      {/* Success/Error Messages */}
-      {success && (
-        <div className="p-3 bg-green-100 text-green-700 rounded-lg mb-4 text-sm">
-          {success}
-        </div>
-      )}
-      {error && (
-        <div className="p-3 bg-red-100 text-red-700 rounded-lg mb-4 text-sm">
-          {error}
-        </div>
-      )}
+      {success && <div className="p-3 bg-green-100 text-green-700 rounded-lg mb-4 text-sm">{success}</div>}
+      {error && <div className="p-3 bg-red-100 text-red-700 rounded-lg mb-4 text-sm">{error}</div>}
 
-      {/* Quick Stats */}
       <div className="space-y-3 mb-6">
         <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
           <span className="text-sm font-medium text-gray-700">Experience</span>
-          <span className="text-sm font-bold text-blue-600">
-            {profileData.experience}
-          </span>
+          <span className="text-sm font-bold text-blue-600">{profileData.experience}</span>
         </div>
         <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-          <span className="text-sm font-medium text-gray-700">
-            Current Weight
-          </span>
-          <span className="text-sm font-bold text-green-600">
-            {profileData.weight}
-          </span>
+          <span className="text-sm font-medium text-gray-700">Current Weight</span>
+          <span className="text-sm font-bold text-green-600">{profileData.weight}</span>
         </div>
         <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-          <span className="text-sm font-medium text-gray-700">
-            Target Weight
-          </span>
-          <span className="text-sm font-bold text-purple-600">
-            {profileData.targetWeight}
-          </span>
+          <span className="text-sm font-medium text-gray-700">Target Weight</span>
+          <span className="text-sm font-bold text-purple-600">{profileData.targetWeight}</span>
         </div>
       </div>
 
-      {/* Action Buttons */}
       <div className="space-y-2">
         {!isEditing ? (
           <button

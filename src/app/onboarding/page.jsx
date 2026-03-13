@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthContext } from '@/auth/AuthContext';
-import useUserProfileStore from '@/stores/useUserProfileStore';
+import useUserProfileStore from '@/feature/profile/hooks/useUserProfileStore';
 import { User, MapPin, UserCircle, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function OnboardingPage() {
