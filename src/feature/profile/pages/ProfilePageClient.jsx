@@ -3,8 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { User, Bell, Settings } from "lucide-react";
-import { useAuthContext } from "@/auth/AuthContext";
-import useUserProfileStore from "@/feature/profile/hooks/useUserProfileStore";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  useUserProfile,
+  useUpdateUserProfile,
+  useUploadProfileImage,
+} from "@/feature/profile/hooks/useProfileQueries";
 import ProfileSidebar from "../components/ProfileSidebar";
 import ProfileTabs from "../components/ProfileTabs";
 import ProfileTabContent from "../components/ProfileTabContent";
@@ -12,75 +16,41 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 
 export default function ProfilePageClient() {
-  const { user: authUser, loading: authLoading } = useAuthContext();
+  const { user: authUser, loading: authLoading } = useAuth();
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [tempData, setTempData] = useState(null);
 
   const {
-    profile: profileData,
-    loading: profileLoading,
+    data: profileData,
+    isLoading: profileLoading,
     error: profileError,
-    fetchUserProfile,
-    updateProfile,
-    uploadProfileImage,
-    hasValidProfile,
-    clearError,
-  } = useUserProfileStore();
+    refetch,
+  } = useUserProfile();
+
+  const updateProfileMutation = useUpdateUserProfile();
+  const uploadProfileImageMutation = useUploadProfileImage();
 
   const [success, setSuccess] = useState(null);
 
   useEffect(() => {
-    const loadProfile = async () => {
-      if (authLoading || !authUser) return;
+    if (authLoading || !authUser || !profileData) return;
+    if (profileData.needsOnboarding) {
+      router.push("/onboarding");
+      return;
+    }
 
-      if (profileError) {
-        clearError();
-      }
-
-      try {
-        const userId = authUser.uid;
-
-        if (hasValidProfile() && profileData) {
-          if (profileData.needsOnboarding) {
-            router.push("/onboarding");
-            return;
-          }
-          setTempData(profileData);
-          return;
-        }
-
-        if (!profileLoading) {
-          const profile = await fetchUserProfile(userId);
-          if (profile?.needsOnboarding) {
-            router.push("/onboarding");
-            return;
-          }
-          setTempData(profile);
-        }
-      } catch (err) {
-        console.error("Failed to load profile:", err);
-      }
-    };
-
-    loadProfile();
-  }, [
-    authUser,
-    authLoading,
-    fetchUserProfile,
-    hasValidProfile,
-    profileError,
-    clearError,
-    profileLoading,
-    profileData,
-    router,
-  ]);
+    if (!isEditing) {
+      setTempData(profileData);
+    }
+  }, [authLoading, authUser, profileData, router, isEditing]);
 
   const handleImageUpload = async (file) => {
     setSuccess(null);
     try {
-      const imageUrl = await uploadProfileImage(authUser.uid, file);
+      const imageUrl = await uploadProfileImageMutation.mutateAsync(file);
+      setTempData((prev) => (prev ? { ...prev, profileImage: imageUrl } : prev));
       setSuccess("Profile image updated!");
       return imageUrl;
     } catch (err) {
@@ -102,7 +72,7 @@ export default function ProfilePageClient() {
         email: authUser?.email || tempData.email,
       };
 
-      const result = await updateProfile(authUser.uid, updatedData);
+      const result = await updateProfileMutation.mutateAsync(updatedData);
       setTempData(result);
       setIsEditing(false);
       setSuccess("Profile updated successfully!");
@@ -124,20 +94,18 @@ export default function ProfilePageClient() {
   };
 
   const handleRetry = async () => {
-    if (!authUser) return;
-
-    clearError();
-    try {
-      await fetchUserProfile(authUser.uid, { force: true });
-    } catch (err) {
-      console.error("Retry failed:", err);
-    }
+    await refetch();
   };
 
   const isLoading = authLoading || profileLoading;
   if (isLoading) return <LoadingSpinner message="Loading profile..." />;
-  if (profileError) return <ErrorMessage message={profileError} onRetry={handleRetry} />;
+  if (profileError) return <ErrorMessage message={profileError.message} onRetry={handleRetry} />;
   if (!profileData) return <LoadingSpinner message="Loading your profile..." showSpinner />;
+
+  const viewError =
+    updateProfileMutation.error?.message ||
+    uploadProfileImageMutation.error?.message ||
+    null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
@@ -176,7 +144,7 @@ export default function ProfilePageClient() {
               onCancel={handleCancel}
               onImageUpload={handleImageUpload}
               success={success}
-              error={profileError}
+              error={viewError}
             />
           </div>
 
@@ -190,7 +158,7 @@ export default function ProfilePageClient() {
               onInputChange={handleInputChange}
               authUser={authUser}
               success={success}
-              error={profileError}
+              error={viewError}
             />
           </div>
         </div>
