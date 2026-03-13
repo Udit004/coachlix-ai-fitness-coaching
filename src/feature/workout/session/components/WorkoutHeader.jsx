@@ -2,7 +2,7 @@
 import React from "react";
 import { ArrowLeft, Volume2, VolumeX, Save } from "lucide-react";
 import useWorkoutSessionStore from "@/stores/workoutSessionStore";
-import { useSaveWorkoutProgress } from "@/hooks/useWorkoutQueries";
+import { useSaveWorkoutProgress } from "../hooks/useWorkoutSessionQueries";
 
 const WorkoutHeader = ({
   planId,

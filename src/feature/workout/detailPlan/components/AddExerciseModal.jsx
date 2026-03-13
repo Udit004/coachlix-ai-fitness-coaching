@@ -11,8 +11,8 @@ import {
   Check,
   ChevronDown,
 } from "lucide-react";
-import exerciseService from "../../../service/exerciseService";
-import workoutPlanService from "../../../service/workoutPlanService";
+import exerciseService from "../services/exerciseService";
+import workoutPlanService from "../services/workoutPlanService";
 import useWorkoutSessionStore from "@/stores/workoutSessionStore";
 
 export default function AddExerciseModal({

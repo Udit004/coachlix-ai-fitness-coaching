@@ -5,7 +5,7 @@ import useWorkoutSessionStore from "@/stores/workoutSessionStore";
 import {
   useSaveWorkoutProgress,
   useCompleteWorkoutSession,
-} from "@/hooks/useWorkoutQueries";
+} from "../hooks/useWorkoutSessionQueries";
 
 const WorkoutControls = ({
   planId,

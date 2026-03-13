@@ -16,8 +16,8 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import WorkoutPlanCard from "./WorkoutPlanCard";
-import { useAuth } from "../../hooks/useAuth";
+import WorkoutPlanCard from "../components/WorkoutPlanCard";
+import { useAuth } from "@/hooks/useAuth";
 import {
   useWorkoutPlans,
   useCreateWorkoutPlan,
@@ -26,9 +26,9 @@ import {
   useCloneWorkoutPlan,
   useToggleWorkoutPlanActive,
   workoutKeys,
-} from "../../hooks/useWorkoutQueries";
+} from "../hooks/useWorkoutPlanListQueries";
 
-const CreatePlanModal = dynamic(() => import("./CreatePlanModal"), {
+const CreatePlanModal = dynamic(() => import("../components/CreatePlanModal"), {
   loading: () => (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
       <div className="w-[90%] max-w-xl bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
@@ -44,7 +44,7 @@ const CreatePlanModal = dynamic(() => import("./CreatePlanModal"), {
   ssr: false,
 });
 
-const EditPlanModal = dynamic(() => import("./EditPlanModal"), {
+const EditPlanModal = dynamic(() => import("../components/EditPlanModal"), {
   loading: () => (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
       <div className="w-[90%] max-w-2xl bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
@@ -82,7 +82,7 @@ const DEFAULT_SORT = "-createdAt";
  * to pre-populate the TanStack Query cache before this component renders,
  * so the first paint is instant with real data and no extra round-trip.
  */
-export default function WorkoutPlanClient() {
+export default function WorkoutPlanListClient() {
 
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();

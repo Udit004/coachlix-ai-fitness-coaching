@@ -16,7 +16,7 @@ import {
   Flame,
 } from "lucide-react";
 import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, Brush, AreaChart, Area, ComposedChart, ReferenceLine } from "recharts";
-import workoutPlanService from "../../../service/workoutPlanService";
+import workoutPlanService from "../services/workoutPlanService";
 
 export default function ProgressTracker({ plan, onClose }) {
   const [progressData, setProgressData] = useState([]);
