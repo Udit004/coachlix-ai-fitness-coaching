@@ -43,9 +43,7 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit, onTog
   };
 
   const handleDelete = async () => {
-    if (confirm(`Are you sure you want to delete "${plan.name}"?`)) {
-      await onDelete(plan._id);
-    }
+    await onDelete(plan);
     setShowDropdown(false);
   };
 

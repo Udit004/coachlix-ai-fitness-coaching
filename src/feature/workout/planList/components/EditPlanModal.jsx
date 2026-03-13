@@ -62,7 +62,6 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
     "Bodyweight",
     "Resistance Band",
     "Kettlebell",
-    "Medicine Ball",
     "TRX",
     "Cardio Equipment",
   ];
@@ -343,7 +342,7 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
@@ -357,7 +356,7 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -675,14 +674,14 @@ export default function EditPlanModal({ plan, onClose, onUpdate }) {
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-6 py-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium rounded-lg transition-colors disabled:opacity-50"
+              className="px-6 py-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium rounded-lg transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:cursor-not-allowed min-w-[120px]"
+              className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:cursor-not-allowed min-w-[120px] cursor-pointer"
             >
               {loading ? (
                 <div className="flex items-center justify-center">
