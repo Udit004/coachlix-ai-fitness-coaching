@@ -2,11 +2,6 @@
 import React, { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import {
-  ArrowLeft,
-  Edit,
-  TrendingUp,
-} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
 import {
@@ -18,8 +13,10 @@ import {
   useClearWorkoutDay,
 } from "../hooks/useWorkoutPlanDetailQueries";
 import ProgressTracker from "../components/ProgressTracker";
-import DayAccordionList from "../components/DayAccordionList";
 import ExerciseTargetEditorModal from "../components/ExerciseTargetEditorModal";
+import WorkoutPlanDetailHeader from "../components/WorkoutPlanDetailHeader";
+import WorkoutWeekNavigationSection from "../components/WorkoutWeekNavigationSection";
+import WorkoutWeekOverviewCard from "../components/WorkoutWeekOverviewCard";
 import DeleteModal from "@/feature/workout/components/DeleteModal";
 
 export default function WorkoutPlanDetailPage() {
@@ -274,200 +271,47 @@ export default function WorkoutPlanDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-6xl mx-auto px-4 md:py-4 py-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.back()}
-                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {plan.name}
-                </h1>
-                <p className="text-gray-500 dark:text-gray-400">
-                  {plan.description}
-                </p>
-              </div>
-            </div>
-            <div className="hidden md:flex items-center space-x-3">
-              <button
-                onClick={() => setShowProgress(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-colors cursor-pointer"
-              >
-                <TrendingUp className="h-4 w-4" />
-                <span>Progress</span>
-              </button>
-              <button
-                onClick={() => setShowEditPlan(true)}
-                disabled={updatePlanMutation.isPending || updatePlanMutation.isLoading}
-                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700 disabled:bg-blue-400 text-white rounded-lg transition-colors cursor-pointer"
-              >
-                <Edit className="h-4 w-4" />
-                <span>
-                  {updatePlanMutation.isPending || updatePlanMutation.isLoading
-                    ? "Updating..."
-                    : "Edit Plan"}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <WorkoutPlanDetailHeader
+        planName={plan.name}
+        planDescription={plan.description}
+        isUpdating={updatePlanMutation.isPending || updatePlanMutation.isLoading}
+        onBack={() => router.back()}
+        onShowProgress={() => setShowProgress(true)}
+        onShowEdit={() => setShowEditPlan(true)}
+      />
 
       <div className="max-w-6xl mx-auto p-4">
-        <div className="mb-4 flex items-center justify-end gap-2 md:hidden">
-          <button
-            onClick={() => setShowProgress(true)}
-            className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-3 py-2 text-xs font-medium text-white"
-          >
-            <TrendingUp className="h-4 w-4" />
-            Progress
-          </button>
-          <button
-            onClick={() => setShowEditPlan(true)}
-            disabled={updatePlanMutation.isPending || updatePlanMutation.isLoading}
-            className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-60"
-          >
-            <Edit className="h-4 w-4" />
-            Edit
-          </button>
-        </div>
+        <WorkoutWeekNavigationSection
+          activeWeek={activeWeek}
+          duration={plan.duration}
+          weekProgress={weekProgress}
+          weeks={plan.weeks}
+          currentWeek={currentWeek}
+          onSelectWeek={setActiveWeek}
+          onStartWorkout={handleStartWorkout}
+          onAddExercise={(dayNumber, workoutId) => {
+            setSelectedDay(dayNumber);
+            setSelectedWorkout(workoutId);
+            setShowAddExercise(true);
+          }}
+          onDeleteDay={(ctx) => setDeleteCtx({ type: "day", ...ctx })}
+          onDeleteWorkout={(ctx) => setDeleteCtx({ type: "workout", ...ctx })}
+          onEditExercise={(ctx) => setEditingExerciseCtx(ctx)}
+          onDeleteExercise={(ctx) => setDeleteCtx({ type: "exercise", ...ctx })}
+          isActionPending={
+            deleteExerciseMutation.isPending ||
+            deleteWorkoutMutation.isPending ||
+            clearDayMutation.isPending ||
+            updateExerciseTargetsMutation.isPending
+          }
+        />
 
-        {/* Week Navigation */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Week {activeWeek} of {plan.duration}
-            </h2>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                Progress: {weekProgress}%
-              </span>
-              <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${weekProgress}%` }}
-                ></div>
-              </div>
-            </div>
-          </div>
-
-          {/* Week Selector */}
-          <div className="flex space-x-2 mb-6 overflow-x-auto pb-2">
-            {plan.weeks?.map((week) => (
-              <button
-                key={week.weekNumber}
-                onClick={() => setActiveWeek(week.weekNumber)}
-                className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium transition-colors ${
-                  activeWeek === week.weekNumber
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                }`}
-              >
-                Week {week.weekNumber}
-              </button>
-            ))}
-          </div>
-
-          {currentWeek && (
-            <DayAccordionList
-              weekNumber={activeWeek}
-              days={currentWeek.days || []}
-              onStartWorkout={handleStartWorkout}
-              onAddExercise={(dayNumber, workoutId) => {
-                setSelectedDay(dayNumber);
-                setSelectedWorkout(workoutId);
-                setShowAddExercise(true);
-              }}
-              onDeleteDay={(ctx) => setDeleteCtx({ type: "day", ...ctx })}
-              onDeleteWorkout={(ctx) => setDeleteCtx({ type: "workout", ...ctx })}
-              onEditExercise={(ctx) => setEditingExerciseCtx(ctx)}
-              onDeleteExercise={(ctx) => setDeleteCtx({ type: "exercise", ...ctx })}
-              isActionPending={
-                deleteExerciseMutation.isPending ||
-                deleteWorkoutMutation.isPending ||
-                clearDayMutation.isPending ||
-                updateExerciseTargetsMutation.isPending
-              }
-            />
-          )}
-        </div>
-
-        {/* Current Week Details */}
-        {currentWeek && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Week {activeWeek} Overview
-            </h3>
-
-            {currentWeek.weeklyGoal && (
-              <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <p className="text-sm text-blue-800 dark:text-blue-300">
-                  <strong>Goal:</strong> {currentWeek.weeklyGoal}
-                </p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {currentWeek.totalWorkouts || 0}
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Workouts Planned
-                </p>
-              </div>
-
-              <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {Math.round((currentWeek.totalDuration || 0) / 60)}h
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Total Duration
-                </p>
-              </div>
-
-              <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {weekProgress}%
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Completed
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                <p className="text-xs text-gray-500">Frequency</p>
-                <p className="font-semibold text-gray-900 dark:text-white">
-                  {plan.workoutFrequency || 0}x / week
-                </p>
-              </div>
-              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                <p className="text-xs text-gray-500">Duration</p>
-                <p className="font-semibold text-gray-900 dark:text-white">{plan.duration} weeks</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                <p className="text-xs text-gray-500">Calories</p>
-                <p className="font-semibold text-gray-900 dark:text-white">
-                  {plan.stats?.totalCalories || 0}
-                </p>
-              </div>
-              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                <p className="text-xs text-gray-500">Avg Duration</p>
-                <p className="font-semibold text-gray-900 dark:text-white">
-                  {plan.stats?.averageWorkoutDuration || 0} min
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+        <WorkoutWeekOverviewCard
+          activeWeek={activeWeek}
+          currentWeek={currentWeek}
+          weekProgress={weekProgress}
+          plan={plan}
+        />
       </div>
 
       {/* Modals */}
