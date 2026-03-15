@@ -13,37 +13,39 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);  // While checking auth status
   const prevUidRef = useRef(undefined);           // Track uid to avoid redundant cookie calls
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        // Only (re)create session cookie when the user actually changes
-        if (prevUidRef.current !== firebaseUser.uid) {
-          try {
-            const idToken = await firebaseUser.getIdToken();
-            await fetch("/api/auth/session", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ idToken }),
-            });
-          } catch (err) {
-            console.error("Failed to set session cookie:", err);
-          }
-          prevUidRef.current = firebaseUser.uid;
-        }
-        setUser(firebaseUser);
-      } else {
-        // Clear the session cookie when Firebase signs out
-        if (prevUidRef.current !== null) {
-          try {
-            await fetch("/api/auth/session", { method: "DELETE" });
-          } catch (err) {
-            console.error("Failed to clear session cookie:", err);
-          }
-          prevUidRef.current = null;
-        }
-        setUser(null);
+  const syncSessionCookie = async (firebaseUser) => {
+    if (firebaseUser) {
+      if (prevUidRef.current === firebaseUser.uid) return;
+      try {
+        const idToken = await firebaseUser.getIdToken();
+        await fetch("/api/auth/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken }),
+        });
+        prevUidRef.current = firebaseUser.uid;
+      } catch (err) {
+        console.error("Failed to set session cookie:", err);
       }
+      return;
+    }
+
+    if (prevUidRef.current === null) return;
+    try {
+      await fetch("/api/auth/session", { method: "DELETE" });
+      prevUidRef.current = null;
+    } catch (err) {
+      console.error("Failed to clear session cookie:", err);
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      // Unblock UI immediately; cookie sync can happen in background.
+      setUser(firebaseUser || null);
       setLoading(false);
+
+      void syncSessionCookie(firebaseUser || null);
     });
 
     // Cleanup on unmount

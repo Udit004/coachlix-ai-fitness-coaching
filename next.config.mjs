@@ -12,17 +12,6 @@ const withPWA = nextPwa({
 const nextConfig = {
   reactStrictMode: true,
   turbopack: {}, // Enable Turbopack explicitly for Next.js 16
-  headers: async () => [
-    {
-      source: '/:path*',
-      headers: [
-        {
-          key: 'Cache-Control',
-          value: 'public, max-age=0, s-maxage=60, stale-while-revalidate=604800',
-        },
-      ],
-    },
-  ],
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Don't bundle Node.js modules on the client side

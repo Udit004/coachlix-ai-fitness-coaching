@@ -11,8 +11,8 @@ const queryClient = new QueryClient({
     queries: {
       // Stale time: 5 minutes (data is considered fresh for 5 minutes)
       staleTime: 5 * 60 * 1000,
-      // Cache time: 10 minutes (data stays in cache for 10 minutes after becoming stale)
-      cacheTime: 10 * 60 * 1000,
+      // Keep unused query data for 10 minutes
+      gcTime: 10 * 60 * 1000,
       // Retry failed requests 3 times
       retry: (failureCount, error) => {
         // Don't retry on 4xx errors (client errors)
@@ -25,8 +25,6 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       // Refetch on reconnect
       refetchOnReconnect: true,
-      // Background refetch interval: 5 minutes
-      refetchInterval: 5 * 60 * 1000,
     },
     mutations: {
       // Retry failed mutations once
