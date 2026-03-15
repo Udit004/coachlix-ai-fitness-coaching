@@ -365,6 +365,103 @@ export const deleteExerciseFromWorkout = async (
   }
 };
 
+// Delete an entire workout from a day
+export const deleteWorkoutFromDay = async (
+  planId,
+  weekNumber,
+  dayNumber,
+  workoutId
+) => {
+  try {
+    const url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}/workouts/${workoutId}`;
+    const headers = await getAuthHeaders();
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers,
+    });
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error deleting workout from day:", error);
+    throw error;
+  }
+};
+
+// Clear all workouts for a day while preserving the day slot
+export const clearDayWorkouts = async (planId, weekNumber, dayNumber) => {
+  try {
+    const url = `${BASE_URL}/${planId}/weeks/${weekNumber}/days/${dayNumber}`;
+    const headers = await getAuthHeaders();
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers,
+    });
+
+    return handleResponse(response);
+  } catch (error) {
+    console.error("Error clearing day workouts:", error);
+    throw error;
+  }
+};
+
+// Update target values of a single exercise inside a workout
+export const updateExerciseTargetsInWorkout = async (
+  planId,
+  weekNumber,
+  dayNumber,
+  workoutId,
+  exerciseIndex,
+  targetUpdates
+) => {
+  try {
+    const workoutData = await getWorkoutExercisesFromWorkout(
+      planId,
+      weekNumber,
+      dayNumber,
+      workoutId
+    );
+
+    const currentExercises = Array.isArray(workoutData?.exercises)
+      ? workoutData.exercises
+      : [];
+
+    if (exerciseIndex < 0 || exerciseIndex >= currentExercises.length) {
+      throw new Error("Exercise not found");
+    }
+
+    const updatedExercises = currentExercises.map((exercise, index) => {
+      if (index !== exerciseIndex) return exercise;
+
+      return {
+        ...exercise,
+        targetSets:
+          targetUpdates.targetSets !== undefined
+            ? Number(targetUpdates.targetSets)
+            : exercise.targetSets,
+        targetReps:
+          targetUpdates.targetReps !== undefined
+            ? targetUpdates.targetReps
+            : exercise.targetReps,
+        targetWeight:
+          targetUpdates.targetWeight !== undefined
+            ? Number(targetUpdates.targetWeight)
+            : exercise.targetWeight,
+      };
+    });
+
+    return updateWorkoutExercisesFromWorkout(
+      planId,
+      weekNumber,
+      dayNumber,
+      workoutId,
+      { exercises: updatedExercises }
+    );
+  } catch (error) {
+    console.error("Error updating exercise targets:", error);
+    throw error;
+  }
+};
+
 // =================== PROGRESS METHODS ===================//
 
 // Enhanced client-side function with debugging
@@ -1263,6 +1360,9 @@ const workoutPlanService = {
   getWorkoutExercisesFromWorkout,
   updateWorkoutExercisesFromWorkout,
   deleteExerciseFromWorkout,
+  deleteWorkoutFromDay,
+  clearDayWorkouts,
+  updateExerciseTargetsInWorkout,
 
   addProgressEntry,
   saveWorkoutSessionProgress,

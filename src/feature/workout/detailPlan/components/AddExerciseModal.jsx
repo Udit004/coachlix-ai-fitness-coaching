@@ -14,6 +14,7 @@ import {
 import exerciseService from "../services/exerciseService";
 import workoutPlanService from "../services/workoutPlanService";
 import useWorkoutSessionStore from "@/stores/workoutSessionStore";
+import { useToast } from "@/hooks/useToast";
 
 export default function AddExerciseModal({
   onClose,
@@ -23,6 +24,7 @@ export default function AddExerciseModal({
   dayNumber,
   workoutId,
 }) {
+  const { success, error: showError } = useToast();
   const { setWorkoutData, initializeExerciseData, planData } = useWorkoutSessionStore();
   const [exercises, setExercises] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -213,7 +215,7 @@ export default function AddExerciseModal({
         dayNumber,
         workoutId,
       });
-      alert("Missing required information to add exercises. Please try again.");
+      showError("Missing required information to add exercises. Please try again.");
       return;
     }
 
@@ -311,11 +313,13 @@ export default function AddExerciseModal({
       onClose();
       
       // Show success message
-      alert(`Successfully added ${selectedExercises.length} exercise${selectedExercises.length !== 1 ? 's' : ''} to workout!`);
+      success(
+        `Added ${selectedExercises.length} exercise${selectedExercises.length !== 1 ? "s" : ""} to workout`
+      );
 
     } catch (error) {
       console.error("Error adding exercises:", error);
-      alert(`Failed to add exercises: ${error.message || "Unknown error"}`);
+      showError(`Failed to add exercises: ${error.message || "Unknown error"}`);
     } finally {
       setAdding(false);
     }

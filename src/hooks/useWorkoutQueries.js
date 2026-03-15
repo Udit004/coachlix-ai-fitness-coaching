@@ -299,6 +299,94 @@ export const useAddExercisesToWorkout = () => {
   });
 };
 
+export const useUpdateExerciseTargets = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      planId,
+      weekNumber,
+      dayNumber,
+      workoutId,
+      exerciseIndex,
+      targetUpdates,
+    }) =>
+      workoutPlanService.updateExerciseTargetsInWorkout(
+        planId,
+        weekNumber,
+        dayNumber,
+        workoutId,
+        exerciseIndex,
+        targetUpdates
+      ),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: workoutKeys.detail(variables.planId),
+      });
+      queryClient.invalidateQueries({ queryKey: workoutKeys.sessions() });
+    },
+  });
+};
+
+export const useDeleteExerciseFromWorkout = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ planId, weekNumber, dayNumber, workoutId, exerciseIndex }) =>
+      workoutPlanService.deleteExerciseFromWorkout(
+        planId,
+        weekNumber,
+        dayNumber,
+        workoutId,
+        exerciseIndex
+      ),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: workoutKeys.detail(variables.planId),
+      });
+      queryClient.invalidateQueries({ queryKey: workoutKeys.sessions() });
+      queryClient.invalidateQueries({ queryKey: workoutKeys.stats(variables.planId) });
+    },
+  });
+};
+
+export const useDeleteWorkoutFromDay = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ planId, weekNumber, dayNumber, workoutId }) =>
+      workoutPlanService.deleteWorkoutFromDay(
+        planId,
+        weekNumber,
+        dayNumber,
+        workoutId
+      ),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: workoutKeys.detail(variables.planId),
+      });
+      queryClient.invalidateQueries({ queryKey: workoutKeys.sessions() });
+      queryClient.invalidateQueries({ queryKey: workoutKeys.stats(variables.planId) });
+    },
+  });
+};
+
+export const useClearWorkoutDay = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ planId, weekNumber, dayNumber }) =>
+      workoutPlanService.clearDayWorkouts(planId, weekNumber, dayNumber),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: workoutKeys.detail(variables.planId),
+      });
+      queryClient.invalidateQueries({ queryKey: workoutKeys.sessions() });
+      queryClient.invalidateQueries({ queryKey: workoutKeys.stats(variables.planId) });
+    },
+  });
+};
+
 
 // FIXED: Complete workout session - simplified approach
 export const useCompleteWorkoutSession = () => {
