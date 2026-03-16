@@ -45,7 +45,7 @@ export default function ExerciseTargetEditorModal({
           <button
             onClick={onClose}
             disabled={isSaving}
-            className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -102,14 +102,14 @@ export default function ExerciseTargetEditorModal({
               type="button"
               onClick={onClose}
               disabled={isSaving}
-              className="rounded-lg bg-gray-200 dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-900 dark:text-white"
+              className="rounded-lg bg-gray-200 dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-900 dark:text-white cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 cursor-pointer"
             >
               {isSaving ? "Saving..." : "Save"}
             </button>
