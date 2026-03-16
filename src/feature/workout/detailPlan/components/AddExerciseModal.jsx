@@ -14,6 +14,7 @@ import {
 import exerciseService from "../services/exerciseService";
 import workoutPlanService from "../services/workoutPlanService";
 import useWorkoutSessionStore from "@/stores/workoutSessionStore";
+import { useToast } from "@/hooks/useToast";
 
 export default function AddExerciseModal({
   onClose,
@@ -23,6 +24,7 @@ export default function AddExerciseModal({
   dayNumber,
   workoutId,
 }) {
+  const { success, error: showError } = useToast();
   const { setWorkoutData, initializeExerciseData, planData } = useWorkoutSessionStore();
   const [exercises, setExercises] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -213,7 +215,7 @@ export default function AddExerciseModal({
         dayNumber,
         workoutId,
       });
-      alert("Missing required information to add exercises. Please try again.");
+      showError("Missing required information to add exercises. Please try again.");
       return;
     }
 
@@ -311,11 +313,13 @@ export default function AddExerciseModal({
       onClose();
       
       // Show success message
-      alert(`Successfully added ${selectedExercises.length} exercise${selectedExercises.length !== 1 ? 's' : ''} to workout!`);
+      success(
+        `Added ${selectedExercises.length} exercise${selectedExercises.length !== 1 ? "s" : ""} to workout`
+      );
 
     } catch (error) {
       console.error("Error adding exercises:", error);
-      alert(`Failed to add exercises: ${error.message || "Unknown error"}`);
+      showError(`Failed to add exercises: ${error.message || "Unknown error"}`);
     } finally {
       setAdding(false);
     }
@@ -359,7 +363,7 @@ export default function AddExerciseModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
@@ -381,7 +385,7 @@ export default function AddExerciseModal({
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -405,7 +409,7 @@ export default function AddExerciseModal({
             <button
               onClick={() => searchWithAI(searchTerm)}
               disabled={aiLoading || searchTerm.length < 3}
-              className="flex items-center space-x-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+              className="flex items-center space-x-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors cursor-pointer"
             >
               <span>🤖</span>
               <span>{aiLoading ? "Searching..." : "AI Search"}</span>
@@ -413,7 +417,7 @@ export default function AddExerciseModal({
 
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center space-x-2 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="flex items-center space-x-2 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
             >
               <Filter className="h-5 w-5" />
               <span>Filters</span>
@@ -431,7 +435,7 @@ export default function AddExerciseModal({
               <button
                 key={mg}
                 onClick={() => setSelectedMuscleGroup(selectedMuscleGroup === mg ? "" : mg)}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
                   selectedMuscleGroup === mg
                     ? "bg-blue-600 text-white border-blue-600"
                     : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600"
@@ -444,7 +448,7 @@ export default function AddExerciseModal({
               <button
                 key={eq}
                 onClick={() => setSelectedEquipment(selectedEquipment === eq ? "" : eq)}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
                   selectedEquipment === eq
                     ? "bg-emerald-600 text-white border-emerald-600"
                     : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600"
@@ -465,7 +469,7 @@ export default function AddExerciseModal({
                 </h3>
                 <button
                   onClick={() => setShowAiResult(false)}
-                  className="text-purple-600 hover:text-purple-800"
+                  className="text-purple-600 hover:text-purple-800 cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -499,7 +503,7 @@ export default function AddExerciseModal({
                     toggleExerciseSelection(aiExercise);
                     setShowAiResult(false);
                   }}
-                  className="w-full mt-3 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                  className="w-full mt-3 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors cursor-pointer"
                 >
                   Add This Exercise
                 </button>
@@ -564,7 +568,7 @@ export default function AddExerciseModal({
 
               <button
                 onClick={clearFilters}
-                className="px-4 py-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                className="px-4 py-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium cursor-pointer"
               >
                 Clear Filters
               </button>
@@ -618,7 +622,7 @@ export default function AddExerciseModal({
                     />
                     <button
                       onClick={() => toggleExerciseSelection(ex)}
-                      className="text-xs px-2 py-1 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                      className="text-xs px-2 py-1 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 cursor-pointer"
                     >
                       Remove
                     </button>
@@ -738,7 +742,7 @@ export default function AddExerciseModal({
                   <button
                     onClick={loadMore}
                     disabled={loading}
-                    className="px-6 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors disabled:opacity-50"
+                    className="px-6 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     {loading ? "Loading..." : "Load More"}
                   </button>
@@ -759,14 +763,14 @@ export default function AddExerciseModal({
             <button
               onClick={onClose}
               disabled={adding}
-              className="px-6 py-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium rounded-lg transition-colors disabled:opacity-50"
+              className="px-6 py-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
             >
               Cancel
             </button>
             <button
               onClick={handleAddExercises}
               disabled={selectedExercises.length === 0 || adding}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center space-x-2"
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center space-x-2 cursor-pointer"
             >
               {adding && (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>

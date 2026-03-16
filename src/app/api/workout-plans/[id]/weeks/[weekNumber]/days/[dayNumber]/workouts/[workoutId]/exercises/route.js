@@ -5,6 +5,7 @@ import { connectDB } from "@/lib/db";
 import WorkoutPlan from "@/models/WorkoutPlan";
 import Exercise from "@/models/Exercise";
 import { verifyUserToken } from "@/lib/verifyUser";
+import { invalidateWorkoutPlanCache } from "../../../utils";
 
 export async function POST(request, { params }) {
   try {
@@ -315,6 +316,7 @@ export async function POST(request, { params }) {
 
     // Save the updated workout plan
     await workoutPlan.save();
+    await invalidateWorkoutPlanCache(user.uid, planId);
 
     console.log("✅ Successfully added exercises to workout");
 
@@ -469,6 +471,7 @@ export async function PUT(request, { params }) {
     }
 
     await workoutPlan.save();
+    await invalidateWorkoutPlanCache(user.uid, planId);
 
     return NextResponse.json({
       success: true,
