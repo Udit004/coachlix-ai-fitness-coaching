@@ -33,7 +33,7 @@ export default function WorkoutDetailCard({
         <div className="relative">
           <button
             onClick={() => setShowMenu((prev) => !prev)}
-            className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
           >
             <MoreVertical className="h-4 w-4" />
           </button>
@@ -74,7 +74,7 @@ export default function WorkoutDetailCard({
       <div className="flex gap-2">
         <button
           onClick={() => onStart(weekNumber, dayNumber, workoutId)}
-          className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white"
+          className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white cursor-pointer"
         >
           <Play className="h-3.5 w-3.5" />
           {workout.isCompleted ? "Review" : "Start workout"}

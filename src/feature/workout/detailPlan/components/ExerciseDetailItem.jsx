@@ -34,7 +34,7 @@ export default function ExerciseDetailItem({
           <button
             onClick={() => onEdit(exercise, exerciseIndex)}
             disabled={isPending}
-            className="rounded-lg p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+            className="rounded-lg p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer"
             title="Edit targets"
           >
             <PenSquare className="h-4 w-4" />
@@ -42,14 +42,14 @@ export default function ExerciseDetailItem({
           <button
             onClick={() => onDelete(exercise, exerciseIndex)}
             disabled={isPending}
-            className="rounded-lg p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+            className="rounded-lg p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer"
             title="Remove exercise"
           >
             <Trash2 className="h-4 w-4" />
           </button>
           <button
             onClick={onToggle}
-            className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
             title="Expand details"
           >
             {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}

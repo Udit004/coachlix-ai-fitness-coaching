@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getWorkoutPlan,
+  getWorkoutPlans,
   searchExercises,
   getPopularExercises,
 } from '@/service/workoutApiBase';
@@ -49,10 +50,27 @@ export const useWorkoutPlan = (planId) => {
   });
 };
 
+// Backward-compatible list hook used by dashboard/recent activity.
+export const useWorkoutPlans = (options = {}) => {
+  const { user, loading } = useAuth();
+  const normalizedOptions = normalizeListOptions(options);
+
+  return useQuery({
+    queryKey: workoutKeys.list(normalizedOptions),
+    queryFn: () =>
+      user
+        ? getWorkoutPlans(normalizedOptions)
+        : Promise.resolve([]),
+    enabled: !!user && !loading,
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
+  });
+};
+
 export const useWorkoutStats = (planId) => {
   return useQuery({
     queryKey: workoutKeys.stats(planId),
-    queryFn: () => workoutPlanService.getWorkoutStats(planId),
+    queryFn: () => workoutSessionService.getWorkoutStats(planId),
     enabled: !!planId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -62,7 +80,7 @@ export const useWorkoutStats = (planId) => {
 export const useProgressHistory = (planId) => {
   return useQuery({
     queryKey: [...workoutKeys.progress(), planId],
-    queryFn: () => workoutPlanService.getProgressHistory(planId),
+    queryFn: () => workoutSessionService.getProgressHistory(planId),
     enabled: !!planId,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -94,7 +112,7 @@ export const useAddProgressEntry = () => {
   
   return useMutation({
     mutationFn: ({ planId, progressData }) => 
-      workoutPlanService.addProgressEntry(planId, progressData),
+      workoutSessionService.addProgressEntry(planId, progressData),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ 
         queryKey: [...workoutKeys.progress(), variables.planId] 
@@ -112,7 +130,7 @@ export const useStartWorkoutSession = () => {
   
   return useMutation({
     mutationFn: ({ planId, weekNumber, dayNumber, workoutId }) =>
-      workoutPlanService.startWorkoutSession(
+      workoutSessionService.startWorkoutSession(
         planId, 
         weekNumber, 
         dayNumber, 
@@ -134,7 +152,7 @@ export const useUpdateProgressEntry = () => {
   
   return useMutation({
     mutationFn: ({ planId, progressId, updateData }) => 
-      workoutPlanService.updateProgressEntry(planId, progressId, updateData),
+      workoutSessionService.updateProgressEntry(planId, progressId, updateData),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ 
         queryKey: [...workoutKeys.progress(), variables.planId] 
@@ -149,7 +167,7 @@ export const useDeleteProgressEntry = () => {
   
   return useMutation({
     mutationFn: ({ planId, progressId }) => 
-      workoutPlanService.deleteProgressEntry(planId, progressId),
+      workoutSessionService.deleteProgressEntry(planId, progressId),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ 
         queryKey: [...workoutKeys.progress(), variables.planId] 

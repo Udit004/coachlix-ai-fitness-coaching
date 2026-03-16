@@ -65,7 +65,7 @@ export default function DayAccordionList({
           >
             <button
               onClick={() => setOpenDay((prev) => (prev === day.dayNumber ? null : day.dayNumber))}
-              className="flex w-full items-center justify-between gap-3"
+              className="flex w-full items-center justify-between gap-3 cursor-pointer"
             >
               <div className="text-left">
                 <p className="text-base font-semibold text-gray-900 dark:text-white">{day.dayName}</p>
@@ -86,7 +86,7 @@ export default function DayAccordionList({
                     <button
                       onClick={() => onDeleteDay({ weekNumber, dayNumber: day.dayNumber, dayName: day.dayName })}
                       disabled={isActionPending}
-                      className="inline-flex items-center gap-1 rounded-lg bg-red-50 dark:bg-red-900/30 px-3 py-2 text-xs font-medium text-red-600 dark:text-red-300"
+                      className="inline-flex items-center gap-1 rounded-lg bg-red-50 dark:bg-red-900/30 px-3 py-2 text-xs font-medium text-red-600 dark:text-red-300 cursor-pointer"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                       Clear day
