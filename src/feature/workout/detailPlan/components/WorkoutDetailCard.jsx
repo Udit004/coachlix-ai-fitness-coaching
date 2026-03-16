@@ -40,7 +40,7 @@ export default function WorkoutDetailCard({
           {showMenu && (
             <>
               <button
-                className="fixed inset-0 z-10 cursor-default"
+                className="fixed inset-0 z-10 cursor-default cursor-pointer"
                 onClick={() => setShowMenu(false)}
                 aria-label="Close menu"
               />
@@ -50,7 +50,7 @@ export default function WorkoutDetailCard({
                     setShowMenu(false);
                     onAddExercise(dayNumber, workoutId);
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                 >
                   <Plus className="h-4 w-4" />
                   Add exercises
@@ -60,7 +60,7 @@ export default function WorkoutDetailCard({
                     setShowMenu(false);
                     onDeleteWorkout({ weekNumber, dayNumber, workoutId, workoutName: workout.name });
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
                 >
                   <Trash2 className="h-4 w-4" />
                   Delete workout
@@ -82,7 +82,7 @@ export default function WorkoutDetailCard({
         {(workout.exercises?.length || 0) === 0 && (
           <button
             onClick={() => onAddExercise(dayNumber, workoutId)}
-            className="inline-flex items-center gap-1 rounded-lg bg-gray-100 dark:bg-gray-800 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300"
+            className="inline-flex items-center gap-1 rounded-lg bg-gray-100 dark:bg-gray-800 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" />
             Add exercises

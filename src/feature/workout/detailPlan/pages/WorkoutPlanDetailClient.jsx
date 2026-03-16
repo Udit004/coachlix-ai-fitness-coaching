@@ -12,7 +12,6 @@ import {
   useDeleteWorkoutFromDay,
   useClearWorkoutDay,
 } from "../hooks/useWorkoutPlanDetailQueries";
-import ProgressTracker from "../components/ProgressTracker";
 import ExerciseTargetEditorModal from "../components/ExerciseTargetEditorModal";
 import WorkoutPlanDetailHeader from "../components/WorkoutPlanDetailHeader";
 import WorkoutWeekNavigationSection from "../components/WorkoutWeekNavigationSection";
@@ -27,7 +26,6 @@ export default function WorkoutPlanDetailPage() {
 
   const [activeWeek, setActiveWeek] = useState(1);
   const [showAddExercise, setShowAddExercise] = useState(false);
-  const [showProgress, setShowProgress] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [showEditPlan, setShowEditPlan] = useState(false);
@@ -276,7 +274,7 @@ export default function WorkoutPlanDetailPage() {
         planDescription={plan.description}
         isUpdating={updatePlanMutation.isPending || updatePlanMutation.isLoading}
         onBack={() => router.back()}
-        onShowProgress={() => setShowProgress(true)}
+        onShowProgress={() => router.push(`/workout-plan/${id}/progress`)}
         onShowEdit={() => setShowEditPlan(true)}
       />
 
@@ -328,10 +326,6 @@ export default function WorkoutPlanDetailPage() {
           dayNumber={selectedDay}
           workoutId={selectedWorkout}
         />
-      )}
-
-      {showProgress && (
-        <ProgressTracker plan={plan} onClose={() => setShowProgress(false)} />
       )}
 
       {showEditPlan && (
