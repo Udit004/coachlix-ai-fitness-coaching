@@ -8,7 +8,7 @@ export default function HomeStatic() {
   const router = useRouter();
 
   return (
-    <section className="relative min-h-screen bg-gray-950 overflow-hidden flex items-center">
+    <section className="relative min-h-screen bg-gray-950 overflow-hidden flex items-center md:-mt-10">
 
       {/* ── Layered background ── */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(99,102,241,0.25),transparent)]" />
@@ -25,7 +25,7 @@ export default function HomeStatic() {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-3xl" />
 
       {/* ── Main grid ── */}
-      <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+      <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-0">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
           {/* ── Left column ── */}
