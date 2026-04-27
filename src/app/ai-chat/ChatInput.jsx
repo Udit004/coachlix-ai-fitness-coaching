@@ -21,7 +21,11 @@ const ChatInput = ({
   handleSendMessage, 
   isTyping, 
   isRecording, 
-  toggleRecording 
+  toggleRecording,
+  isLiveAudioActive = false,
+  isLiveAudioConnecting = false,
+  onToggleLiveAudio = () => {},
+  liveAudioError = null,
 }) => {
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -57,6 +61,10 @@ const ChatInput = ({
 
   // Handle speech recognition
   const handleSpeechToggle = () => {
+    if (isLiveAudioActive || isLiveAudioConnecting) {
+      return;
+    }
+
     if (isListening) {
       stopListening();
     } else {
@@ -295,8 +303,8 @@ const ChatInput = ({
     }
   }, [transcript, setInputValue, resetTranscript]);
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.repeat && !e.nativeEvent?.isComposing) {
       e.preventDefault();
       handleSendWithFiles();
     }
@@ -376,7 +384,7 @@ const ChatInput = ({
                 ref={textareaRef}
                 value={inputValue + interimTranscript}
                 onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyDown}
                 placeholder={
                   isDragging 
                     ? "Drop files here..." 
@@ -396,15 +404,15 @@ const ChatInput = ({
             
             {/* Right side buttons - Mic and Send */}
             <div className="flex items-center gap-1 mr-2 flex-shrink-0">
-              {/* Mic button */}
+              {/* Speech-to-text mic button */}
               <button
                 onClick={handleSpeechToggle}
-                disabled={!isSupported || isTyping}
+                disabled={!isSupported || isTyping || isLiveAudioActive || isLiveAudioConnecting}
                 className={`p-2 transition-all rounded-lg relative cursor-pointer flex-shrink-0 ${
                   isListening 
                     ? 'text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20' 
                     : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
-                } ${!isSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
+                } ${(!isSupported || isLiveAudioActive || isLiveAudioConnecting) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title={isSupported ? (isListening ? 'Stop recording' : 'Start voice input') : 'Speech not supported'}
               >
                 {isListening ? (
@@ -429,22 +437,54 @@ const ChatInput = ({
               >
                 <Send className="h-5 w-5" />
               </button>
+
+              <div className="w-px h-6 bg-gray-700 mx-0.5" />
+
+              {/* Live voice chat button */}
+              <button
+                onClick={onToggleLiveAudio}
+                disabled={isTyping || isLiveAudioConnecting}
+                className={`px-2.5 py-2 transition-all rounded-lg cursor-pointer flex items-center gap-1.5 flex-shrink-0 ${
+                  isLiveAudioActive
+                    ? 'text-emerald-300 bg-emerald-500/15 ring-1 ring-emerald-400/30'
+                    : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                } ${isLiveAudioConnecting ? 'opacity-60 cursor-not-allowed' : ''}`}
+                title={isLiveAudioActive ? 'Stop live voice chat' : 'Start live voice chat'}
+              >
+                {isLiveAudioActive ? (
+                  <Square className="h-4 w-4 fill-current" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
+                <span className="text-xs font-medium hidden sm:inline">
+                  {isLiveAudioConnecting ? 'Connecting' : isLiveAudioActive ? 'Voice On' : 'Voice'}
+                </span>
+                {isLiveAudioActive && (
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                )}
+              </button>
             </div>
           </div>
 
           {/* Helper text - Only show when needed */}
-          {((isDragging || isListening) || (speechError || permissionError)) && (
+          {((isDragging || isListening || isLiveAudioActive || isLiveAudioConnecting) || (speechError || permissionError || liveAudioError)) && (
             <div className="flex items-center justify-center mt-1.5 text-xs text-gray-500">
-              {(isDragging || isListening) && (
+              {(isDragging || isListening || isLiveAudioActive || isLiveAudioConnecting) && (
                 <div className="flex items-center gap-1.5">
                   <Sparkles className="h-3 w-3 text-blue-400 animate-pulse" />
                   <span className="text-[11px] text-gray-400">
-                    {isDragging ? 'Drop to attach' : 'Listening...'}
+                    {isDragging
+                      ? 'Drop to attach'
+                      : isLiveAudioConnecting
+                        ? 'Connecting live voice...'
+                        : isLiveAudioActive
+                          ? 'Live audio chat active'
+                          : 'Listening...'}
                   </span>
                 </div>
               )}
-              {(speechError || permissionError) && (
-                <span className="text-red-400 text-[11px]">{speechError || permissionError}</span>
+              {(speechError || permissionError || liveAudioError) && (
+                <span className="text-red-400 text-[11px]">{liveAudioError || speechError || permissionError}</span>
               )}
             </div>
           )}

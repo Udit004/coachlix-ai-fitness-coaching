@@ -14,6 +14,10 @@ const ChatContainer = ({
   handleKeyPress,
   isRecording,
   toggleRecording,
+  isLiveAudioActive = false,
+  isLiveAudioConnecting = false,
+  onToggleLiveAudio = () => {},
+  liveAudioError = null,
   userProfile,
   textareaRef,
   messagesEndRef,
@@ -184,6 +188,10 @@ const ChatContainer = ({
           isTyping={isTyping}
           isRecording={isRecording}
           toggleRecording={toggleRecording}
+          isLiveAudioActive={isLiveAudioActive}
+          isLiveAudioConnecting={isLiveAudioConnecting}
+          onToggleLiveAudio={onToggleLiveAudio}
+          liveAudioError={liveAudioError}
           textareaRef={textareaRef}
         />
       </div>
@@ -208,6 +216,9 @@ export default React.memo(ChatContainer, (prevProps, nextProps) => {
     prevProps.streamingMessageId === nextProps.streamingMessageId &&
     prevProps.streamingContent === nextProps.streamingContent &&
     prevProps.isRecording === nextProps.isRecording &&
+    prevProps.isLiveAudioActive === nextProps.isLiveAudioActive &&
+    prevProps.isLiveAudioConnecting === nextProps.isLiveAudioConnecting &&
+    prevProps.liveAudioError === nextProps.liveAudioError &&
     prevProps.selectedPlan === nextProps.selectedPlan &&
     prevProps.isNewChat === nextProps.isNewChat &&
     prevProps.sidebarOpen === nextProps.sidebarOpen
