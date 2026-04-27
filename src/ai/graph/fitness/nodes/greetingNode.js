@@ -4,10 +4,13 @@ import { AIMessage } from "@langchain/core/messages";
 import { getGreetingResponse } from "../../../reasoning/intentRouter.js";
 
 export async function greetingNode(state) {
-  const { originalMessage, profile } = state;
+  const { originalMessage, profile, greetingResponse } = state;
   const t0 = Date.now();
 
-  const response = getGreetingResponse(originalMessage ?? "", profile?.username);
+  const response =
+    typeof greetingResponse === "string" && greetingResponse.trim().length > 0
+      ? greetingResponse.trim()
+      : getGreetingResponse(originalMessage ?? "", profile?.username);
   const aiMessage = new AIMessage({ content: response });
 
   console.log(
