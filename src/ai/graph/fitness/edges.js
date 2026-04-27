@@ -13,10 +13,17 @@ export function routeAfterClassify(state) {
     return "greeting";
   }
 
+  if (queryType === QueryType.GENERAL_FITNESS) {
+    console.log(
+      `[Graph:route] classify -> buildSimplePrompt (general query via small model - intent: ${intent?.intent})`
+    );
+    return "general";
+  }
+
   console.log(
-    `[Graph:route] classify -> retrieveContext (non-greeting path with RAG/tools - intent: ${intent?.intent})`
+    `[Graph:route] classify -> retrieveContext (personalized query with RAG/tools - intent: ${intent?.intent})`
   );
-  return "nonGreeting";
+  return "personalized";
 }
 
 export function shouldContinueToTools(state) {
