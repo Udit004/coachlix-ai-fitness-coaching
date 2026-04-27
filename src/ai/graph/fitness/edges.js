@@ -8,22 +8,15 @@ export function routeAfterClassify(state) {
 
   if (queryType === QueryType.GREETING) {
     console.log(
-      `[Graph:route] classify -> greeting (BYPASS LLM - intent: ${intent?.intent})`
+      `[Graph:route] classify -> greeting (instant response - intent: ${intent?.intent})`
     );
     return "greeting";
   }
 
-  if (queryType === QueryType.GENERAL_FITNESS) {
-    console.log(
-      `[Graph:route] classify -> buildSimplePrompt (no profile - intent: ${intent?.intent})`
-    );
-    return "buildSimplePrompt";
-  }
-
   console.log(
-    `[Graph:route] classify -> retrieveContext (personalized - intent: ${intent?.intent})`
+    `[Graph:route] classify -> retrieveContext (non-greeting path with RAG/tools - intent: ${intent?.intent})`
   );
-  return "retrieveContext";
+  return "nonGreeting";
 }
 
 export function shouldContinueToTools(state) {

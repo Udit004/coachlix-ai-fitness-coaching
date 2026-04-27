@@ -35,6 +35,8 @@ export const GraphState = Annotation.Root({
 
   intent: Annotation({ reducer: lastWrite, default: () => null }),
   queryType: Annotation({ reducer: lastWrite, default: () => null }),
+  needsRag: Annotation({ reducer: lastWrite, default: () => false }),
+  greetingResponse: Annotation({ reducer: lastWrite, default: () => "" }),
   userContext: Annotation({ reducer: lastWrite, default: () => null }),
   enableSearch: Annotation({ reducer: lastWrite, default: () => false }),
 
