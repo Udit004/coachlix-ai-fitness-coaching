@@ -117,7 +117,7 @@ const ChatMessage = ({
         <div className="w-full flex justify-center">
           <div className="w-full max-w-2xl text-left my-6 px-2 sm:px-0" style={{ background: "none", boxShadow: "none", border: "none", padding: 0 }}>
             <div
-              className="text-[18px] leading-[1.7] font-normal tracking-wide text-white"
+              className="text-[16px] leading-[1.7] font-normal tracking-wide text-white"
               style={{
                 fontFamily:
                   'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
