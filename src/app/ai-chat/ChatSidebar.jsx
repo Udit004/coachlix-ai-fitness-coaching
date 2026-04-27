@@ -300,7 +300,7 @@ const ChatSidebar = ({
       {/* Mobile Backdrop */}
       {sidebarOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-30 transition-opacity backdrop-blur-sm"
+          className="lg:hidden fixed inset-0 bg-black/20 z-30 transition-opacity backdrop-blur-[2px]"
           onClick={() => setSidebarOpen(false)}
         />
       )}

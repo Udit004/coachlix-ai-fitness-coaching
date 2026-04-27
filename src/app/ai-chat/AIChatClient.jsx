@@ -687,12 +687,6 @@ const AIChatClient = ({ initialProfile = null }) => {
         </div>
       </div>
 
-      {sidebarOpen && (
-        <div
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30 backdrop-blur-sm transition-all duration-300"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
     </div>
   );
 };
