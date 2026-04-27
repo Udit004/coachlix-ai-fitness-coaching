@@ -299,54 +299,98 @@ const AIChatClient = ({ initialProfile = null }) => {
       const decoder = new TextDecoder();
       let streamingContent = "";
       let suggestions = [];
+      let sseBuffer = "";
+
+      const processSseEvent = async (eventText) => {
+        const dataLines = eventText
+          .split("\n")
+          .filter((line) => line.startsWith("data: "))
+          .map((line) => line.slice(6));
+
+        if (dataLines.length === 0) {
+          return;
+        }
+
+        const payload = dataLines.join("\n");
+        const data = JSON.parse(payload);
+
+        switch (data.type) {
+          case "connection":
+            break;
+          case "word":
+            streamingContent += data.word;
+            updateLastMessage({ ...aiMessage, content: streamingContent });
+            break;
+          case "complete": {
+            const finalMessage = {
+              ...aiMessage,
+              content: data.fullResponse,
+              suggestions: data.suggestions || [],
+            };
+            updateLastMessage(finalMessage);
+
+            if (authUser?.uid) {
+              const updatedMessages = [...messages, userMessage, finalMessage];
+              if (isNewChat && updatedMessages.length >= 2) {
+                const title = generateChatTitle(updatedMessages);
+                try {
+                  const result = await saveChat.mutateAsync({
+                    userId: authUser.uid,
+                    title,
+                    plan: selectedPlan,
+                    messages: updatedMessages,
+                  });
+                  if (result.chatId) {
+                    setCurrentChatId(result.chatId);
+                    setIsNewChat(false);
+                  }
+                } catch (err) {
+                  console.error("Failed to save chat:", err);
+                }
+              } else if (currentChatId) {
+                try {
+                  await updateChat.mutateAsync({
+                    chatId: currentChatId,
+                    messages: updatedMessages,
+                  });
+                } catch (err) {
+                  console.error("Failed to update chat:", err);
+                }
+              }
+            }
+            break;
+          }
+          case "error":
+            throw new Error(data.error);
+          default:
+            break;
+        }
+      };
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n");
+        sseBuffer += decoder.decode(value, { stream: true });
+        const events = sseBuffer.split("\n\n");
+        sseBuffer = events.pop() || "";
 
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6));
-
-              switch (data.type) {
-                case "connection":
-                  break;
-                case "word":
-                  streamingContent += data.word;
-                  updateLastMessage({ ...aiMessage, content: streamingContent });
-                  break;
-                case "complete": {
-                  const finalMessage = { ...aiMessage, content: data.fullResponse, suggestions: data.suggestions || [] };
-                  updateLastMessage(finalMessage);
-
-                  if (authUser?.uid) {
-                    const updatedMessages = [...messages, userMessage, finalMessage];
-                    if (isNewChat && updatedMessages.length >= 2) {
-                      const title = generateChatTitle(updatedMessages);
-                      try {
-                        const result = await saveChat.mutateAsync({ userId: authUser.uid, title, plan: selectedPlan, messages: updatedMessages });
-                        if (result.chatId) { setCurrentChatId(result.chatId); setIsNewChat(false); }
-                      } catch (err) { console.error("Failed to save chat:", err); }
-                    } else if (currentChatId) {
-                      try { await updateChat.mutateAsync({ chatId: currentChatId, messages: updatedMessages }); }
-                      catch (err) { console.error("Failed to update chat:", err); }
-                    }
-                  }
-                  break;
-                }
-                case "error":
-                  throw new Error(data.error);
-                default:
-                  break;
-              }
-            } catch (parseError) {
-              console.error("Error parsing streaming data:", parseError);
-            }
+        for (const eventText of events) {
+          try {
+            await processSseEvent(eventText);
+          } catch (parseError) {
+            console.error("Error parsing streaming data:", parseError, { eventText });
           }
+        }
+      }
+
+      if (sseBuffer.trim()) {
+        try {
+          await processSseEvent(sseBuffer);
+        } catch (parseError) {
+          console.error("Error parsing trailing streaming data:", parseError, {
+            eventText: sseBuffer,
+          });
         }
       }
     } catch (err) {

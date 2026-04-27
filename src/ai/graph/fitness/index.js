@@ -25,7 +25,8 @@ export function buildFitnessGraph() {
     .addEdge(START, "classify")
     .addConditionalEdges("classify", routeAfterClassify, {
       greeting: "greeting",
-      nonGreeting: "retrieveContext",
+      general: "buildSimplePrompt",
+      personalized: "retrieveContext",
     })
     .addEdge("greeting", END)
     .addEdge("buildSimplePrompt", "llm")

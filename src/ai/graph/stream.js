@@ -141,6 +141,30 @@ export async function processChatWithGraph(params, onChunk) {
         }
       }
 
+      if (
+        metadata?.langgraph_node === "llm" &&
+        !fullResponse &&
+        Array.isArray(output.messages) &&
+        output.messages.length > 0
+      ) {
+        for (const msg of output.messages) {
+          const text =
+            typeof msg.content === "string"
+              ? msg.content
+              : Array.isArray(msg.content)
+              ? msg.content.map((c) => (typeof c === "string" ? c : c.text ?? "")).join("")
+              : "";
+
+          if (text) {
+            fullResponse += text;
+            lastWord = await streamTextToFrontend(text, fullResponse, onChunk);
+            console.log(
+              `[Graph:stream] Non-streaming llm output emitted (${text.length} chars)`
+            );
+          }
+        }
+      }
+
       if (output.intent) intentMeta = output.intent;
       if (output.userContext) contextStatsMeta = getContextStats(output.userContext);
       if (typeof output.enableSearch === "boolean") enableSearchMeta = output.enableSearch;

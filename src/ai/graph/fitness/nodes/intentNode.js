@@ -3,6 +3,7 @@
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { QueryType } from "../../../reasoning/intentRouter.js";
 import { createStreamingLLM } from "../../../config/llmconfig.js";
+import { LLM_CONFIG } from "../../../config/llmconfig.js";
 import {
   shouldEnableSearch,
   logSearchUsage,
@@ -44,6 +45,16 @@ const FALLBACK_RESULT = {
   needs_rag: false,
   response: "",
 };
+
+const QUICK_GREETING_PATTERN =
+  /^(hi|hello|hey|hii+|heyy+|yo|sup|hola|namaste|good\s+(morning|afternoon|evening|night))[\s!.?]*$/i;
+const CLASSIFIER_TIMEOUT_MS = Number(process.env.INTENT_CLASSIFIER_TIMEOUT_MS || 3500);
+
+const PLAN_REFERENCE_PATTERN =
+  /\b(my|current)\s+(diet|meal|workout|training|fitness)\s+plan\b/i;
+const PERSONAL_CHECK_PATTERN =
+  /\b(check|show|see|does|do|is|what(?:'s| is)|tell)\b/i;
+const PERSONAL_PRONOUN_PATTERN = /\b(my|for me|mine)\b/i;
 
 function extractJsonBlock(text) {
   if (typeof text !== "string" || text.trim().length === 0) {
@@ -141,11 +152,12 @@ function buildDataNeeds(intentName, originalMessage) {
 
 async function classifyWithSmallLlm(originalMessage) {
   const classifierLlm = createStreamingLLM(false, {
-    model: process.env.INTENT_CLASSIFIER_MODEL?.trim() || "gemini-2.0-flash-lite",
+    model: process.env.INTENT_CLASSIFIER_MODEL?.trim() || LLM_CONFIG.model,
     temperature: 0,
     maxOutputTokens: 180,
     topP: 0.1,
     topK: 1,
+    maxRetries: 0,
   });
 
   const output = await classifierLlm.invoke([
@@ -161,18 +173,89 @@ async function classifyWithSmallLlm(originalMessage) {
   return parseClassifierOutput(rawText);
 }
 
+function withTimeout(promise, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Intent classifier timeout after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
+function shouldForcePersonalizedQuery(message) {
+  const text = (message || "").trim();
+  if (!text) return false;
+
+  // Queries about the user's own current plan must use RAG/tools.
+  if (PLAN_REFERENCE_PATTERN.test(text)) {
+    return true;
+  }
+
+  const asksForCheck = PERSONAL_CHECK_PATTERN.test(text);
+  const hasPersonalOwnership = PERSONAL_PRONOUN_PATTERN.test(text);
+  const mentionsPlan = /\b(plan|diet|workout|meal|schedule)\b/i.test(text);
+
+  return asksForCheck && hasPersonalOwnership && mentionsPlan;
+}
+
 export async function intentNode(state) {
   const { originalMessage } = state;
   const t0 = Date.now();
+
+  if (QUICK_GREETING_PATTERN.test((originalMessage || "").trim())) {
+    const quickResult = {
+      intent: "greeting",
+      confidence: 0.99,
+      requiresData: false,
+      dataNeeds: buildDataNeeds("greeting", originalMessage),
+      classifierIntent: "GREETING",
+      classifierResponse: "",
+      version: "llm-small-v1-fastpath",
+    };
+
+    console.log("[Graph:intent] Fast-path greeting detected");
+    return {
+      intent: quickResult,
+      queryType: QueryType.GREETING,
+      needsRag: false,
+      greetingResponse: "",
+      enableSearch: false,
+      flowMetrics: { intentClassificationTime: Date.now() - t0 },
+    };
+  }
+
   let classifierResult;
 
   try {
-    classifierResult = await classifyWithSmallLlm(originalMessage);
+    classifierResult = await withTimeout(
+      classifyWithSmallLlm(originalMessage),
+      CLASSIFIER_TIMEOUT_MS
+    );
   } catch (error) {
     console.warn(
       `[Graph:intent] Small-LLM classifier failed, falling back to GENERAL_QUERY: ${error.message}`
     );
     classifierResult = FALLBACK_RESULT;
+  }
+
+  const forcedPersonalized = shouldForcePersonalizedQuery(originalMessage);
+  if (forcedPersonalized && classifierResult.intent !== "PERSONALIZED_QUERY") {
+    classifierResult = {
+      ...classifierResult,
+      intent: "PERSONALIZED_QUERY",
+      needs_rag: true,
+      response: "",
+      confidence: Math.max(classifierResult.confidence, 0.75),
+    };
   }
 
   const intentName =
@@ -207,6 +290,7 @@ export async function intentNode(state) {
       `(${(intent.confidence * 100).toFixed(0)}%) ` +
       `queryType=${queryType} ` +
       `needsRag=${classifierResult.needs_rag} ` +
+      `forcedPersonalized=${forcedPersonalized} ` +
       `priority=${intent.dataNeeds?.priority} ` +
       `search=${enableSearch}`
   );
