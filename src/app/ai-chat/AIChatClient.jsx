@@ -524,6 +524,15 @@ const AIChatClient = ({ initialProfile = null }) => {
   } = useLiveVoiceChat({
     onText: handleLiveVoiceText,
     onUserTranscript: handleLiveUserTranscript,
+    userId: authUser?.uid,
+    chatId: currentChatId,
+    plan: selectedPlan,
+    onSessionStarted: (liveChatId) => {
+      if (liveChatId && !currentChatId) {
+        setCurrentChatId(liveChatId);
+        setIsNewChat(false);
+      }
+    },
     onState: (state) => {
       if (state === "turn_complete") {
         liveAiMessageRef.current = { id: null, content: "" };

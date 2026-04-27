@@ -114,6 +114,10 @@ export default function useLiveVoiceChat({
   onUserTranscript,
   onState,
   onError,
+  onSessionStarted,
+  userId,
+  chatId,
+  plan,
 }) {
   const [isSupported, setIsSupported] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -212,6 +216,17 @@ export default function useLiveVoiceChat({
       text,
       isFinal: true,
     });
+
+    const socket = wsRef.current;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(
+        JSON.stringify({
+          type: "user_transcript",
+          text,
+          isFinal: true,
+        })
+      );
+    }
 
     clearTranscriptBuffers();
   }, [clearTranscriptBuffers, isDuplicateRecentCommit, onUserTranscript]);
@@ -499,6 +514,9 @@ export default function useLiveVoiceChat({
         sendWs({
           type: "start_session",
           responseModalities: ["AUDIO"],
+          userId,
+          chatId,
+          plan,
         });
       };
 
@@ -515,6 +533,7 @@ export default function useLiveVoiceChat({
           setIsConnecting(false);
           setIsSessionActive(true);
           sessionActiveRef.current = true;
+          onSessionStarted?.(parsed.chatId);
           emitState("active");
 
           try {
@@ -597,7 +616,22 @@ export default function useLiveVoiceChat({
       sessionActiveRef.current = false;
       onError?.(message);
     }
-  }, [cleanupCapture, cleanupPlayback, emitState, onError, onText, playAudioChunk, sendWs, startCapture, startSpeechRecognition, stopSpeechRecognition]);
+  }, [
+    chatId,
+    cleanupCapture,
+    cleanupPlayback,
+    emitState,
+    onError,
+    onSessionStarted,
+    onText,
+    plan,
+    playAudioChunk,
+    sendWs,
+    startCapture,
+    startSpeechRecognition,
+    stopSpeechRecognition,
+    userId,
+  ]);
 
   useEffect(() => {
     return () => {
