@@ -1,20 +1,15 @@
-// next.config.mjs
-
-import nextPwa from 'next-pwa';
-
-const withPWA = nextPwa({
-  dest: 'public',
-  register: false, // Disable registration completely - we'll manage manually
-  skipWaiting: false,
-  disable: true, // DISABLE PWA COMPLETELY - causing caching issues
-});
-
 const nextConfig = {
   reactStrictMode: true,
-  turbopack: {}, // Enable Turbopack explicitly for Next.js 16
+
+  serverExternalPackages: [
+    "@langchain/core",
+    "@langchain/google-genai",
+    "@langchain/mongodb",
+    "@langchain/langgraph",
+  ],
+
   webpack: (config, { isServer }) => {
     if (!isServer) {
-      // Don't bundle Node.js modules on the client side
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
@@ -25,11 +20,6 @@ const nextConfig = {
       };
     }
     return config;
-  },
-  // Disable SWR caching for development
-  onDemandEntries: {
-    maxInactiveAge: 60 * 1000,
-    pagesBufferLength: 5,
   },
 };
 
