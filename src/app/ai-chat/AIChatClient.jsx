@@ -1,13 +1,14 @@
 // AIChatClient.jsx — Client component for AI Chat page
 // SSR chat history is pre-loaded via HydrationBoundary; initialProfile seeds Zustand.
 "use client";
-import React, { useState, useRef, useEffect, Suspense, lazy } from "react";
+import React, { useState, useRef, useEffect, useCallback, Suspense, lazy } from "react";
 import useUserProfileStore from "@/feature/profile/hooks/useUserProfileStore";
 import useChatStore from "@/stores/useChatStore";
 import useChatHistoryStore from "@/stores/useChatHistoryStore";
 import { toast, Toaster } from "react-hot-toast";
 import axios from "axios";
 import { useChatInitialization, useSaveChat, useUpdateChat, useDeleteChat } from "@/hooks/useChatQueries";
+import useLiveVoiceChat from "@/hooks/useLiveVoiceChat";
 import {
   Activity,
   Dumbbell,
@@ -99,7 +100,6 @@ const AIChatClient = ({ initialProfile = null }) => {
 
   const {
     profile: userProfile,
-    loading: profileLoading,
     error: profileError,
     fetchUserProfile,
     hasValidProfile,
@@ -123,6 +123,10 @@ const AIChatClient = ({ initialProfile = null }) => {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const [isRecording, setIsRecording] = useState(false);
+  const liveAiMessageRef = useRef({ id: null, content: "" });
+  const liveUserMessageRef = useRef({ id: null, content: "" });
+  const lastLiveUserFinalRef = useRef({ text: "", at: 0 });
+  const sendGuardRef = useRef({ inFlight: false, lastFingerprint: "", lastAt: 0 });
 
   const plans = [
     { id: "general", name: "General Fitness", icon: Activity, color: "from-blue-500 to-purple-600" },
@@ -228,21 +232,37 @@ const AIChatClient = ({ initialProfile = null }) => {
         ? messageData.text || inputValue
         : messageData || inputValue;
     const files = messageData?.files || [];
+    const normalizedMessage = String(message || "").trim();
+    const fileFingerprint = files
+      .map((file) => file?.url || file?.cloudinaryId || file?.name || "file")
+      .join("|");
+    const requestFingerprint = `${normalizedMessage.toLowerCase()}::${fileFingerprint}`;
 
-    if (!message.trim() && files.length === 0) return;
+    if (!normalizedMessage && files.length === 0) return;
     if (isTyping) return;
+    if (sendGuardRef.current.inFlight) return;
+
+    const isRecentDuplicate =
+      requestFingerprint === sendGuardRef.current.lastFingerprint &&
+      Date.now() - sendGuardRef.current.lastAt < 1500;
+
+    if (isRecentDuplicate) {
+      return;
+    }
+
+    sendGuardRef.current.inFlight = true;
 
     const userMessage = {
       id: Date.now(),
       role: "user",
-      content: message,
+      content: normalizedMessage,
       timestamp: new Date(),
       plan: selectedPlan,
       files: files.length > 0 ? files : undefined,
     };
 
     addMessage(userMessage);
-    const currentInput = message;
+    const currentInput = normalizedMessage;
     setInputValue("");
     setIsTyping(true);
     setError(null);
@@ -341,6 +361,9 @@ const AIChatClient = ({ initialProfile = null }) => {
       });
     } finally {
       setIsTyping(false);
+      sendGuardRef.current.inFlight = false;
+      sendGuardRef.current.lastFingerprint = requestFingerprint;
+      sendGuardRef.current.lastAt = Date.now();
     }
   };
 
@@ -351,21 +374,6 @@ const AIChatClient = ({ initialProfile = null }) => {
 
   const handleNewChat = () => {
     startNewChat();
-    if (userProfile && !profileLoading) {
-      const welcomeMessage = {
-        id: Date.now(),
-        role: "ai",
-        content: `Hi ${userProfile.name}! 👋`,
-        timestamp: new Date(),
-        suggestions: [
-          `Create a ${userProfile.fitnessGoal?.replace("-", " ")} plan`,
-          "Design a meal plan",
-          "Track my progress",
-          "Set weekly goals",
-        ],
-      };
-      setMessages([welcomeMessage]);
-    }
   };
 
   const handleDeleteChat = async (chatId) => {
@@ -396,6 +404,163 @@ const AIChatClient = ({ initialProfile = null }) => {
     toast.success(isRecording ? "Voice recording stopped" : "Voice recording started");
   };
 
+  const handleLiveVoiceText = useCallback(
+    (textChunk) => {
+      const chunk = typeof textChunk === "string" ? textChunk : "";
+      if (!chunk.trim()) {
+        return;
+      }
+
+      if (!liveAiMessageRef.current.id) {
+        const messageId = Date.now() + Math.floor(Math.random() * 1000);
+        liveAiMessageRef.current = { id: messageId, content: chunk };
+
+        addMessage({
+          id: messageId,
+          role: "ai",
+          content: chunk,
+          timestamp: new Date(),
+          plan: selectedPlan,
+          suggestions: [],
+        });
+        return;
+      }
+
+      const nextContent = `${liveAiMessageRef.current.content}${chunk}`;
+      liveAiMessageRef.current = {
+        ...liveAiMessageRef.current,
+        content: nextContent,
+      };
+
+      useChatStore.setState((state) => {
+        const idx = state.messages.findIndex((msg) => msg.id === liveAiMessageRef.current.id);
+        if (idx !== -1) {
+          state.messages[idx] = {
+            ...state.messages[idx],
+            content: nextContent,
+            timestamp: new Date(),
+            plan: selectedPlan,
+            suggestions: [],
+          };
+        }
+      });
+    },
+    [addMessage, selectedPlan]
+  );
+
+  const handleLiveUserTranscript = useCallback(
+    ({ text, isFinal }) => {
+      const transcript = typeof text === "string" ? text.trim() : "";
+      if (!transcript) {
+        return;
+      }
+
+      const normalizedTranscript = transcript.toLowerCase();
+      const duplicateOfRecentFinal =
+        normalizedTranscript === lastLiveUserFinalRef.current.text &&
+        Date.now() - lastLiveUserFinalRef.current.at < 3000;
+
+      if (!isFinal && !liveUserMessageRef.current.id && duplicateOfRecentFinal) {
+        return;
+      }
+
+      if (isFinal) {
+        const isDuplicateFinal =
+          normalizedTranscript === lastLiveUserFinalRef.current.text &&
+          Date.now() - lastLiveUserFinalRef.current.at < 3000;
+
+        if (isDuplicateFinal) {
+          liveUserMessageRef.current = { id: null, content: "" };
+          return;
+        }
+
+        lastLiveUserFinalRef.current = { text: normalizedTranscript, at: Date.now() };
+      }
+
+      if (!liveUserMessageRef.current.id) {
+        const messageId = Date.now() + Math.floor(Math.random() * 1000);
+        liveUserMessageRef.current = { id: messageId, content: transcript };
+
+        addMessage({
+          id: messageId,
+          role: "user",
+          content: transcript,
+          timestamp: new Date(),
+          plan: selectedPlan,
+        });
+      } else {
+        liveUserMessageRef.current = {
+          ...liveUserMessageRef.current,
+          content: transcript,
+        };
+
+        useChatStore.setState((state) => {
+          const idx = state.messages.findIndex((msg) => msg.id === liveUserMessageRef.current.id);
+          if (idx !== -1) {
+            state.messages[idx] = {
+              ...state.messages[idx],
+              content: transcript,
+              timestamp: new Date(),
+              plan: selectedPlan,
+            };
+          }
+        });
+      }
+
+      if (isFinal) {
+        liveUserMessageRef.current = { id: null, content: "" };
+      }
+    },
+    [addMessage, selectedPlan]
+  );
+
+  const {
+    isSupported: isLiveAudioSupported,
+    isConnecting: isLiveAudioConnecting,
+    isSessionActive: isLiveAudioActive,
+    error: liveAudioError,
+    startSession: startLiveAudio,
+    stopSession: stopLiveAudio,
+  } = useLiveVoiceChat({
+    onText: handleLiveVoiceText,
+    onUserTranscript: handleLiveUserTranscript,
+    userId: authUser?.uid,
+    chatId: currentChatId,
+    plan: selectedPlan,
+    onSessionStarted: (liveChatId) => {
+      if (liveChatId && !currentChatId) {
+        setCurrentChatId(liveChatId);
+        setIsNewChat(false);
+      }
+    },
+    onState: (state) => {
+      if (state === "turn_complete") {
+        liveAiMessageRef.current = { id: null, content: "" };
+      }
+    },
+    onError: (message) => {
+      setError(message);
+    },
+  });
+
+  const handleToggleLiveAudio = async () => {
+    if (isLiveAudioActive || isLiveAudioConnecting) {
+      stopLiveAudio();
+      liveAiMessageRef.current = { id: null, content: "" };
+      liveUserMessageRef.current = { id: null, content: "" };
+      toast.success("Live audio chat stopped");
+      return;
+    }
+
+    if (!isLiveAudioSupported) {
+      toast.error("Live audio chat is not supported in this browser");
+      return;
+    }
+
+    await startLiveAudio();
+    toast.success("Connecting live audio chat...");
+  };
+
   const formatTime = (date) =>
     date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
 
@@ -409,24 +574,6 @@ const AIChatClient = ({ initialProfile = null }) => {
   };
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
-
-  // ── Welcome message on first load ─────────────────────────────────────────
-  useEffect(() => {
-    if (messages.length === 0 && userProfile && !profileLoading && isNewChat) {
-      setMessages([{
-        id: Date.now(),
-        role: "ai",
-        content: `Hi ${userProfile.name}! 👋`,
-        timestamp: new Date(),
-        suggestions: [
-          `Create a ${userProfile.fitnessGoal?.replace("-", " ")} plan`,
-          "Design a meal plan",
-          "Track my progress",
-          "Set weekly goals",
-        ],
-      }]);
-    }
-  }, [userProfile, profileLoading, isNewChat, messages.length, setMessages]);
 
   const combinedError = error || profileError;
 
@@ -514,6 +661,10 @@ const AIChatClient = ({ initialProfile = null }) => {
                   handleKeyPress={handleKeyPress}
                   isRecording={isRecording}
                   toggleRecording={toggleRecording}
+                  isLiveAudioActive={isLiveAudioActive}
+                  isLiveAudioConnecting={isLiveAudioConnecting}
+                  onToggleLiveAudio={handleToggleLiveAudio}
+                  liveAudioError={liveAudioError}
                   userProfile={userProfile}
                   textareaRef={textareaRef}
                   messagesEndRef={messagesEndRef}

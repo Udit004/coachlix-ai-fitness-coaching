@@ -14,6 +14,10 @@ const ChatContainer = ({
   handleKeyPress,
   isRecording,
   toggleRecording,
+  isLiveAudioActive = false,
+  isLiveAudioConnecting = false,
+  onToggleLiveAudio = () => {},
+  liveAudioError = null,
   userProfile,
   textareaRef,
   messagesEndRef,
@@ -49,6 +53,8 @@ const ChatContainer = ({
     setSelectedPlan(planId);
     setIsDropdownOpen(false);
   };
+
+  const isEmptyChat = messages.length === 0 && !isTyping;
 
   return (
     <div className="bg-gray-800/50 rounded-lg sm:rounded-xl shadow-sm border border-gray-700 flex flex-col h-full max-h-full overflow-hidden">
@@ -149,44 +155,71 @@ const ChatContainer = ({
         </div>
       </div>
 
-      {/* Chat Messages - Scrollable Area */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4">
-        {messages.map((message, index) => {
-          // Check if this message is currently streaming
-          const isStreaming = message.id === streamingMessageId && message.role === "ai";
-          
-          return (
-            <ChatMessage
-              key={message.id ?? `message-${index}`}
-              message={message}
-              handleSuggestionClick={handleSuggestionClick}
-              userProfile={userProfile}
-              formatTime={formatTime}
-              copyToClipboard={copyToClipboard}
-              isStreaming={isStreaming}
+      {isEmptyChat ? (
+        <div className="flex-1 min-h-0 flex items-center justify-center px-3 sm:px-6">
+          <div className="w-full max-w-3xl">
+            <ChatInput
+              inputValue={inputValue}
+              setInputValue={setInputValue}
+              handleSendMessage={handleSendMessage}
+              handleKeyPress={handleKeyPress}
+              isTyping={isTyping}
+              isRecording={isRecording}
+              toggleRecording={toggleRecording}
+              isLiveAudioActive={isLiveAudioActive}
+              isLiveAudioConnecting={isLiveAudioConnecting}
+              onToggleLiveAudio={onToggleLiveAudio}
+              liveAudioError={liveAudioError}
+              textareaRef={textareaRef}
             />
-          );
-        })}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Chat Messages - Scrollable Area */}
+          <div className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4">
+            {messages.map((message, index) => {
+              // Check if this message is currently streaming
+              const isStreaming = message.id === streamingMessageId && message.role === "ai";
 
-        {/* Typing Indicator - Only show if no streaming message */}
-        {isTyping && !streamingMessageId && <TypingIndicator userProfile={userProfile} />}
+              return (
+                <ChatMessage
+                  key={message.id ?? `message-${index}`}
+                  message={message}
+                  handleSuggestionClick={handleSuggestionClick}
+                  userProfile={userProfile}
+                  formatTime={formatTime}
+                  copyToClipboard={copyToClipboard}
+                  isStreaming={isStreaming}
+                />
+              );
+            })}
 
-        <div ref={actualMessagesEndRef} />
-      </div>
+            {/* Typing Indicator - Only show if no streaming message */}
+            {isTyping && !streamingMessageId && <TypingIndicator userProfile={userProfile} />}
 
-      {/* Chat Input - Fixed at Bottom */}
-      <div className="flex-shrink-0 border-t border-gray-700 p-2 sm:p-4 bg-gray-800/50 rounded-b-lg sm:rounded-b-xl">
-        <ChatInput
-          inputValue={inputValue}
-          setInputValue={setInputValue}
-          handleSendMessage={handleSendMessage}
-          handleKeyPress={handleKeyPress}
-          isTyping={isTyping}
-          isRecording={isRecording}
-          toggleRecording={toggleRecording}
-          textareaRef={textareaRef}
-        />
-      </div>
+            <div ref={actualMessagesEndRef} />
+          </div>
+
+          {/* Chat Input - Fixed at Bottom */}
+          <div className="flex-shrink-0 p-2 rounded-b-lg sm:rounded-b-xl">
+            <ChatInput
+              inputValue={inputValue}
+              setInputValue={setInputValue}
+              handleSendMessage={handleSendMessage}
+              handleKeyPress={handleKeyPress}
+              isTyping={isTyping}
+              isRecording={isRecording}
+              toggleRecording={toggleRecording}
+              isLiveAudioActive={isLiveAudioActive}
+              isLiveAudioConnecting={isLiveAudioConnecting}
+              onToggleLiveAudio={onToggleLiveAudio}
+              liveAudioError={liveAudioError}
+              textareaRef={textareaRef}
+            />
+          </div>
+        </>
+      )}
 
       {/* Backdrop for dropdown */}
       {isDropdownOpen && (
@@ -208,6 +241,9 @@ export default React.memo(ChatContainer, (prevProps, nextProps) => {
     prevProps.streamingMessageId === nextProps.streamingMessageId &&
     prevProps.streamingContent === nextProps.streamingContent &&
     prevProps.isRecording === nextProps.isRecording &&
+    prevProps.isLiveAudioActive === nextProps.isLiveAudioActive &&
+    prevProps.isLiveAudioConnecting === nextProps.isLiveAudioConnecting &&
+    prevProps.liveAudioError === nextProps.liveAudioError &&
     prevProps.selectedPlan === nextProps.selectedPlan &&
     prevProps.isNewChat === nextProps.isNewChat &&
     prevProps.sidebarOpen === nextProps.sidebarOpen
