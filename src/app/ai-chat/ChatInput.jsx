@@ -320,7 +320,7 @@ const ChatInput = ({
 
   return (
     <>
-      <div className="px-3 py-2.5 bg-gray-900/95 backdrop-blur-sm">
+      <div className="px-3 py-1 bg-gray-800/ ">
         {/* File attachments preview - Above input */}
         {attachedFiles.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5 max-w-3xl mx-auto">
@@ -358,7 +358,7 @@ const ChatInput = ({
         {/* Main input container - Minimal height like ChatGPT */}
         <div className="max-w-3xl mx-auto">
           <div 
-            className={`relative flex items-center gap-2 bg-gray-800 rounded-[26px] border transition-all duration-200 ${
+            className={`relative flex items-center gap-2 bg-gray-800 rounded-[26px]  transition-all duration-200 ${
               isDragging
                 ? 'border-blue-500 ring-1 ring-blue-400/50 bg-blue-900/10'
                 : isListening 

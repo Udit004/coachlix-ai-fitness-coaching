@@ -100,7 +100,6 @@ const AIChatClient = ({ initialProfile = null }) => {
 
   const {
     profile: userProfile,
-    loading: profileLoading,
     error: profileError,
     fetchUserProfile,
     hasValidProfile,
@@ -375,21 +374,6 @@ const AIChatClient = ({ initialProfile = null }) => {
 
   const handleNewChat = () => {
     startNewChat();
-    if (userProfile && !profileLoading) {
-      const welcomeMessage = {
-        id: Date.now(),
-        role: "ai",
-        content: `Hi ${userProfile.name}! 👋`,
-        timestamp: new Date(),
-        suggestions: [
-          `Create a ${userProfile.fitnessGoal?.replace("-", " ")} plan`,
-          "Design a meal plan",
-          "Track my progress",
-          "Set weekly goals",
-        ],
-      };
-      setMessages([welcomeMessage]);
-    }
   };
 
   const handleDeleteChat = async (chatId) => {
@@ -581,24 +565,6 @@ const AIChatClient = ({ initialProfile = null }) => {
   };
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
-
-  // ── Welcome message on first load ─────────────────────────────────────────
-  useEffect(() => {
-    if (messages.length === 0 && userProfile && !profileLoading && isNewChat) {
-      setMessages([{
-        id: Date.now(),
-        role: "ai",
-        content: `Hi ${userProfile.name}! 👋`,
-        timestamp: new Date(),
-        suggestions: [
-          `Create a ${userProfile.fitnessGoal?.replace("-", " ")} plan`,
-          "Design a meal plan",
-          "Track my progress",
-          "Set weekly goals",
-        ],
-      }]);
-    }
-  }, [userProfile, profileLoading, isNewChat, messages.length, setMessages]);
 
   const combinedError = error || profileError;
 
