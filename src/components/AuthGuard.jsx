@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthContext } from '@/auth/AuthContext';
+import RouteTransitionShell from './RouteTransitionShell';
 
 export default function AuthGuard({ children }) {
   const { user, loading } = useAuthContext();
@@ -33,7 +34,13 @@ export default function AuthGuard({ children }) {
 
   // Avoid full-screen overlays while auth hydrates to reduce CLS/LCP regressions.
   if (loading && !isPublicRoute) {
-    return <div className="min-h-[40vh]" aria-hidden="true" />;
+    return (
+      <RouteTransitionShell
+        title="Checking your session"
+        subtitle="Restoring your Coachlix workspace..."
+        cardCount={4}
+      />
+    );
   }
 
   // If trying to access protected route without authentication, show nothing
