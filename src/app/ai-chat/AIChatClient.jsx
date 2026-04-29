@@ -175,7 +175,6 @@ const AIChatClient = ({ initialProfile = null }) => {
 
       try {
         setInitializingStage("initializing");
-        await new Promise((resolve) => setTimeout(resolve, 800));
 
         if (!authUser) return;
 
@@ -187,10 +186,8 @@ const AIChatClient = ({ initialProfile = null }) => {
         }
 
         setInitializingStage("chat");
-        await new Promise((resolve) => setTimeout(resolve, 600));
 
         setInitializingStage("ready");
-        await new Promise((resolve) => setTimeout(resolve, 400));
       } catch (err) {
         console.error("Failed to initialize app:", err);
         setError("Failed to load your profile. Some features may not work properly.");
@@ -678,7 +675,7 @@ const AIChatClient = ({ initialProfile = null }) => {
         <div className="w-full h-full px-1 sm:px-3 py-1 sm:py-3 flex flex-col">
           <div className="flex gap-1 sm:gap-4 flex-1 min-h-0">
             {sidebarOpen && (
-              <div className="fixed top-16 left-0 bottom-0 z-40 lg:relative lg:top-0 lg:z-0 lg:inset-auto w-full lg:w-80 flex-shrink-0">
+              <div className="fixed top-16 left-0 bottom-0 z-40 lg:relative lg:top-0 lg:z-0 lg:inset-auto w-full lg:w-80 shrink-0">
                 <Suspense fallback={<ComponentLoading type="sidebar" />}>
                   <ChatSidebar
                     plans={plans}
