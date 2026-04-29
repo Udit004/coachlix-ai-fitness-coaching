@@ -23,6 +23,7 @@ export async function buildPromptNode(state) {
   } = state;
 
   const contextWithProfile = injectRelevantProfileFields(userContext, profile);
+  const promptUserContext = contextWithProfile ?? { profile: profile ?? null };
 
   if (contextWithProfile?.profile?._profileSummary) {
     const fields = ["fitnessGoal", "experience", "activityLevel"].filter(
@@ -33,7 +34,7 @@ export async function buildPromptNode(state) {
 
   const { systemPrompt, promptTier } = selectPrompt({
     intent,
-    userContext: contextWithProfile,
+    userContext: promptUserContext,
     userId,
   });
   console.log(`[Graph:prompt] ${promptTier} prompt selected`);
@@ -59,5 +60,5 @@ export async function buildPromptNode(state) {
   const messages = buildInitialMessages(systemPrompt, filteredHistory, userContent);
   console.log(`[Graph:prompt] ${messages.length} messages assembled`);
 
-  return { messages, userContext: contextWithProfile };
+  return { messages, userContext: contextWithProfile ?? promptUserContext };
 }

@@ -2,6 +2,7 @@
 
 export { intentNode } from "./intentNode.js";
 export { greetingNode } from "./greetingNode.js";
+export { directGeneralNode } from "./directGeneralNode.js";
 export { buildSimplePromptNode } from "./buildSimplePromptNode.js";
 export { retrieveContextNode } from "./retrieveContextNode.js";
 export { buildPromptNode } from "./buildPromptNode.js";

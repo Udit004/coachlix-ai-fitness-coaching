@@ -55,6 +55,12 @@ const PLAN_REFERENCE_PATTERN =
 const PERSONAL_CHECK_PATTERN =
   /\b(check|show|see|does|do|is|what(?:'s| is)|tell)\b/i;
 const PERSONAL_PRONOUN_PATTERN = /\b(my|for me|mine)\b/i;
+const SIMPLE_GENERAL_LEAD_PATTERN =
+  /^(what is|what's|what are|who is|who are|define|meaning of|benefits of|benefit of|how much|how many|is|are)\b/i;
+const SIMPLE_GENERAL_TOPIC_PATTERN =
+  /\b(protein|calorie|calories|bmi|hydration|water|steps|sleep|soreness|muscle|fat|carb|carbs|exercise|workout)\b/i;
+const COMPLEX_GENERAL_PATTERN =
+  /\b(compare|comparison|difference|versus|vs\.?|better than|best for me|recommend|suggest|custom|personaliz|plan|routine|program|schedule|design|build|create|optimize|should i|can i|how should i|what should i|for my|my plan|my workout|my diet)\b/i;
 
 function extractJsonBlock(text) {
   if (typeof text !== "string" || text.trim().length === 0) {
@@ -111,7 +117,7 @@ function parseClassifierOutput(raw) {
   }
 }
 
-function buildDataNeeds(intentName, originalMessage) {
+function buildDataNeeds(intentName, originalMessage, directAnswerable = false) {
   const lower = (originalMessage || "").toLowerCase();
   const needsDiet = /\b(diet|meal|food|nutrition|calorie|protein|carb|fat)\b/i.test(lower);
   const needsWorkout = /\b(workout|exercise|training|gym|strength|cardio|routine)\b/i.test(
@@ -135,7 +141,7 @@ function buildDataNeeds(intentName, originalMessage) {
       needsDiet: false,
       needsWorkout: false,
       needsHistory: false,
-      needsVectorSearch: true,
+      needsVectorSearch: !directAnswerable,
       priority: "low",
     };
   }
@@ -207,6 +213,22 @@ function shouldForcePersonalizedQuery(message) {
   return asksForCheck && hasPersonalOwnership && mentionsPlan;
 }
 
+function shouldDirectAnswerGeneralQuery(message) {
+  const text = (message || "").trim();
+  if (!text) return false;
+
+  const lower = text.toLowerCase();
+  const wordCount = lower.split(/\s+/).filter(Boolean).length;
+
+  if (wordCount > 14) return false;
+
+  return (
+    SIMPLE_GENERAL_LEAD_PATTERN.test(text) &&
+    SIMPLE_GENERAL_TOPIC_PATTERN.test(text) &&
+    !COMPLEX_GENERAL_PATTERN.test(text)
+  );
+}
+
 export async function intentNode(state) {
   const { originalMessage } = state;
   const t0 = Date.now();
@@ -276,7 +298,19 @@ export async function intentNode(state) {
     intent: intentName,
     confidence: classifierResult.confidence,
     requiresData: classifierResult.needs_rag,
-    dataNeeds: buildDataNeeds(intentName, originalMessage),
+    directAnswerable:
+      intentName === "question_general" &&
+      !classifierResult.needs_rag &&
+      Boolean(classifierResult.response) &&
+      shouldDirectAnswerGeneralQuery(originalMessage),
+    dataNeeds: buildDataNeeds(
+      intentName,
+      originalMessage,
+      intentName === "question_general" &&
+        !classifierResult.needs_rag &&
+        Boolean(classifierResult.response) &&
+        shouldDirectAnswerGeneralQuery(originalMessage)
+    ),
     classifierIntent: classifierResult.intent,
     classifierResponse: classifierResult.response,
     version: "llm-small-v1",
@@ -290,6 +324,7 @@ export async function intentNode(state) {
       `(${(intent.confidence * 100).toFixed(0)}%) ` +
       `queryType=${queryType} ` +
       `needsRag=${classifierResult.needs_rag} ` +
+      `directAnswerable=${intent.directAnswerable} ` +
       `forcedPersonalized=${forcedPersonalized} ` +
       `priority=${intent.dataNeeds?.priority} ` +
       `search=${enableSearch}`

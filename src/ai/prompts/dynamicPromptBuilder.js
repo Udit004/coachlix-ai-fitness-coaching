@@ -226,32 +226,33 @@ function isIndianUser(location) {
  * @returns {string} - Optimized system prompt
  */
 export function buildDynamicSystemPrompt(intent, userContext, userId, reasoning = null) {
+  const safeUserContext = userContext ?? {};
   const sections = [];
   
   // ALWAYS include core identity
-  sections.push(PROMPT_SECTIONS.CORE_IDENTITY(userContext, userId));
-  sections.push(PROMPT_SECTIONS.CULTURAL_CONTEXT(userContext));
+  sections.push(PROMPT_SECTIONS.CORE_IDENTITY(safeUserContext, userId));
+  sections.push(PROMPT_SECTIONS.CULTURAL_CONTEXT(safeUserContext));
   
   // Include user profile if available
-  if (userContext.profile) {
-    sections.push(PROMPT_SECTIONS.USER_PROFILE(userContext));
+  if (safeUserContext.profile) {
+    sections.push(PROMPT_SECTIONS.USER_PROFILE(safeUserContext));
   }
   
   // Include dietary preferences for nutrition-related intents
   if (intent.category === 'nutrition' || intent.category === 'diet_plan' || 
-      userContext.profile?.dietaryPreference) {
-    sections.push(PROMPT_SECTIONS.DIETARY_PREFERENCES(userContext));
+      safeUserContext.profile?.dietaryPreference) {
+    sections.push(PROMPT_SECTIONS.DIETARY_PREFERENCES(safeUserContext));
   }
   
   // Include cultural context for nutrition-related intents
   if (intent.category === 'nutrition' || intent.category === 'diet_plan') {
-    sections.push(PROMPT_SECTIONS.CULTURAL_CONTEXT(userContext));
+    sections.push(PROMPT_SECTIONS.CULTURAL_CONTEXT(safeUserContext));
   }
   
   // Include active plans if user has them (for plan-related queries)
   if (intent.category === 'diet_plan' || intent.category === 'workout_plan' ||
-      userContext.dietPlan || userContext.workoutPlan) {
-    sections.push(PROMPT_SECTIONS.ACTIVE_PLANS(userContext));
+      safeUserContext.dietPlan || safeUserContext.workoutPlan) {
+    sections.push(PROMPT_SECTIONS.ACTIVE_PLANS(safeUserContext));
   }
   
   // Include reasoning insights if provided (for complex queries)
@@ -300,10 +301,11 @@ export function buildDynamicSystemPrompt(intent, userContext, userId, reasoning 
  * @returns {string} - Minimal system prompt
  */
 export function buildMinimalSystemPrompt(userContext, userId) {
+  const safeUserContext = userContext ?? {};
   return `You are Alex, a friendly fitness AI assistant.
 
 USER ID: ${userId}
-${userContext.profile ? `User: ${userContext.profile.name || 'User'}, Goal: ${userContext.profile.fitnessGoal || 'General fitness'}` : ''}
+${safeUserContext.profile ? `User: ${safeUserContext.profile.name || 'User'}, Goal: ${safeUserContext.profile.fitnessGoal || 'General fitness'}` : ''}
 
 Be warm, encouraging, and helpful. Keep responses concise and personalized. Use emojis sparingly (1-2 max). If the user asks for recipes or videos, use your built-in Google Search to provide them directly.`;
 }
