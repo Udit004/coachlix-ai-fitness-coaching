@@ -1,6 +1,9 @@
 "use client";
 
+import { use } from "react";
 import SingleDietPlanClient from "@/feature/diet/detailDietPage/pages/SingleDietPlanClient";
 export default function SingleDietPlanPage({ params }) {
-  return <SingleDietPlanClient planId={params.id} />;
+  const { id } = use(params);
+
+  return <SingleDietPlanClient planId={id} />;
 }
