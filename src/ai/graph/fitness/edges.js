@@ -14,6 +14,13 @@ export function routeAfterClassify(state) {
   }
 
   if (queryType === QueryType.GENERAL_FITNESS) {
+    if (intent?.directAnswerable) {
+      console.log(
+        `[Graph:route] classify -> directGeneral (simple general query answered from classifier - intent: ${intent?.intent})`
+      );
+      return "directGeneral";
+    }
+
     console.log(
       `[Graph:route] classify -> buildSimplePrompt (general query via small model - intent: ${intent?.intent})`
     );

@@ -5,6 +5,7 @@ import { GraphState } from "./state.js";
 import {
   intentNode,
   greetingNode,
+  directGeneralNode,
   buildSimplePromptNode,
   retrieveContextNode,
   buildPromptNode,
@@ -17,6 +18,7 @@ export function buildFitnessGraph() {
   const workflow = new StateGraph(GraphState)
     .addNode("classify", intentNode)
     .addNode("greeting", greetingNode)
+    .addNode("directGeneral", directGeneralNode)
     .addNode("buildSimplePrompt", buildSimplePromptNode)
     .addNode("retrieveContext", retrieveContextNode)
     .addNode("buildPrompt", buildPromptNode)
@@ -25,10 +27,12 @@ export function buildFitnessGraph() {
     .addEdge(START, "classify")
     .addConditionalEdges("classify", routeAfterClassify, {
       greeting: "greeting",
+      directGeneral: "directGeneral",
       general: "buildSimplePrompt",
       personalized: "retrieveContext",
     })
     .addEdge("greeting", END)
+    .addEdge("directGeneral", END)
     .addEdge("buildSimplePrompt", "llm")
     .addEdge("retrieveContext", "buildPrompt")
     .addEdge("buildPrompt", "llm")
