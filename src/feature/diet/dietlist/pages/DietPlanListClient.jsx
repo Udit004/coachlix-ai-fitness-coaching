@@ -36,8 +36,8 @@ import {
  * - Coordinate callbacks and event handlers
  * - Render child components with appropriate props
  *
- * The parent Server Component (page.jsx) uses HydrationBoundary + dehydrate
- * to pre-populate the TanStack Query cache before this component renders.
+ * The page renders this component directly on the client, and TanStack Query
+ * fetches diet plans from the Next.js API routes on mount.
  */
 export default function DietPlanListClient() {
   // ── Toast notifications ──────────────────────────────────────────────────

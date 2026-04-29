@@ -1,47 +1,7 @@
-﻿// Server Component — SSR data fetch + delegate rendering to WorkoutPlanListClient
-import { cookies } from "next/headers";
+﻿"use client";
+
 import WorkoutPlanListClient from "@/feature/workout/planList/pages/WorkoutPlanListClient";
-import { verifySessionCookie } from "@/lib/verifyUser";
-import { connectDB } from "@/lib/db";
-import WorkoutPlan from "@/models/WorkoutPlan";
-import { QueryClient, HydrationBoundary, dehydrate } from "@tanstack/react-query";
-import { workoutKeys } from "@/feature/workout/planList/hooks/useWorkoutPlanListQueries";
 
-export const metadata = {
-  title: "Workout Plans",
-  description: "Design and track your fitness journey with personalized workout plans",
-};
-
-// Must match WorkoutPlanListClient's DEFAULT_SORT and initial queryOptions
-const INITIAL_SORT = "-createdAt";
-
-export default async function WorkoutPlansPage() {
-  const queryClient = new QueryClient();
-
-  try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get("__session")?.value;
-    if (sessionCookie) {
-      const user = await verifySessionCookie(sessionCookie);
-      if (user?.uid) {
-        await connectDB();
-        const plans = await WorkoutPlan.find({ userId: user.uid })
-          .sort({ createdAt: -1 })
-          .lean();
-        // Cache in the same shape useWorkoutPlans/getWorkoutPlans returns: plain array.
-        queryClient.setQueryData(
-          workoutKeys.list({ sort: INITIAL_SORT }),
-          JSON.parse(JSON.stringify(plans))
-        );
-      }
-    }
-  } catch {
-    // Not authenticated or any error — client will fetch on mount
-  }
-
-  return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <WorkoutPlanListClient />
-    </HydrationBoundary>
-  );
+export default function WorkoutPlansPage() {
+  return <WorkoutPlanListClient />;
 }
