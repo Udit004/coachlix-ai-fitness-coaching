@@ -1,4 +1,10 @@
-"use client";
+
+const metadata = {
+  title: "Dashboard",
+  description: "Welcome to your personalized fitness dashboard. Track your progress, view your workout plans, and manage your diet with ease.",
+};
+
+export { metadata };
 
 import DashboardClientPage from "@/feature/Dashboard/pages/DashboardClientPage";
 
