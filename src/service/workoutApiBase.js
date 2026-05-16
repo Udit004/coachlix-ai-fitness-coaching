@@ -1,8 +1,9 @@
 // Shared base utilities and core reads used by all workout feature services.
 // Individual feature services (planList, detailPlan, session) import from here.
 import { auth } from "@/lib/firebase";
+import { API_BASE_URL } from "@/service/apiBase";
 
-export const BASE_URL = "/api/workout-plans";
+export const BASE_URL = `${API_BASE_URL}/workout-plans`;
 
 // ─── Auth & response helpers ──────────────────────────────────────────────────
 

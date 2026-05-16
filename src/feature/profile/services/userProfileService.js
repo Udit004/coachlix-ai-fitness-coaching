@@ -1,8 +1,9 @@
 import axios from "axios";
 import { getAuth } from "firebase/auth";
+import { API_BASE_URL } from "@/service/apiBase";
 
 const api = axios.create({
-  baseURL: "/api",
+  baseURL: API_BASE_URL,
   timeout: 15000,
 });
 

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthContext } from '@/auth/AuthContext';
 import useUserProfileStore from '@/feature/profile/hooks/useUserProfileStore';
+import { userProfileService } from '@/feature/profile/services/userProfileService';
 import { User, MapPin, UserCircle, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function OnboardingPage() {
@@ -38,26 +39,13 @@ export default function OnboardingPage() {
     try {
       const token = await user.getIdToken();
       
-      const response = await fetch('/api/userProfile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
+      await userProfileService.updateUserProfile(user.uid, {
           name: formData.name.trim(),
           location: formData.location.trim() || undefined,
           gender: formData.gender,
           fitnessGoal: 'Weight Loss', // Default
           experience: 'Beginner', // Default
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to save profile');
-      }
+        });
 
       console.log('✅ Profile updated successfully, clearing client cache...');
       

@@ -9,6 +9,7 @@ import { auth } from "@/lib/firebase";
 import { useRouter, usePathname } from "next/navigation";
 import Link from 'next/link';
 import { useCustomTheme } from "@/context/CustomThemeProvider";
+import { userProfileService } from "@/feature/profile/services/userProfileService";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -41,27 +42,11 @@ export default function Navbar() {
     const fetchProfileImage = async () => {
       if (user) {
         try {
-          const token = await user.getIdToken();
-          const response = await fetch('/api/userProfile', {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          });
-          if (response.ok) {
-            const data = await response.json();
-            if (data.data?.profileImage) {
-              setProfileImage(data.data.profileImage);
-            }
-            // Set the user name from API, fallback to email if not present
-            if (data.data?.name) {
-              setUserName(data.data.name);
-            } else {
-              setUserName(user.email?.split('@')[0] || "User");
-            }
-          } else {
-            // If API call fails, fallback to email
-            setUserName(user.email?.split('@')[0] || "User");
+          const profile = await userProfileService.getUserProfile(user.uid);
+          if (profile?.profileImage) {
+            setProfileImage(profile.profileImage);
           }
+          setUserName(profile?.name || user.email?.split('@')[0] || "User");
         } catch (error) {
           console.error('Error fetching profile image:', error);
           // If API call fails, fallback to email

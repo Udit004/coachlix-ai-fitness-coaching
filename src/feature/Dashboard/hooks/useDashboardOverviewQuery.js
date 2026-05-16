@@ -1,12 +1,24 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { getAuth } from "firebase/auth";
+import { API_BASE_URL } from "@/service/apiBase";
 import { DASHBOARD_KEYS } from "@/feature/Dashboard/hooks/dashboardQueryKeys";
 
 async function fetchDashboardOverview() {
-  const response = await fetch("/api/dashboard/overview", {
+  const auth = getAuth();
+  const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+
+  if (!token) {
+    return null;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/dashboard/overview`, {
     method: "GET",
     cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
 
   if (response.status === 401) {

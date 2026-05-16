@@ -1,19 +1,24 @@
 // service/dietPlanService.js
 // Core diet plan service - single source of truth for all API calls
 import { auth } from "@/lib/firebase";
+import { API_BASE_URL } from "@/service/apiBase";
 
-const BASE_URL = "/api/diet-plans";
+const BASE_URL = `${API_BASE_URL}/diet-plans`;
 
 // Get authorization header with Firebase token
-const getAuthHeaders = async () => {
+const getAuthHeaders = async ({ json = true } = {}) => {
   const user = auth.currentUser;
   if (!user) throw new Error("User not authenticated");
 
   const token = await user.getIdToken();
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
+  return json
+    ? {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      }
+    : {
+        Authorization: `Bearer ${token}`,
+      };
 };
 
 // Handle API responses
@@ -107,7 +112,7 @@ export const updateDietPlan = async (planId, updateData) => {
 // Delete diet plan
 export const deleteDietPlan = async (planId) => {
   try {
-    const headers = await getAuthHeaders();
+    const headers = await getAuthHeaders({ json: false });
     const response = await fetch(`${BASE_URL}/${planId}`, {
       method: "DELETE",
       headers,
@@ -222,7 +227,7 @@ export const deleteFoodItem = async (
   itemIndex
 ) => {
   try {
-    const headers = await getAuthHeaders();
+    const headers = await getAuthHeaders({ json: false });
     const response = await fetch(
       `${BASE_URL}/${planId}/days/${dayNumber}/meals/${mealType}/items/${itemIndex}`,
       {
@@ -347,7 +352,7 @@ export const getFoodDetailsWithAI = async (foodName) => {
 // Toggle diet plan active status
 export const togglePlanActive = async (planId, isActive) => {
   try {
-    const headers = await getAuthHeaders();
+    const headers = await getAuthHeaders({ json: false });
     const method = isActive ? 'POST' : 'DELETE';
     const response = await fetch(`${BASE_URL}/${planId}/activate`, {
       method,

@@ -1,7 +1,8 @@
 // feature/diet/dietlist/services/dietPlanService.js
 import { auth } from "@/lib/firebase";
+import { API_BASE_URL } from "@/service/apiBase";
 
-const BASE_URL = "/api/diet-plans";
+const BASE_URL = `${API_BASE_URL}/diet-plans`;
 
 // Get authorization header with Firebase token
 const getAuthHeaders = async () => {
@@ -44,6 +45,9 @@ export const getDietPlans = async (options = {}) => {
     if (options.goal) params.append("goal", options.goal);
     if (options.limit) params.append("limit", options.limit.toString());
     if (options.sort) params.append("sort", options.sort);
+    
+    // Add summary flag to exclude heavy 'days' array for list views (performance optimization)
+    if (options.summary !== false) params.append("summary", "true");
 
     const url = `${BASE_URL}${
       params.toString() ? `?${params.toString()}` : ""
