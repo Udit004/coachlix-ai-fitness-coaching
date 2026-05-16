@@ -82,6 +82,7 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit, onTog
   };
 
   const getProgressPercentage = () => {
+    if (plan.stats?.completionRate !== undefined) return plan.stats.completionRate;
     if (!plan.weeks || plan.weeks.length === 0) return 0;
     
     const completedWeeks = plan.weeks.filter(week => week.completed).length;
@@ -89,6 +90,7 @@ export default function WorkoutPlanCard({ plan, onDelete, onClone, onEdit, onTog
   };
 
   const getTotalWorkouts = () => {
+    if (plan.totalWorkoutsCount !== undefined) return plan.totalWorkoutsCount;
     if (!plan.weeks || plan.weeks.length === 0) return 0;
     
     return plan.weeks.reduce((total, week) => {
