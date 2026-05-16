@@ -212,12 +212,14 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
   };
 
   const calculateAvgCalories = () => {
+    // If days array is available (full data), calculate from days
     if (plan.days && Array.isArray(plan.days) && plan.days.length > 0) {
       const totalCalories = plan.days.reduce((sum, day) => {
         return sum + (Number(day?.totalCalories) || 0);
       }, 0);
       return Math.round(totalCalories / plan.days.length);
     }
+    // Fallback to targetCalories when days are not available (summary mode)
     return Number(plan.targetCalories) || 0;
   };
 
@@ -229,9 +231,14 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
   };
 
   const calculateProgress = () => {
-    const duration = Number(plan.duration) || 1;
-    const completed = getDaysCompleted();
-    return Math.min((completed / duration) * 100, 100);
+    // If days array is available, calculate progress based on completion
+    if (plan.days && Array.isArray(plan.days)) {
+      const duration = Number(plan.duration) || 1;
+      const completed = getDaysCompleted();
+      return Math.min((completed / duration) * 100, 100);
+    }
+    // For summary mode, return 0 progress (not available)
+    return 0;
   };
 
   // Safe property access with defaults

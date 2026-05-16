@@ -8,7 +8,7 @@ export const useOnboardingCheck = () => {
   const { user, loading: authLoading } = useAuthContext();
   const router = useRouter();
   const pathname = usePathname();
-  const { profile, fetchUserProfile } = useUserProfileStore();
+  const { profile, fetchUserProfile, clearProfile } = useUserProfileStore();
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
@@ -32,18 +32,42 @@ export const useOnboardingCheck = () => {
         return;
       }
 
+      const store = useUserProfileStore.getState();
+      const cachedProfile = store.profile;
+
+      if (cachedProfile && cachedProfile.userId && cachedProfile.userId !== user.uid) {
+        clearProfile();
+      }
+
       try {
-        // Fetch profile if not loaded
-        if (!profile) {
-          await fetchUserProfile(user.uid);
+        // Fetch profile if not loaded, if it belongs to a different auth user,
+        // or if the cached profile still looks like the old onboarding placeholder.
+        let activeProfile = useUserProfileStore.getState().profile;
+        const shouldRefreshProfile =
+          !activeProfile ||
+          activeProfile.userId !== user.uid ||
+          activeProfile.needsOnboarding === true ||
+          activeProfile.profileCompleted === false ||
+          activeProfile.name === 'New User' ||
+          !activeProfile.location ||
+          activeProfile.gender === 'other';
+
+        if (shouldRefreshProfile) {
+          activeProfile = await fetchUserProfile(user.uid, { force: true });
+        }
+
+        if (!activeProfile) {
+          setChecking(false);
+          return;
         }
 
         // Check if onboarding is needed
         const needsOnboarding = 
-          profile?.name === "New User" || 
-          !profile?.location || 
-          profile?.gender === "other" ||
-          profile?.needsOnboarding === true;
+          activeProfile?.needsOnboarding === true ||
+          activeProfile?.profileCompleted === false ||
+          activeProfile?.name === "New User" ||
+          !activeProfile?.location ||
+          activeProfile?.gender === "other";
 
         if (needsOnboarding) {
           console.log('🔀 Redirecting to onboarding...');
@@ -57,7 +81,7 @@ export const useOnboardingCheck = () => {
     };
 
     checkOnboarding();
-  }, [user, authLoading, pathname, profile, fetchUserProfile, router]);
+  }, [user, authLoading, pathname, profile, fetchUserProfile, clearProfile, router]);
 
   return { checking };
 };

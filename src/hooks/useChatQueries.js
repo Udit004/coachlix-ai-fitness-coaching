@@ -1,8 +1,13 @@
 // hooks/useChatQueries.js
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import {
+  getChatHistory,
+  createChatSession,
+  updateChatSession,
+  deleteChatSession,
+} from '@/service/chatApiBase';
 
 export const CHAT_KEYS = {
   all: ['chats'],
@@ -18,17 +23,12 @@ export const useChatHistory = (userId, options = {}) => {
     queryKey: CHAT_KEYS.list(userId),
     queryFn: async () => {
       if (!userId) return [];
-      
-      const response = await axios.get(`/api/chat-history?userId=${userId}`, {
-        params: {
-          limit: 50,
-          sortBy: 'newest',
-        }
-      });
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to fetch chat history');
+
+      const response = await getChatHistory(50);
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to fetch chat history');
       }
-      return response.data.chats || [];
+      return response.chats || [];
     },
     enabled: !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutes - data fresh for 5 mins
@@ -94,18 +94,20 @@ export const useSaveChat = () => {
         isError: msg.isError || false,
       }));
 
-      const response = await axios.post('/api/chat-history', {
-        userId,
+      const response = await createChatSession({
         title: title || generateChatTitle(sanitizedMessages),
         plan: plan || 'general',
         messages: sanitizedMessages,
       });
       
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to save chat');
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to save chat');
       }
       
-      return response.data;
+      return {
+        chat: response.session,
+        chatId: response.session?._id,
+      };
     },
     onSuccess: (data, variables) => {
       // Update the chat list cache with optimistic update
@@ -150,17 +152,17 @@ export const useUpdateChat = () => {
         isError: msg.isError || false,
       }));
       
-      const response = await axios.put('/api/chat-history', {
+      const response = await updateChatSession({
         chatId,
         messages: sanitizedMessages,
         ...(title && { title }),
       });
       
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to update chat');
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to update chat');
       }
       
-      return response.data;
+      return response.session;
     },
     onSuccess: (data, variables) => {
       // Update all relevant caches
@@ -186,13 +188,13 @@ export const useDeleteChat = () => {
         throw new Error('Chat ID is required');
       }
       
-      const response = await axios.delete(`/api/chat-history?chatId=${chatId}`);
+      const response = await deleteChatSession(chatId);
       
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to delete chat');
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to delete chat');
       }
       
-      return response.data;
+      return response;
     },
     onSuccess: (data, chatId) => {
       // Remove from all chat list caches
@@ -214,18 +216,7 @@ export const useDeleteChat = () => {
 export const useSendMessage = () => {
   return useMutation({
     mutationFn: async ({ message, plan, conversationHistory, profile }) => {
-      const response = await axios.post('/api/chat', {
-        message,
-        plan,
-        conversationHistory,
-        profile,
-      });
-
-      if (!response.data.success) {
-        throw new Error(response.data.message || 'Failed to get AI response');
-      }
-
-      return response.data;
+      throw new Error('useSendMessage is not used for SSE chat flow');
     },
     onError: (error) => {
       console.error('Error sending message:', error);

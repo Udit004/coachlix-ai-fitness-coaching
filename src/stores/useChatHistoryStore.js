@@ -1,7 +1,12 @@
 // stores/useChatHistoryStore.js
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
-import axios from "axios";
+import {
+  getChatHistory,
+  createChatSession,
+  updateChatSession,
+  deleteChatSession,
+} from "@/service/chatApiBase";
 
 const ITEMS_PER_PAGE = 20;
 const CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
@@ -55,17 +60,12 @@ const useChatHistoryStore = create(
           }
 
           try {
-            const response = await axios.get("/api/chat-history", {
-              params: {
-                userId,
-                page: append ? state.page : 1,
-                limit: ITEMS_PER_PAGE,
-                sortBy: state.sortBy,
-              },
-            });
+            const response = await getChatHistory(append ? state.page * ITEMS_PER_PAGE : ITEMS_PER_PAGE);
 
-            if (response.data.success) {
-              const { chats: newChats, totalCount, hasMore } = response.data;
+            if (response.success) {
+              const { chats: fetchedChats = [], totalCount, hasMore } = response;
+              const startIndex = append ? state.chats.length : 0;
+              const newChats = append ? fetchedChats.slice(startIndex) : fetchedChats;
 
               set({
                 chats: append ? [...state.chats, ...newChats] : newChats,
@@ -85,7 +85,7 @@ const useChatHistoryStore = create(
                 }`
               );
             } else {
-              throw new Error(response.data.message || "Failed to fetch chats");
+              throw new Error(response.message || "Failed to fetch chats");
             }
           } catch (error) {
             console.error("Error fetching chats:", error);
@@ -114,15 +114,14 @@ const useChatHistoryStore = create(
               timestamp: msg.timestamp || new Date(),
             }));
 
-            const response = await axios.post("/api/chat-history", {
-              userId,
+            const response = await createChatSession({
               title: title || get().generateChatTitle(sanitizedMessages),
               plan,
               messages: sanitizedMessages,
             });
 
-            if (response.data.success) {
-              const newChat = response.data.chat;
+            if (response.success) {
+              const newChat = response.session;
               set((state) => ({
                 chats: [newChat, ...state.chats],
                 totalCount: state.totalCount + 1,
@@ -130,7 +129,7 @@ const useChatHistoryStore = create(
               }));
 
               console.log("✅ Chat saved:", newChat.title);
-              return response.data.chatId;
+              return response.session?._id || null;
             }
           } catch (error) {
             console.error("Error saving chat:", error);
@@ -148,7 +147,7 @@ const useChatHistoryStore = create(
               timestamp: msg.timestamp || new Date(),
             }));
 
-            await axios.put("/api/chat-history", {
+            await updateChatSession({
               chatId,
               messages: sanitizedMessages,
               title,
@@ -183,7 +182,7 @@ const useChatHistoryStore = create(
         // Delete chat
         deleteChat: async (chatId) => {
           try {
-            await axios.delete(`/api/chat-history?chatId=${chatId}`);
+            await deleteChatSession(chatId);
 
             set((state) => ({
               chats: state.chats.filter((chat) => chat._id !== chatId),
@@ -207,7 +206,8 @@ const useChatHistoryStore = create(
 
             const newPinnedStatus = !chat.isPinned;
 
-            await axios.patch(`/api/chat-history/${chatId}`, {
+            await updateChatSession({
+              chatId,
               isPinned: newPinnedStatus,
             });
 
@@ -250,7 +250,8 @@ const useChatHistoryStore = create(
 
             const newArchivedStatus = !chat.isArchived;
 
-            await axios.patch(`/api/chat-history/${chatId}`, {
+            await updateChatSession({
+              chatId,
               isArchived: newArchivedStatus,
             });
 
@@ -340,7 +341,7 @@ const useChatHistoryStore = create(
         // Bulk operations
         bulkDeleteChats: async (chatIds) => {
           try {
-            await axios.post("/api/chat-history/bulk-delete", { chatIds });
+            await Promise.all(chatIds.map((chatId) => deleteChatSession(chatId)));
 
             set((state) => ({
               chats: state.chats.filter((chat) => !chatIds.includes(chat._id)),

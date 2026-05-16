@@ -6,9 +6,9 @@ import useUserProfileStore from "@/feature/profile/hooks/useUserProfileStore";
 import useChatStore from "@/stores/useChatStore";
 import useChatHistoryStore from "@/stores/useChatHistoryStore";
 import { toast, Toaster } from "react-hot-toast";
-import axios from "axios";
 import { useChatInitialization, useSaveChat, useUpdateChat, useDeleteChat } from "@/hooks/useChatQueries";
 import useLiveVoiceChat from "@/hooks/useLiveVoiceChat";
+import { CHAT_API_BASE_URL, getAuthHeaders } from "@/service/chatApiBase";
 import {
   Activity,
   Dumbbell,
@@ -275,9 +275,13 @@ const AIChatClient = ({ initialProfile = null }) => {
     addMessage(aiMessage);
 
     try {
-      const response = await fetch("/api/chat", {
+      const authHeaders = await getAuthHeaders();
+      const response = await fetch(CHAT_API_BASE_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          ...authHeaders,
+          Accept: "text/event-stream",
+        },
         body: JSON.stringify({
           message: currentInput,
           plan: selectedPlan,
