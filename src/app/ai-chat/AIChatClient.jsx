@@ -123,7 +123,7 @@ const AIChatClient = ({ initialProfile = null }) => {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const [isRecording, setIsRecording] = useState(false);
-  const liveAiMessageRef = useRef({ id: null, content: "" });
+  const liveAiMessageRef = useRef({ id: null, content: "", thoughtContent: "" });
   const liveUserMessageRef = useRef({ id: null, content: "" });
   const lastLiveUserFinalRef = useRef({ text: "", at: 0 });
   const sendGuardRef = useRef({ inFlight: false, lastFingerprint: "", lastAt: 0 });
@@ -450,20 +450,25 @@ const AIChatClient = ({ initialProfile = null }) => {
   };
 
   const handleLiveVoiceText = useCallback(
-    (textChunk) => {
-      const chunk = typeof textChunk === "string" ? textChunk : "";
-      if (!chunk.trim()) {
+    (payload) => {
+      console.log("handleLiveVoiceText received payload:", payload);
+      const isString = typeof payload === "string";
+      const chunk = isString ? payload : payload?.text || "";
+      const thoughtChunk = isString ? "" : payload?.thought || "";
+
+      if (!chunk && !thoughtChunk) {
         return;
       }
 
       if (!liveAiMessageRef.current.id) {
         const messageId = Date.now() + Math.floor(Math.random() * 1000);
-        liveAiMessageRef.current = { id: messageId, content: chunk };
+        liveAiMessageRef.current = { id: messageId, content: chunk, thoughtContent: thoughtChunk };
 
         addMessage({
           id: messageId,
           role: "ai",
           content: chunk,
+          thoughtContent: thoughtChunk,
           timestamp: new Date(),
           plan: selectedPlan,
           suggestions: [],
@@ -471,10 +476,13 @@ const AIChatClient = ({ initialProfile = null }) => {
         return;
       }
 
-      const nextContent = `${liveAiMessageRef.current.content}${chunk}`;
+      const nextContent = `${liveAiMessageRef.current.content || ""}${chunk}`;
+      const nextThought = `${liveAiMessageRef.current.thoughtContent || ""}${thoughtChunk}`;
+
       liveAiMessageRef.current = {
         ...liveAiMessageRef.current,
         content: nextContent,
+        thoughtContent: nextThought,
       };
 
       useChatStore.setState((state) => {
@@ -483,6 +491,7 @@ const AIChatClient = ({ initialProfile = null }) => {
           state.messages[idx] = {
             ...state.messages[idx],
             content: nextContent,
+            thoughtContent: nextThought,
             timestamp: new Date(),
             plan: selectedPlan,
             suggestions: [],
@@ -580,7 +589,7 @@ const AIChatClient = ({ initialProfile = null }) => {
     },
     onState: (state) => {
       if (state === "turn_complete") {
-        liveAiMessageRef.current = { id: null, content: "" };
+        liveAiMessageRef.current = { id: null, content: "", thoughtContent: "" };
       }
     },
     onError: (message) => {
@@ -591,7 +600,7 @@ const AIChatClient = ({ initialProfile = null }) => {
   const handleToggleLiveAudio = async () => {
     if (isLiveAudioActive || isLiveAudioConnecting) {
       stopLiveAudio();
-      liveAiMessageRef.current = { id: null, content: "" };
+      liveAiMessageRef.current = { id: null, content: "", thoughtContent: "" };
       liveUserMessageRef.current = { id: null, content: "" };
       toast.success("Live audio chat stopped");
       return;

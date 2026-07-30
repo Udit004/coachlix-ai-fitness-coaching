@@ -72,6 +72,11 @@ const ChatMessage = ({
     [message.content, formatMessageContent]
   );
 
+  const formattedThoughtContent = useMemo(
+    () => formatMessageContent(message.thoughtContent || ""),
+    [message.thoughtContent, formatMessageContent]
+  );
+
   const formatTime = useCallback((date) => {
     if (!date) return "";
     const parsedDate = date instanceof Date ? date : new Date(date);
@@ -116,6 +121,19 @@ const ChatMessage = ({
       <div className="flex justify-center w-full group">
         <div className="w-full flex justify-center">
           <div className="w-full max-w-2xl text-left my-6 px-2 sm:px-0" style={{ background: "none", boxShadow: "none", border: "none", padding: 0 }}>
+            {message.thoughtContent && (
+              <details className="mb-4 bg-gray-800/40 border border-gray-700/50 rounded-lg overflow-hidden group/thought transition-all duration-300">
+                <summary className="px-4 py-2 text-sm font-medium text-gray-400 cursor-pointer hover:bg-gray-700/30 hover:text-gray-300 flex items-center select-none transition-colors">
+                  <Sparkles className="w-4 h-4 mr-2 text-blue-400 opacity-70 group-hover/thought:opacity-100 transition-opacity" />
+                  AI Thinking Process
+                </summary>
+                <div 
+                  className="px-4 py-3 text-[14px] leading-relaxed text-gray-400 border-t border-gray-700/50 bg-gray-900/20"
+                  dangerouslySetInnerHTML={{ __html: formattedThoughtContent }}
+                />
+              </details>
+            )}
+            
             <div
               className="text-[16px] leading-[1.7] font-normal tracking-wide text-white"
               style={{
@@ -215,6 +233,7 @@ export default React.memo(ChatMessage, (prevProps, nextProps) => {
   return (
     prevProps.message.id === nextProps.message.id &&
     prevProps.message.content === nextProps.message.content &&
+    prevProps.message.thoughtContent === nextProps.message.thoughtContent &&
     prevProps.isStreaming === nextProps.isStreaming &&
     prevProps.userProfile?.name === nextProps.userProfile?.name
   );

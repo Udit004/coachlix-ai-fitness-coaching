@@ -81,7 +81,7 @@ export async function llmNode(state) {
       console.log("[Graph:llm] Using Gemini + Google Search grounding");
     } else {
       llm = createStreamingLLM(true);
-      console.log("[Graph:llm] Using standard Gemini 2.5 Flash");
+      console.log("[Graph:llm] Using standard Gemini 2.5 Flash Lite");
     }
 
     runner = llm.bindTools(tools);

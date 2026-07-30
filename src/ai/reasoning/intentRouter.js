@@ -175,6 +175,11 @@ export function detectIntent(message, classifiedIntent = null) {
       };
     }
 
+    // Off-topic queries (restricted domain)
+    if (v2Intent === "off_topic") {
+      return { queryType: QueryType.OFF_TOPIC };
+    }
+
     // Always-personalized: need user profile regardless of message wording
     if (ALWAYS_PERSONALIZED_INTENTS.has(v2Intent)) {
       return { queryType: QueryType.PERSONALIZED_FITNESS };
