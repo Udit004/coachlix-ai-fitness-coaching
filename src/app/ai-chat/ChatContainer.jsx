@@ -2,11 +2,65 @@ import React, { useRef, useEffect, useState } from "react";
 import ChatMessage from "./ChatMessage";
 import TypingIndicator from "./TypingIndicator";
 import ChatInput from "./ChatInput";
-import { ChevronDown, Menu, Plus } from "./icons";
+import { ChevronDown, Menu, Plus, Sparkles, Brain, Loader2 } from "./icons";
+
+// Renders a prominent, pulsing indicator of what the AI agent is doing
+// (thinking, classifying intent, calling tools, streaming, etc.).
+// Driven by backend `ai_event` SSE lifecycle events.
+const AIStatusBanner = ({ status }) => {
+  if (!status) return null;
+
+  const { type = "", label, tool, intent } = status;
+  const isTool = type.includes("tool");
+  const isThinking = type.includes("thinking") || type.includes("reasoning");
+  const isStreaming = type.includes("token.streamed");
+
+const Icon = isTool ? Loader2 : isThinking ? Brain : Sparkles;
+
+  const colorByType = isTool
+    ? "from-orange-500/20 to-rose-500/20 border-orange-500/40 text-orange-300"
+    : isStreaming
+    ? "from-emerald-500/20 to-teal-500/20 border-emerald-500/40 text-emerald-300"
+    : "from-blue-500/20 to-purple-500/20 border-blue-500/40 text-blue-300";
+
+  return (
+    <div className="flex justify-center w-full px-2 sm:px-4 pt-2">
+      <div
+        className={`w-full max-w-2xl flex items-center gap-3 px-3 sm:px-4 py-2.5 rounded-xl border bg-gradient-to-r ${colorByType} backdrop-blur-sm animate-pulse`}
+      >
+        <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gray-900/60 border border-gray-700 flex items-center justify-center">
+          <Icon className="w-4 h-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-xs sm:text-sm font-medium truncate">{label || "Processing..."}</div>
+          {(tool || intent) && (
+            <div className="text-[11px] sm:text-xs text-gray-400 truncate mt-0.5">
+              {tool ? (
+                <>
+                  Calling: <span className="text-orange-300 font-medium">{tool}</span>
+                </>
+              ) : (
+                <>
+                  Goal: <span className="text-blue-300 font-medium">{intent}</span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+          <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+          <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const ChatContainer = ({
   messages,
   isTyping,
+  aiStatus = null,
   inputValue,
   setInputValue,
   handleSendMessage,
@@ -137,9 +191,16 @@ const ChatContainer = ({
               <span className="text-xs sm:text-sm font-medium hidden sm:inline">New</span>
             </button>
 
-            {/* Chat Status */}
+{/* Chat Status - shows live AI lifecycle status if available */}
             <div className="flex items-center space-x-1.5">
-              {isNewChat ? (
+              {aiStatus ? (
+                <div className="flex items-center space-x-1.5 min-w-0">
+                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-emerald-400 font-medium truncate max-w-[160px]">
+                    {aiStatus.label}
+                  </span>
+                </div>
+              ) : isNewChat ? (
                 <div className="flex items-center space-x-1.5">
                   <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></div>
                   <span className="text-xs text-purple-400 font-medium hidden lg:inline">New Chat</span>
@@ -195,6 +256,10 @@ const ChatContainer = ({
               );
             })}
 
+{/* AI status banner - shows live lifecycle events (thinking,
+                tool calling, intent, streaming) driven by backend SSE */}
+            {aiStatus && <AIStatusBanner status={aiStatus} />}
+
             {/* Typing Indicator - Only show if no streaming message */}
             {isTyping && !streamingMessageId && <TypingIndicator userProfile={userProfile} />}
 
@@ -237,6 +302,8 @@ export default React.memo(ChatContainer, (prevProps, nextProps) => {
   return (
     prevProps.messages.length === nextProps.messages.length &&
     prevProps.isTyping === nextProps.isTyping &&
+    prevProps.aiStatus?.type === nextProps.aiStatus?.type &&
+    prevProps.aiStatus?.label === nextProps.aiStatus?.label &&
     prevProps.inputValue === nextProps.inputValue &&
     prevProps.streamingMessageId === nextProps.streamingMessageId &&
     prevProps.streamingContent === nextProps.streamingContent &&

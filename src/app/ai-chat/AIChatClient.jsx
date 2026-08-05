@@ -43,6 +43,25 @@ const ComponentLoading = ({ type = "default" }) => (
   </div>
 );
 
+// Map backend AI lifecycle event types to human-friendly status labels.
+const statusLabel = (type) => {
+  const labels = {
+    "ai.reasoning.started": "Analyzing your request...",
+    "ai.intent.classified": "Understanding your goal...",
+    "ai.context.resolved": "Loading your profile & context...",
+    "ai.prompt.built": "Preparing response...",
+    "ai.model.thinking": "Thinking...",
+    "ai.model.requested": "Contacting AI...",
+    "ai.tool.requested": "Running a tool...",
+    "ai.tool.completed": "Tool complete",
+    "ai.tool.failed": "Tool failed, retrying...",
+    "ai.model.completed": "Finalizing response...",
+    "ai.response.generated": "Preparing reply...",
+    "ai.model.token.streamed": "Streaming...",
+  };
+  return labels[type] || "Processing...";
+};
+
 const AIChatClient = ({ initialProfile = null }) => {
   const { user: authUser, loading: authLoading } = useAuthContext();
 
@@ -81,6 +100,7 @@ const AIChatClient = ({ initialProfile = null }) => {
     showHistory,
     inputValue,
     error,
+    aiStatus,
     setMessages,
     addMessage,
     updateLastMessage,
@@ -88,6 +108,8 @@ const AIChatClient = ({ initialProfile = null }) => {
     setSelectedPlan,
     setIsNewChat,
     setIsTyping,
+    setAiStatus,
+    clearAiStatus,
     setSidebarOpen,
     setShowHistory,
     setInputValue,
@@ -322,6 +344,31 @@ const AIChatClient = ({ initialProfile = null }) => {
             streamingContent += data.word;
             updateLastMessage({ ...aiMessage, content: streamingContent });
             break;
+case "ai_event": {
+            // AI lifecycle event from backend event bus (intent, context,
+            // thinking, tool calling, model completion, etc.)
+            // Backend sends: { type:'ai_event', event:'ai.intent.classified',
+            //                   intent, confidence, tool, ... }
+            const evtType = data.event || data.eventType || "";
+            const label = data.label || statusLabel(evtType);
+            const toolName = data.tool || data.tools?.[0]?.name || (Array.isArray(data.tools) ? data.tools[0] : null);
+            const intentName = data.intent || data.classifierIntent || null;
+
+            setAiStatus({
+              type: evtType,
+              label,
+              tool: toolName,
+              intent: intentName,
+              confidence: data.confidence ?? null,
+              startedAt: Date.now(),
+            });
+
+            // Once the model completes (no tool calls), clear the status.
+            if (evtType === "ai.model.completed" && !data.hasToolCalls) {
+              setTimeout(() => clearAiStatus(), 300);
+            }
+            break;
+          }
           case "complete": {
             const finalMessage = {
               ...aiMessage,
@@ -329,6 +376,7 @@ const AIChatClient = ({ initialProfile = null }) => {
               suggestions: data.suggestions || [],
             };
             updateLastMessage(finalMessage);
+            clearAiStatus();
 
             if (authUser?.uid) {
               const updatedMessages = [...messages, userMessage, finalMessage];
@@ -705,9 +753,10 @@ const AIChatClient = ({ initialProfile = null }) => {
 
             <div className="flex-1 h-full">
               <Suspense fallback={<ComponentLoading type="chat" />}>
-                <ChatContainer
+<ChatContainer
                   messages={messages}
                   isTyping={isTyping}
+                  aiStatus={aiStatus}
                   inputValue={inputValue}
                   setInputValue={setInputValue}
                   handleSendMessage={handleSendMessage}
