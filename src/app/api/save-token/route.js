@@ -55,8 +55,8 @@ export async function POST(request) {
         const updatedUser = await User.findOneAndUpdate(
           { firebaseUid: user.uid },
           { 
-            pushToken: token, 
-            lastLogin: new Date() 
+            $addToSet: { pushTokens: token },
+            $set: { lastLogin: new Date() }
           },
           { 
             upsert: true,
@@ -65,14 +65,14 @@ export async function POST(request) {
         );
 
         console.log('✅ User updated successfully');
-        console.log('Updated pushToken:', updatedUser.pushToken ? 'Token saved' : 'No token saved');
+        console.log('Updated pushTokens:', updatedUser.pushTokens?.length > 0 ? 'Tokens saved' : 'No tokens saved');
         console.log('User ID:', updatedUser._id);
         
         return NextResponse.json({
           success: true,
           message: 'Token saved successfully',
           userID: updatedUser._id,
-          tokenSaved: updatedUser.pushToken ? 'Yes' : 'No'
+          tokenSaved: updatedUser.pushTokens?.includes(token) ? 'Yes' : 'No'
         });
 
       } catch (error) {
@@ -126,9 +126,9 @@ export async function GET(request) {
 
     return NextResponse.json({
       success: true,
-      pushToken: userProfile.pushToken,
+      pushTokens: userProfile.pushTokens,
       lastLogin: userProfile.lastLogin,
-      hasToken: !!userProfile.pushToken
+      hasToken: userProfile.pushTokens && userProfile.pushTokens.length > 0
     });
 
   } catch (error) {

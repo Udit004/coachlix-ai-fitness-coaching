@@ -79,11 +79,10 @@ const userProfileSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  pushToken: {
+  pushTokens: [{
     type: String,
-    default: null,
     trim: true
-  },
+  }],
   phone: {
     type: String,
     trim: true,
