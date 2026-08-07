@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useRef, useEffect, useState } from "react";
 import ChatMessage from "./ChatMessage";
 import TypingIndicator from "./TypingIndicator";
@@ -26,7 +28,7 @@ const AnimatedMessage = React.memo(function AnimatedMessage({
   });
 
   return (
-    <div ref={ref} data-chat-message>
+    <div ref={ref} data-chat-message style={{ opacity: 1, transform: "none" }}>
       <ChatMessage
         message={message}
         handleSuggestionClick={handleSuggestionClick}
@@ -44,7 +46,7 @@ const AnimatedMessage = React.memo(function AnimatedMessage({
 // Driven by backend `ai_event` SSE lifecycle events.
 const AIStatusBanner = ({ status }) => {
   const bannerRef = useRef(null);
-  const statusKey = `${status?.type}|${status?.label}|${status?.tool}|${status?.intent}`;
+  const statusKey = `${status?.type}|${status?.label}|${status?.tool}|${status?.intent}|${status?.startedAt}`;
   useStatusBannerAnimation(bannerRef, statusKey);
 
   if (!status) return null;
@@ -54,7 +56,7 @@ const AIStatusBanner = ({ status }) => {
   const isThinking = type.includes("thinking") || type.includes("reasoning");
   const isStreaming = type.includes("token.streamed");
 
-const Icon = isTool ? Loader2 : isThinking ? Brain : Sparkles;
+  const Icon = isTool ? Loader2 : isThinking ? Brain : Sparkles;
 
   const colorByType = isTool
     ? "from-orange-500/20 to-rose-500/20 border-orange-500/40 text-orange-300"
@@ -63,7 +65,11 @@ const Icon = isTool ? Loader2 : isThinking ? Brain : Sparkles;
     : "from-blue-500/20 to-purple-500/20 border-blue-500/40 text-blue-300";
 
   return (
-    <div className="flex justify-center w-full px-2 sm:px-4 pt-2" ref={bannerRef}>
+    <div
+      className="flex justify-center w-full px-2 sm:px-4 pt-2"
+      ref={bannerRef}
+      style={{ opacity: 1, transform: "none" }}
+    >
       <div
         className={`w-full max-w-2xl flex items-center gap-3 px-3 sm:px-4 py-2.5 rounded-xl border bg-gradient-to-r ${colorByType} backdrop-blur-sm animate-pulse`}
       >
@@ -344,6 +350,9 @@ export default React.memo(ChatContainer, (prevProps, nextProps) => {
     prevProps.isTyping === nextProps.isTyping &&
     prevProps.aiStatus?.type === nextProps.aiStatus?.type &&
     prevProps.aiStatus?.label === nextProps.aiStatus?.label &&
+    prevProps.aiStatus?.tool === nextProps.aiStatus?.tool &&
+    prevProps.aiStatus?.intent === nextProps.aiStatus?.intent &&
+    prevProps.aiStatus?.startedAt === nextProps.aiStatus?.startedAt &&
     prevProps.inputValue === nextProps.inputValue &&
     prevProps.streamingMessageId === nextProps.streamingMessageId &&
     prevProps.streamingContent === nextProps.streamingContent &&

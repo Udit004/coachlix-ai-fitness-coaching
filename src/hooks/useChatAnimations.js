@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
 
 /**
@@ -21,6 +21,29 @@ const EASE = "power3.out";
 const MSG_DURATION = 0.45;
 const BANNER_DURATION = 0.4;
 const STREAM_MAX_DURATION = 1.6;
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+const ensureVisible = (el) => {
+  if (!el) return;
+
+  gsap.set(el, {
+    clearProps: "all",
+    opacity: 1,
+    x: 0,
+    y: 0,
+    scale: 1,
+  });
+};
+
+const getHorizontalOffset = (align) => {
+  if (typeof window === "undefined") {
+    return align === "user" ? -20 : 20;
+  }
+
+  const distance = window.innerWidth < 640 ? 12 : window.innerWidth < 1024 ? 16 : 24;
+  return align === "user" ? distance : -distance;
+};
 
 /**
  * Animate a newly-mounted message into view.
@@ -34,34 +57,45 @@ const STREAM_MAX_DURATION = 1.6;
 export function useMessageEnterAnimation(ref, options = {}) {
   const ctx = useRef();
 
-  useEffect(() => {
-    if (!ref.current) return undefined;
+  useIsomorphicLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    ensureVisible(el);
     if (prefersReducedMotion()) return undefined;
 
-    const el = ref.current;
     const { align = "assistant", delay = 0 } = options;
-    const fromLeft = align === "user" ? -28 : 28;
+    const fromX = getHorizontalOffset(align);
 
-    ctx.current = gsap.context(() => {
-      gsap.set(el, {
-        opacity: 0,
-        y: 14,
-        x: fromLeft,
-        transformOrigin: "center",
-      });
-      gsap.to(el, {
-        opacity: 1,
-        y: 0,
-        x: 0,
-        duration: MSG_DURATION,
-        delay,
-        ease: EASE,
-        overwrite: "auto",
-        clearProps: "x,y",
-      });
-    }, el);
+    try {
+      ctx.current = gsap.context(() => {
+        gsap.fromTo(
+          el,
+          {
+            opacity: 0,
+            y: 14,
+            x: fromX,
+            transformOrigin: "center",
+          },
+          {
+            opacity: 1,
+            y: 0,
+            x: 0,
+            duration: MSG_DURATION,
+            delay,
+            ease: EASE,
+            overwrite: "auto",
+            clearProps: "opacity,transform",
+          }
+        );
+      }, el);
+    } catch {
+      ensureVisible(el);
+    }
 
-    return () => ctx.current?.revert();
+    return () => {
+      ctx.current?.revert();
+      ensureVisible(el);
+    };
   }, [ref, options?.align, options?.delay]);
 
   return ctx;
@@ -77,26 +111,36 @@ export function useMessageEnterAnimation(ref, options = {}) {
 export function useStreamingMessageAnimation(ref, isStreaming) {
   const ctx = useRef();
 
-  useEffect(() => {
-    if (!ref.current) return undefined;
+  useIsomorphicLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    ensureVisible(el);
     if (!isStreaming) return undefined;
     if (prefersReducedMotion()) return undefined;
 
-    ctx.current = gsap.context(() => {
-      gsap.fromTo(
-        ref.current,
-        { opacity: 0.78, y: 6 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: STREAM_MAX_DURATION,
-          ease: "power2.out",
-          overwrite: true,
-        }
-      );
-    }, ref.current);
+    try {
+      ctx.current = gsap.context(() => {
+        gsap.fromTo(
+          el,
+          { opacity: 0.78, y: 6 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: STREAM_MAX_DURATION,
+            ease: "power2.out",
+            overwrite: true,
+            clearProps: "opacity,transform",
+          }
+        );
+      }, el);
+    } catch {
+      ensureVisible(el);
+    }
 
-    return () => ctx.current?.revert();
+    return () => {
+      ctx.current?.revert();
+      ensureVisible(el);
+    };
   }, [ref, isStreaming]);
 
   return ctx;
@@ -113,27 +157,36 @@ export function useStreamingMessageAnimation(ref, isStreaming) {
 export function useStatusBannerAnimation(ref, statusKey) {
   const ctx = useRef();
 
-  useEffect(() => {
-    if (!ref.current) return undefined;
+  useIsomorphicLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    ensureVisible(el);
     if (prefersReducedMotion()) return undefined;
 
-    ctx.current = gsap.context(() => {
-      const el = ref.current;
-      gsap.fromTo(
-        el,
-        { opacity: 0, y: -12, scale: 0.98 },
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: BANNER_DURATION,
-          ease: EASE,
-          overwrite: "auto",
-        }
-      );
-    }, ref.current);
+    try {
+      ctx.current = gsap.context(() => {
+        gsap.fromTo(
+          el,
+          { opacity: 0, y: -10, scale: 0.99 },
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: BANNER_DURATION,
+            ease: EASE,
+            overwrite: "auto",
+            clearProps: "opacity,transform",
+          }
+        );
+      }, el);
+    } catch {
+      ensureVisible(el);
+    }
 
-    return () => ctx.current?.revert();
+    return () => {
+      ctx.current?.revert();
+      ensureVisible(el);
+    };
   }, [ref, statusKey]);
 
   return ctx;
@@ -148,7 +201,7 @@ export function useStatusBannerAnimation(ref, statusKey) {
 export function useMessagesStagger(containerRef) {
   const ctx = useRef();
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return undefined;
     if (prefersReducedMotion()) return undefined;
@@ -158,23 +211,30 @@ export function useMessagesStagger(containerRef) {
     );
     if (!items.length) return undefined;
 
-    ctx.current = gsap.context(() => {
-      gsap.fromTo(
-        items,
-        { opacity: 0, y: 18 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.5,
-          stagger: 0.06,
-          ease: EASE,
-          overwrite: "auto",
-        }
-      );
-    }, container);
+    try {
+      ctx.current = gsap.context(() => {
+        gsap.fromTo(
+          items,
+          { opacity: 0, y: 18 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.5,
+            stagger: 0.06,
+            ease: EASE,
+            overwrite: "auto",
+            clearProps: "opacity,transform",
+          }
+        );
+      }, container);
+    } catch {
+      items.forEach(ensureVisible);
+    }
 
-    return () => ctx.current?.revert();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      ctx.current?.revert();
+      items.forEach(ensureVisible);
+    };
   }, []);
 
   return ctx;
