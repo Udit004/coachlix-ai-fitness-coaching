@@ -7,6 +7,7 @@ import { Inter } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import ConditionalFooter from "@/components/ConditionalFooter";
 import AuthGuard from "@/components/AuthGuard";
+import PushTokenRegistrar from "@/components/PushTokenRegistrar";
 import { AuthProvider } from "@/auth/AuthContext";
 import { CustomThemeProvider } from "@/context/CustomThemeProvider";
 import QueryProvider from "@/providers/QueryProvider";
@@ -72,6 +73,7 @@ export default function RootLayout({ children }) {
       <body className={`${inter.className} antialiased`}>
         <CustomThemeProvider>
           <AuthProvider>
+            <PushTokenRegistrar />
             <QueryProvider>
               <ToastProvider />
               <Navbar />
