@@ -3,11 +3,50 @@ import ChatMessage from "./ChatMessage";
 import TypingIndicator from "./TypingIndicator";
 import ChatInput from "./ChatInput";
 import { ChevronDown, Menu, Plus, Sparkles, Brain, Loader2 } from "./icons";
+import {
+  useMessageEnterAnimation,
+  useStatusBannerAnimation,
+} from "../../hooks/useChatAnimations";
+
+// Wraps a ChatMessage with a smooth GSAP entrance animation. Positioned
+// correctly on every screen size; respects reduced-motion via the hook.
+const AnimatedMessage = React.memo(function AnimatedMessage({
+  message,
+  index,
+  isStreaming,
+  handleSuggestionClick,
+  userProfile,
+  formatTime,
+  copyToClipboard,
+}) {
+  const ref = useRef(null);
+  useMessageEnterAnimation(ref, {
+    align: message.role === "user" ? "user" : "assistant",
+    delay: 0.05 * Math.min(index, 3),
+  });
+
+  return (
+    <div ref={ref} data-chat-message>
+      <ChatMessage
+        message={message}
+        handleSuggestionClick={handleSuggestionClick}
+        userProfile={userProfile}
+        formatTime={formatTime}
+        copyToClipboard={copyToClipboard}
+        isStreaming={isStreaming}
+      />
+    </div>
+  );
+});
 
 // Renders a prominent, pulsing indicator of what the AI agent is doing
 // (thinking, classifying intent, calling tools, streaming, etc.).
 // Driven by backend `ai_event` SSE lifecycle events.
 const AIStatusBanner = ({ status }) => {
+  const bannerRef = useRef(null);
+  const statusKey = `${status?.type}|${status?.label}|${status?.tool}|${status?.intent}`;
+  useStatusBannerAnimation(bannerRef, statusKey);
+
   if (!status) return null;
 
   const { type = "", label, tool, intent } = status;
@@ -24,7 +63,7 @@ const Icon = isTool ? Loader2 : isThinking ? Brain : Sparkles;
     : "from-blue-500/20 to-purple-500/20 border-blue-500/40 text-blue-300";
 
   return (
-    <div className="flex justify-center w-full px-2 sm:px-4 pt-2">
+    <div className="flex justify-center w-full px-2 sm:px-4 pt-2" ref={bannerRef}>
       <div
         className={`w-full max-w-2xl flex items-center gap-3 px-3 sm:px-4 py-2.5 rounded-xl border bg-gradient-to-r ${colorByType} backdrop-blur-sm animate-pulse`}
       >
@@ -239,14 +278,15 @@ const ChatContainer = ({
         <>
           {/* Chat Messages - Scrollable Area */}
           <div className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4">
-            {messages.map((message, index) => {
+{messages.map((message, index) => {
               // Check if this message is currently streaming
               const isStreaming = message.id === streamingMessageId && message.role === "ai";
 
               return (
-                <ChatMessage
+                <AnimatedMessage
                   key={message.id ?? `message-${index}`}
                   message={message}
+                  index={index}
                   handleSuggestionClick={handleSuggestionClick}
                   userProfile={userProfile}
                   formatTime={formatTime}
