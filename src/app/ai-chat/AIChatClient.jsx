@@ -321,6 +321,7 @@ const AIChatClient = ({ initialProfile = null }) => {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let streamingContent = "";
+      let thoughtContentBuffer = "";
       let suggestions = [];
       let sseBuffer = "";
 
@@ -342,9 +343,13 @@ const AIChatClient = ({ initialProfile = null }) => {
             break;
           case "word":
             streamingContent += data.word;
-            updateLastMessage({ ...aiMessage, content: streamingContent });
+            updateLastMessage({ ...aiMessage, content: streamingContent, thoughtContent: thoughtContentBuffer });
             break;
-case "ai_event": {
+          case "thought_chunk":
+            thoughtContentBuffer += data.text;
+            updateLastMessage({ ...aiMessage, content: streamingContent, thoughtContent: thoughtContentBuffer });
+            break;
+          case "ai_event": {
             // AI lifecycle event from backend event bus (intent, context,
             // thinking, tool calling, model completion, etc.)
             // Backend sends: { type:'ai_event', event:'ai.intent.classified',
