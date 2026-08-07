@@ -44,7 +44,9 @@ export default function PushTokenRegistrar() {
           return;
         }
 
-        const registration = await navigator.serviceWorker.ready;
+        const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+        await navigator.serviceWorker.ready;
+
         const token = await getToken(messaging, {
           vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
           serviceWorkerRegistration: registration,
@@ -83,9 +85,12 @@ export default function PushTokenRegistrar() {
         if (!unsubscribeRef.current) {
           unsubscribeRef.current = onMessage(messaging, (payload) => {
             if (payload.notification) {
-              new Notification(payload.notification.title || "Coachlix", {
-                body: payload.notification.body,
-                icon: payload.notification.icon || "/icon-192.png",
+              navigator.serviceWorker.ready.then((reg) => {
+                reg.showNotification(payload.notification.title || "Coachlix", {
+                  body: payload.notification.body,
+                  icon: payload.notification.icon || "/icon-192.png",
+                  data: payload.data
+                });
               });
             }
           });
