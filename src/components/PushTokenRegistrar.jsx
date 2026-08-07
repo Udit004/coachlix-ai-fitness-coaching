@@ -84,15 +84,19 @@ export default function PushTokenRegistrar() {
 
         if (!unsubscribeRef.current) {
           unsubscribeRef.current = onMessage(messaging, (payload) => {
-            if (payload.notification) {
-              navigator.serviceWorker.ready.then((reg) => {
-                reg.showNotification(payload.notification.title || "Coachlix", {
-                  body: payload.notification.body,
-                  icon: payload.notification.icon || "/icon-192.png",
-                  data: payload.data
-                });
+            // Data-only messages contain everything in payload.data
+            const data = payload.data || {};
+            const title = payload.notification?.title || data.title || "Coachlix";
+            const body = payload.notification?.body || data.body || "You have a new update!";
+            const icon = payload.notification?.icon || data.icon || "/icon-192.png";
+
+            navigator.serviceWorker.ready.then((reg) => {
+              reg.showNotification(title, {
+                body,
+                icon,
+                data
               });
-            }
+            });
           });
         }
       } catch (error) {
