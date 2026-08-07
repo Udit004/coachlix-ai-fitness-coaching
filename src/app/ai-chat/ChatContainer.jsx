@@ -56,46 +56,55 @@ const AIStatusBanner = ({ status }) => {
   const isThinking = type.includes("thinking") || type.includes("reasoning");
   const isStreaming = type.includes("token.streamed");
 
+  // Hide the banner once streaming begins because the user can already see the text typing out.
+  if (isStreaming) return null;
+
   const Icon = isTool ? Loader2 : isThinking ? Brain : Sparkles;
 
   const colorByType = isTool
-    ? "from-orange-500/20 to-rose-500/20 border-orange-500/40 text-orange-300"
-    : isStreaming
-    ? "from-emerald-500/20 to-teal-500/20 border-emerald-500/40 text-emerald-300"
-    : "from-blue-500/20 to-purple-500/20 border-blue-500/40 text-blue-300";
+    ? "from-orange-500/20 via-orange-500/5 to-transparent border-orange-500/40 text-orange-400 shadow-orange-500/10"
+    : isThinking
+    ? "from-purple-500/20 via-purple-500/5 to-transparent border-purple-500/40 text-purple-400 shadow-purple-500/10"
+    : "from-blue-500/20 via-blue-500/5 to-transparent border-blue-500/40 text-blue-400 shadow-blue-500/10";
+
+  const iconAnimation = isTool ? "animate-spin" : isThinking ? "animate-pulse" : "animate-bounce";
 
   return (
     <div
-      className="flex justify-center w-full px-2 sm:px-4 pt-2"
+      className="flex justify-start w-full px-2 sm:px-4 pt-2 pb-2"
       ref={bannerRef}
       style={{ opacity: 1, transform: "none" }}
     >
       <div
-        className={`w-full max-w-2xl flex items-center gap-3 px-3 sm:px-4 py-2.5 rounded-xl border bg-gradient-to-r ${colorByType} backdrop-blur-sm animate-pulse`}
+        className={`w-fit max-w-lg flex items-center gap-3 px-4 py-2.5 rounded-2xl border bg-gradient-to-r ${colorByType} backdrop-blur-md shadow-lg transition-all duration-300 relative overflow-hidden`}
       >
-        <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gray-900/60 border border-gray-700 flex items-center justify-center">
-          <Icon className="w-4 h-4" />
+        <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/5 to-transparent animate-[shimmer_2s_infinite]" />
+        
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-900 border border-gray-700/80 flex items-center justify-center shadow-inner relative z-10">
+          <Icon className={`w-4 h-4 ${iconAnimation}`} />
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-xs sm:text-sm font-medium truncate">{label || "Processing..."}</div>
+        <div className="min-w-0 flex-1 pr-2 relative z-10">
+          <div className="text-sm font-semibold tracking-wide flex items-center gap-2">
+            {label || "Processing..."}
+            <span className="flex items-center gap-0.5 mt-1">
+              <span className="w-1 h-1 bg-current rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+              <span className="w-1 h-1 bg-current rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+              <span className="w-1 h-1 bg-current rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+            </span>
+          </div>
           {(tool || intent) && (
-            <div className="text-[11px] sm:text-xs text-gray-400 truncate mt-0.5">
+            <div className="text-[11px] sm:text-xs text-gray-400/90 truncate mt-0.5 font-medium">
               {tool ? (
                 <>
-                  Calling: <span className="text-orange-300 font-medium">{tool}</span>
+                  Using tool: <span className="text-orange-300/90">{tool}</span>
                 </>
               ) : (
                 <>
-                  Goal: <span className="text-blue-300 font-medium">{intent}</span>
+                  Goal identified: <span className="text-blue-300/90">{intent}</span>
                 </>
               )}
             </div>
           )}
-        </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-          <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-          <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
         </div>
       </div>
     </div>
