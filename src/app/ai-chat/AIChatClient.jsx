@@ -383,10 +383,15 @@ const AIChatClient = ({ initialProfile = null }) => {
     };
 
     try {
-      // WebSocket-first: lowest latency, no HTTP intermediary buffering.
+      // ── WebSocket-first transport diagnostic ─────────────────────────────
+      // This logging tells us (via the browser console) whether the backend
+      // socket path actually fails and we are forced to fall back to SSE, or
+      // whether we never even attempted it.
       let wsUsed = false;
       try {
+        console.log("[ChatTransport] Attempting WebSocket connection...");
         await chatSocket.connect({ force: true });
+        console.log("[ChatTransport] WebSocket connected OK (post-auth). Sending chat.message...");
         await new Promise((resolve, reject) => {
           const unsubscribe = chatSocket.on(async (frame) => {
             try {
@@ -418,12 +423,22 @@ const AIChatClient = ({ initialProfile = null }) => {
             });
         });
         wsUsed = true;
+        console.log("[ChatTransport] ✅ Streamed via WebSocket (transcript complete).");
       } catch (wsErr) {
-        console.warn("Chat WebSocket unavailable, falling back to SSE:", wsErr?.message);
+        // If we land here, the WS path was ATTEMPTED and FAILED. This is the
+        // log to check: it proves the socket connection is the problem, not a
+        // silent direct-SSE shortcut.
+        console.warn(
+          "[ChatTransport] ❌ WebSocket FAILED — falling back to SSE. Reason:",
+          wsErr?.message || wsErr,
+          "| endpoint:",
+          chatSocket?.endpoint || "unknown (see [ChatSocket] resolved WS endpoint log)"
+        );
       }
 
-      // SSE fallback — same streaming contract, no whitespace-padding needed.
+      // SSE fallback — same streaming contract.
       if (!wsUsed) {
+        console.log("[ChatTransport] Using SSE (POST /chat) as the transport.");
         const authHeaders = await getAuthHeaders();
         const response = await fetch(CHAT_API_BASE_URL, {
           method: "POST",

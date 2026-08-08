@@ -45,6 +45,9 @@ class ChatSocket {
     this.connectionPromise = null;
     this.resolveConnection = null;
     this.rejectConnection = null;
+    // Public: actual WS URL this client will connect to. Used in the
+    // AIChatClient transport logs to confirm what endpoint was resolved.
+    this.endpoint = WS_ENDPOINT;
   }
 
   /** Register a frame handler. Returns an unsubscribe fn. */
