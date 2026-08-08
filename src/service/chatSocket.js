@@ -13,6 +13,10 @@ const buildWsEndpoint = () => {
 
 const WS_ENDPOINT = buildWsEndpoint();
 const AUTO_RECONNECT_DELAY_MS = 1500;
+// If the handshake doesn't open within this window we treat WebSockets as
+// unavailable (e.g. Render free tier does not support WS) and reject so the
+// caller can fall back to SSE instead of hanging forever.
+const CONNECT_TIMEOUT_MS = 6000;
 
 /**
  * Minimal persistent chat WebSocket client:
@@ -62,18 +66,47 @@ class ChatSocket {
 
     this.intentionalClose = false;
 
+    let connectTimer = null;
+    let settled = false;
+
+    const cleanupTimer = () => {
+      if (connectTimer) {
+        clearTimeout(connectTimer);
+        connectTimer = null;
+      }
+    };
+
     const ready = new Promise((resolve, reject) => {
       this.resolveConnection = resolve;
       this.rejectConnection = reject;
 
       socket.onopen = () => {
+        cleanupTimer();
+        settled = true;
         this.connected = true;
         this.resolveConnection?.();
       };
 
       socket.onerror = (err) => {
+        cleanupTimer();
+        settled = true;
         this.rejectConnection?.(err);
       };
+
+      // Connection timeout: if the handshake never opens (e.g. Render free
+      // tier does not support WebSockets), reject so the caller can fall back
+      // to SSE instead of hanging forever.
+      connectTimer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        try {
+          socket.close();
+        } catch (_) {
+          // ignore
+        }
+        this.connectionPromise = null;
+        this.rejectConnection?.(new Error("WebSocket connection timed out"));
+      }, CONNECT_TIMEOUT_MS);
     });
 
     socket.onmessage = (event) => {
@@ -93,6 +126,7 @@ class ChatSocket {
     };
 
     socket.onclose = (event) => {
+      cleanupTimer();
       this.connected = false;
       this.ws = null;
       this.resolveConnection = null;
