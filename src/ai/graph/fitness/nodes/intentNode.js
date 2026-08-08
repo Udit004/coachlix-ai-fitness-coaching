@@ -12,19 +12,22 @@ import {
 const INTENT_CLASSIFIER_SYSTEM_PROMPT = `You are an AI fitness assistant.
 
 Step 1: Classify the user's intent into:
-- GREETING
-- GENERAL_QUERY
-- PERSONALIZED_QUERY
+- GREETING: Social openers or simple greetings.
+- GENERAL_QUERY: General fitness, nutrition, or health questions.
+- PERSONALIZED_QUERY: Questions requiring user-specific data (plans, metrics, history).
+- OFF_TOPIC: Any query NOT related to fitness, health, nutrition, or workouts (e.g., coding, python, history, politics, etc.).
 
 Step 2:
-- If GREETING -> respond naturally
-- If GENERAL_QUERY -> answer normally
-- If PERSONALIZED_QUERY -> DO NOT answer, instead mark needs_rag = true
+- If GREETING -> respond naturally.
+- If GENERAL_QUERY -> answer normally.
+- If PERSONALIZED_QUERY -> DO NOT answer, instead mark needs_rag = true.
+- If OFF_TOPIC -> provide a polite refusal explaining you are a fitness coach and cannot help with non-fitness topics.
 
 ---
 
 RULES:
 - If unsure -> GENERAL_QUERY
+- If clearly unrelated to fitness/health -> OFF_TOPIC
 - Do NOT hallucinate user data
 - Keep responses concise and helpful
 
@@ -94,7 +97,8 @@ function parseClassifierOutput(raw) {
     const intent =
       normalizedIntent === "GREETING" ||
       normalizedIntent === "GENERAL_QUERY" ||
-      normalizedIntent === "PERSONALIZED_QUERY"
+      normalizedIntent === "PERSONALIZED_QUERY" ||
+      normalizedIntent === "OFF_TOPIC"
         ? normalizedIntent
         : "GENERAL_QUERY";
 
@@ -124,7 +128,7 @@ function buildDataNeeds(intentName, originalMessage, directAnswerable = false) {
     lower
   );
 
-  if (intentName === "greeting") {
+  if (intentName === "greeting" || intentName === "off_topic") {
     return {
       needsProfile: false,
       needsDiet: false,
@@ -283,16 +287,20 @@ export async function intentNode(state) {
   const intentName =
     classifierResult.intent === "GREETING"
       ? "greeting"
-      : classifierResult.intent === "PERSONALIZED_QUERY"
-        ? "question_specific"
-        : "question_general";
+      : classifierResult.intent === "OFF_TOPIC"
+        ? "off_topic"
+        : classifierResult.intent === "PERSONALIZED_QUERY"
+          ? "question_specific"
+          : "question_general";
 
   const queryType =
     classifierResult.intent === "GREETING"
       ? QueryType.GREETING
-      : classifierResult.intent === "PERSONALIZED_QUERY"
-        ? QueryType.PERSONALIZED_FITNESS
-        : QueryType.GENERAL_FITNESS;
+      : classifierResult.intent === "OFF_TOPIC"
+        ? QueryType.OFF_TOPIC
+        : classifierResult.intent === "PERSONALIZED_QUERY"
+          ? QueryType.PERSONALIZED_FITNESS
+          : QueryType.GENERAL_FITNESS;
 
   const intent = {
     intent: intentName,
@@ -335,7 +343,9 @@ export async function intentNode(state) {
     queryType,
     needsRag: classifierResult.needs_rag,
     greetingResponse:
-      classifierResult.intent === "GREETING" ? classifierResult.response : "",
+      classifierResult.intent === "GREETING" || classifierResult.intent === "OFF_TOPIC"
+        ? classifierResult.response
+        : "",
     enableSearch,
     flowMetrics: { intentClassificationTime: Date.now() - t0 },
   };

@@ -12,12 +12,15 @@ const useChatStore = create()(
       selectedPlan: 'general',
       isNewChat: true,
       isTyping: false,
-      
+
+      // AI lifecycle status driven by backend event-bus SSE events
+      aiStatus: null, // { type, label, tool?, intent?, startedAt }
+
       // UI state
       sidebarOpen: false,
       showHistory: false,
       inputValue: '',
-      
+
       // Error handling
       error: null,
       
@@ -67,7 +70,17 @@ const useChatStore = create()(
         set((state) => {
           state.isTyping = typing;
         }),
-      
+
+      setAiStatus: (status) =>
+        set((state) => {
+          state.aiStatus = status;
+        }),
+
+      clearAiStatus: () =>
+        set((state) => {
+          state.aiStatus = null;
+        }),
+
       setSidebarOpen: (open) =>
         set((state) => {
           state.sidebarOpen = open;

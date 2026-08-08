@@ -142,6 +142,8 @@ export default function useLiveVoiceChat({
 
   const silenceTimeoutSentRef = useRef(false);
   const lastVoiceDetectedAtRef = useRef(0);
+  const audioBufferRef = useRef([]);
+  const lastAudioSendTimeRef = useRef(0);
 
   const emitState = useCallback((state) => {
     onState?.(state);
@@ -275,6 +277,11 @@ export default function useLiveVoiceChat({
     recognition.maxAlternatives = 1;
 
     recognition.onresult = (event) => {
+      const ctx = playbackContextRef.current;
+      if (ctx && ctx.state === "running" && ctx.currentTime < nextPlayTimeRef.current + 0.3) {
+        return;
+      }
+
       let finalChunk = "";
       let interimChunk = "";
 
@@ -351,6 +358,9 @@ export default function useLiveVoiceChat({
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
       mediaStreamRef.current = null;
     }
+    
+    audioBufferRef.current = [];
+    lastAudioSendTimeRef.current = 0;
   }, []);
 
   const cleanupPlayback = useCallback(() => {
@@ -451,8 +461,8 @@ export default function useLiveVoiceChat({
 
       const inputData = event.inputBuffer.getChannelData(0);
       const downsampled = downsampleBuffer(inputData, audioContext.sampleRate, INPUT_SAMPLE_RATE);
-      const pcm16 = floatTo16BitPCM(downsampled);
-      const base64Audio = int16ToBase64(pcm16);
+      
+      audioBufferRef.current.push(downsampled);
 
       let sumSquares = 0;
       for (let i = 0; i < downsampled.length; i += 1) {
@@ -473,11 +483,27 @@ export default function useLiveVoiceChat({
         silenceTimeoutSentRef.current = true;
       }
 
-      sendWs({
-        type: "audio_chunk",
-        audio: base64Audio,
-        mimeType: "audio/pcm;rate=16000",
-      });
+      if (now - lastAudioSendTimeRef.current >= 500 && audioBufferRef.current.length > 0) {
+        const totalLength = audioBufferRef.current.reduce((acc, val) => acc + val.length, 0);
+        const mergedBuffer = new Float32Array(totalLength);
+        let offset = 0;
+        for (const buf of audioBufferRef.current) {
+          mergedBuffer.set(buf, offset);
+          offset += buf.length;
+        }
+
+        const pcm16 = floatTo16BitPCM(mergedBuffer);
+        const base64Audio = int16ToBase64(pcm16);
+
+        sendWs({
+          type: "audio_chunk",
+          audio: base64Audio,
+          mimeType: "audio/pcm;rate=16000",
+        });
+
+        audioBufferRef.current = [];
+        lastAudioSendTimeRef.current = now;
+      }
     };
   }, [commitUserTranscript, sendWs]);
 
@@ -554,8 +580,8 @@ export default function useLiveVoiceChat({
           return;
         }
 
-        if (parsed.type === "gemini_text" && parsed.text) {
-          onText?.(parsed.text);
+        if (parsed.type === "gemini_text") {
+          onText?.({ text: parsed.text, thought: parsed.thought });
           return;
         }
 

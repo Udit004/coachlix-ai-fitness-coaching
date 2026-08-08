@@ -20,14 +20,15 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage(function (payload) {
   console.log('[firebase-messaging-sw.js] Received background message: ', payload);
 
-  const notificationTitle = payload.notification?.title || 'Coachlix Notification';
+  const data = payload.data || {};
+  const notificationTitle = payload.notification?.title || data.title || 'Coachlix Notification';
   const notificationOptions = {
-    body: payload.notification?.body || 'You have a new update!',
-    icon: '/icon-192.png',
+    body: payload.notification?.body || data.body || 'You have a new update!',
+    icon: payload.notification?.icon || data.icon || '/icon-192.png',
     badge: '/badge-icon.png', // Optional: for showing notification count
     data: {
-      ...(payload.data || {}),
-      link: (payload?.fcmOptions && payload.fcmOptions.link) || (payload?.data && payload.data.link) || '/',
+      ...data,
+      link: (payload?.fcmOptions && payload.fcmOptions.link) || data.link || '/',
     }
   };
 
