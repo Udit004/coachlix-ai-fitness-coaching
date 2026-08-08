@@ -12,6 +12,12 @@ const buildWsEndpoint = () => {
 };
 
 const WS_ENDPOINT = buildWsEndpoint();
+// Surface the resolved endpoint so a misconfigured backend URL is obvious in
+// the browser console (e.g. if it builds to ws://localhost the WS will fail
+// and SSE fallback engages).
+if (typeof window !== "undefined") {
+  console.log("[ChatSocket] resolved WS endpoint:", WS_ENDPOINT);
+}
 const AUTO_RECONNECT_DELAY_MS = 1500;
 // If the handshake doesn't open within this window we treat WebSockets as
 // unavailable (e.g. Render free tier does not support WS) and reject so the
@@ -76,36 +82,49 @@ class ChatSocket {
       }
     };
 
+    let connectError = null;
+
+    const settleReady = (err) => {
+      cleanupTimer();
+      if (settled) return;
+      settled = true;
+      if (err) {
+        this.connectionPromise = null;
+        this.rejectConnection?.(err);
+      } else {
+        this.connected = true;
+        this.resolveConnection?.();
+      }
+    };
+
     const ready = new Promise((resolve, reject) => {
       this.resolveConnection = resolve;
       this.rejectConnection = reject;
 
       socket.onopen = () => {
-        cleanupTimer();
-        settled = true;
-        this.connected = true;
-        this.resolveConnection?.();
+        // Do NOT resolve here. The server authenticates the ?token AFTER the
+        // upgrade (async verifyUserToken). We wait for the explicit
+        // `connected` frame below so sendMessage is only attempted once the
+        // backend has set userId — otherwise the server drops the first
+        // chat.message frame and the client hangs/falls back to SSE.
       };
 
       socket.onerror = (err) => {
-        cleanupTimer();
-        settled = true;
-        this.rejectConnection?.(err);
+        connectError = err;
+        settleReady(err);
       };
 
-      // Connection timeout: if the handshake never opens (e.g. Render free
-      // tier does not support WebSockets), reject so the caller can fall back
-      // to SSE instead of hanging forever.
+      // Connection timeout: if the handshake never opens (e.g. proxy does not
+      // upgrade) reject so the caller can fall back to SSE instead of hanging.
       connectTimer = setTimeout(() => {
-        if (settled) return;
-        settled = true;
+        settleReady(
+          connectError || new Error("WebSocket connection timed out")
+        );
         try {
           socket.close();
         } catch (_) {
           // ignore
         }
-        this.connectionPromise = null;
-        this.rejectConnection?.(new Error("WebSocket connection timed out"));
       }, CONNECT_TIMEOUT_MS);
     });
 
@@ -116,6 +135,22 @@ class ChatSocket {
       } catch (_) {
         return;
       }
+
+      // The server's first frame post-auth is `{ type:'connected' }`. Only
+      // then is the socket usable; resolve the pending connect promise.
+      // If an `error` frame arrives first (e.g. auth failed), reject so the
+      // caller falls back to SSE immediately instead of waiting for close.
+      if (!settled) {
+        if (frame?.type === "connected") {
+          settleReady();
+        } else if (frame?.type === "error") {
+          settleReady(
+            connectError ||
+              new Error(frame?.error?.message || frame?.message || "Chat socket error during handshake")
+          );
+        }
+      }
+
       for (const handler of this.handlers) {
         try {
           handler(frame);
@@ -127,6 +162,19 @@ class ChatSocket {
 
     socket.onclose = (event) => {
       cleanupTimer();
+      // If auth failed the server sends a 4001 close before any 'connected'
+      // frame. Reject the pending connect so the caller falls back to SSE
+      // (which uses a freshly forced token via getIdToken(true)).
+      if (!settled) {
+        settleReady(
+          connectError ||
+            new Error(
+              event.code === 4001
+                ? "Chat socket auth rejected (4001)"
+                : `WebSocket closed before ready (code ${event.code})`
+            )
+        );
+      }
       this.connected = false;
       this.ws = null;
       this.resolveConnection = null;
