@@ -9,6 +9,7 @@ import { toast, Toaster } from "react-hot-toast";
 import { useChatInitialization, useSaveChat, useUpdateChat, useDeleteChat } from "@/hooks/useChatQueries";
 import useLiveVoiceChat from "@/hooks/useLiveVoiceChat";
 import { CHAT_API_BASE_URL, getAuthHeaders } from "@/service/chatApiBase";
+import chatSocket from "@/service/chatSocket";
 import {
   Activity,
   Dumbbell,
@@ -244,7 +245,7 @@ const AIChatClient = ({ initialProfile = null }) => {
     setComponentLoaded((prev) => ({ ...prev, [componentName]: true }));
   };
 
-  // ── Send message with streaming ───────────────────────────────────────────
+  // ── Send message with streaming (WebSocket-first, SSE fallback) ───────────
   const handleSendMessage = async (messageData) => {
     const message =
       typeof messageData === "object" && messageData !== null
@@ -296,155 +297,198 @@ const AIChatClient = ({ initialProfile = null }) => {
     };
     addMessage(aiMessage);
 
-    try {
-      const authHeaders = await getAuthHeaders();
-      const response = await fetch(CHAT_API_BASE_URL, {
-        method: "POST",
-        headers: {
-          ...authHeaders,
-          Accept: "text/event-stream",
-        },
-        body: JSON.stringify({
-          message: currentInput,
-          plan: selectedPlan,
-          chatId: currentChatId,
-          userId: authUser?.uid,
-          files: files.length > 0
-            ? files.map((file) => ({ name: file.name, type: file.type, size: file.size, category: file.category, url: file.url }))
-            : undefined,
-          streaming: true,
-        }),
-      });
+    // Shared frame handler for both WS and SSE transports (same envelope).
+    let streamingContent = "";
+    let thoughtContentBuffer = "";
 
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const handleFrame = async (data) => {
+      switch (data.type) {
+        case "connection":
+          break;
+        case "word":
+          streamingContent += data.word;
+          updateLastMessage({ ...aiMessage, content: streamingContent, thoughtContent: thoughtContentBuffer });
+          break;
+        case "thought_chunk":
+          thoughtContentBuffer += data.text;
+          updateLastMessage({ ...aiMessage, content: streamingContent, thoughtContent: thoughtContentBuffer });
+          break;
+        case "ai_event": {
+          // AI lifecycle event from backend event bus (intent, context,
+          // thinking, tool calling, model completion, etc.)
+          const evtType = data.event || data.eventType || "";
+          const label = data.label || statusLabel(evtType);
+          const toolName = data.tool || data.tools?.[0]?.name || (Array.isArray(data.tools) ? data.tools[0] : null);
+          const intentName = data.intent || data.classifierIntent || null;
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let streamingContent = "";
-      let thoughtContentBuffer = "";
-      let suggestions = [];
-      let sseBuffer = "";
+          setAiStatus({
+            type: evtType,
+            label,
+            tool: toolName,
+            intent: intentName,
+            confidence: data.confidence ?? null,
+            startedAt: Date.now(),
+          });
 
-      const processSseEvent = async (eventText) => {
-        const dataLines = eventText
-          .split("\n")
-          .filter((line) => line.startsWith("data: "))
-          .map((line) => line.slice(6));
-
-        if (dataLines.length === 0) {
-          return;
-        }
-
-        const payload = dataLines.join("\n");
-        const data = JSON.parse(payload);
-
-        switch (data.type) {
-          case "connection":
-            break;
-          case "word":
-            streamingContent += data.word;
-            updateLastMessage({ ...aiMessage, content: streamingContent, thoughtContent: thoughtContentBuffer });
-            break;
-          case "thought_chunk":
-            thoughtContentBuffer += data.text;
-            updateLastMessage({ ...aiMessage, content: streamingContent, thoughtContent: thoughtContentBuffer });
-            break;
-          case "ai_event": {
-            // AI lifecycle event from backend event bus (intent, context,
-            // thinking, tool calling, model completion, etc.)
-            // Backend sends: { type:'ai_event', event:'ai.intent.classified',
-            //                   intent, confidence, tool, ... }
-            const evtType = data.event || data.eventType || "";
-            const label = data.label || statusLabel(evtType);
-            const toolName = data.tool || data.tools?.[0]?.name || (Array.isArray(data.tools) ? data.tools[0] : null);
-            const intentName = data.intent || data.classifierIntent || null;
-
-            setAiStatus({
-              type: evtType,
-              label,
-              tool: toolName,
-              intent: intentName,
-              confidence: data.confidence ?? null,
-              startedAt: Date.now(),
-            });
-
-            // Once the model completes (no tool calls), clear the status.
-            if (evtType === "ai.model.completed" && !data.hasToolCalls) {
-              setTimeout(() => clearAiStatus(), 300);
-            }
-            break;
+          if (evtType === "ai.model.completed" && !data.hasToolCalls) {
+            setTimeout(() => clearAiStatus(), 300);
           }
-          case "complete": {
-            const finalMessage = {
-              ...aiMessage,
-              content: data.fullResponse,
-              suggestions: data.suggestions || [],
-            };
-            updateLastMessage(finalMessage);
-            clearAiStatus();
+          break;
+        }
+        case "complete": {
+          const finalMessage = {
+            ...aiMessage,
+            content: data.fullResponse,
+            suggestions: data.suggestions || [],
+          };
+          updateLastMessage(finalMessage);
+          clearAiStatus();
 
-            if (authUser?.uid) {
-              const updatedMessages = [...messages, userMessage, finalMessage];
-              if (isNewChat && updatedMessages.length >= 2) {
-                const title = generateChatTitle(updatedMessages);
-                try {
-                  const result = await saveChat.mutateAsync({
-                    userId: authUser.uid,
-                    title,
-                    plan: selectedPlan,
-                    messages: updatedMessages,
-                  });
-                  if (result.chatId) {
-                    setCurrentChatId(result.chatId);
-                    setIsNewChat(false);
-                  }
-                } catch (err) {
-                  console.error("Failed to save chat:", err);
+          if (authUser?.uid) {
+            const updatedMessages = [...messages, userMessage, finalMessage];
+            if (isNewChat && updatedMessages.length >= 2) {
+              const title = generateChatTitle(updatedMessages);
+              try {
+                const result = await saveChat.mutateAsync({
+                  userId: authUser.uid,
+                  title,
+                  plan: selectedPlan,
+                  messages: updatedMessages,
+                });
+                if (result.chatId) {
+                  setCurrentChatId(result.chatId);
+                  setIsNewChat(false);
                 }
-              } else if (currentChatId) {
-                try {
-                  await updateChat.mutateAsync({
-                    chatId: currentChatId,
-                    messages: updatedMessages,
-                  });
-                } catch (err) {
-                  console.error("Failed to update chat:", err);
-                }
+              } catch (err) {
+                console.error("Failed to save chat:", err);
+              }
+            } else if (currentChatId) {
+              try {
+                await updateChat.mutateAsync({
+                  chatId: currentChatId,
+                  messages: updatedMessages,
+                });
+              } catch (err) {
+                console.error("Failed to update chat:", err);
               }
             }
-            break;
           }
-          case "error":
-            throw new Error(data.error);
-          default:
-            break;
+          break;
         }
-      };
+        case "error":
+          throw new Error(data.error);
+        default:
+          break;
+      }
+    };
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        sseBuffer += decoder.decode(value, { stream: true });
-        const events = sseBuffer.split("\n\n");
-        sseBuffer = events.pop() || "";
-
-        for (const eventText of events) {
-          try {
-            await processSseEvent(eventText);
-          } catch (parseError) {
-            console.error("Error parsing streaming data:", parseError, { eventText });
-          }
-        }
+    try {
+      // WebSocket-first: lowest latency, no HTTP intermediary buffering.
+      let wsUsed = false;
+      try {
+        await chatSocket.connect({ force: true });
+        await new Promise((resolve, reject) => {
+          const unsubscribe = chatSocket.on(async (frame) => {
+            try {
+              await handleFrame(frame);
+              if (frame.type === "complete") {
+                unsubscribe();
+                resolve();
+              } else if (frame.type === "error") {
+                unsubscribe();
+                reject(new Error(frame.error));
+              }
+            } catch (err) {
+              unsubscribe();
+              reject(err);
+            }
+          });
+          chatSocket
+            .sendMessage({
+              message: currentInput,
+              plan: selectedPlan,
+              chatId: currentChatId,
+              files: files.length > 0
+                ? files.map((file) => ({ name: file.name, type: file.type, size: file.size, category: file.category, url: file.url }))
+                : undefined,
+            })
+            .catch((err) => {
+              unsubscribe();
+              reject(err);
+            });
+        });
+        wsUsed = true;
+      } catch (wsErr) {
+        console.warn("Chat WebSocket unavailable, falling back to SSE:", wsErr?.message);
       }
 
-      if (sseBuffer.trim()) {
-        try {
-          await processSseEvent(sseBuffer);
-        } catch (parseError) {
-          console.error("Error parsing trailing streaming data:", parseError, {
-            eventText: sseBuffer,
-          });
+      // SSE fallback — same streaming contract, no whitespace-padding needed.
+      if (!wsUsed) {
+        const authHeaders = await getAuthHeaders();
+        const response = await fetch(CHAT_API_BASE_URL, {
+          method: "POST",
+          headers: {
+            ...authHeaders,
+            Accept: "text/event-stream",
+          },
+          body: JSON.stringify({
+            message: currentInput,
+            plan: selectedPlan,
+            chatId: currentChatId,
+            userId: authUser?.uid,
+            files: files.length > 0
+              ? files.map((file) => ({ name: file.name, type: file.type, size: file.size, category: file.category, url: file.url }))
+              : undefined,
+            streaming: true,
+          }),
+        });
+
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let sseBuffer = "";
+
+        const processSseEvent = async (eventText) => {
+          const dataLines = eventText
+            .split("\n")
+            .filter((line) => line.startsWith("data: "))
+            .map((line) => line.slice(6));
+
+          if (dataLines.length === 0) {
+            return;
+          }
+
+          const payload = dataLines.join("\n");
+          const data = JSON.parse(payload);
+          await handleFrame(data);
+        };
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          sseBuffer += decoder.decode(value, { stream: true });
+          const events = sseBuffer.split("\n\n");
+          sseBuffer = events.pop() || "";
+
+          for (const eventText of events) {
+            try {
+              await processSseEvent(eventText);
+            } catch (parseError) {
+              console.error("Error parsing streaming data:", parseError, { eventText });
+            }
+          }
+        }
+
+        if (sseBuffer.trim()) {
+          try {
+            await processSseEvent(sseBuffer);
+          } catch (parseError) {
+            console.error("Error parsing trailing streaming data:", parseError, {
+              eventText: sseBuffer,
+            });
+          }
         }
       }
     } catch (err) {
