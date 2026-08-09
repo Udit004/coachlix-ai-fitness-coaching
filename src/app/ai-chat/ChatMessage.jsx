@@ -2,6 +2,72 @@ import React, { useState, useMemo, useCallback } from "react";
 import { User, Bot, Clock, Copy, Sparkles, AlertCircle } from "./icons";
 import { toast } from "react-hot-toast";
 
+// ── YouTube embed helpers ──────────────────────────────────────────────────
+// Matches common YouTube URL shapes: watch?v=, shorts/, embed/, youtu.be/
+const YOUTUBE_URL_RE =
+  /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=[\w-]{11}|youtube\.com\/shorts\/[\w-]{11}|youtube\.com\/embed\/[\w-]{11}|youtu\.be\/[\w-]{11}))/i;
+
+function extractYouTubeId(url) {
+  const patterns = [
+    /youtube\.com\/watch\?v=([\w-]{11})/,
+    /youtube\.com\/shorts\/([\w-]{11})/,
+    /youtube\.com\/embed\/([\w-]{11})/,
+    /youtu\.be\/([\w-]{11})/,
+  ];
+  for (const p of patterns) {
+    const m = String(url || "").match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+/**
+ * Inline YouTube player. Shows a "Play video in app" card by default; tapping
+ * it lazily loads the YouTube iframe embed (autoplay on load) so we don't load
+ * any third-party iframes until the user opts in (privacy + performance).
+ */
+const YouTubeEmbed = ({ url }) => {
+  const [active, setActive] = useState(false);
+  const videoId = extractYouTubeId(url);
+  if (!videoId) return null;
+
+  return (
+    <div className="my-3">
+      {active ? (
+        <div className="rounded-xl overflow-hidden border border-gray-700 shadow-lg bg-black">
+          <iframe
+            className="w-full aspect-video"
+            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`}
+            title="YouTube video player"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setActive(true)}
+          className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-700 bg-gray-900/60 hover:bg-gray-800/80 active:bg-gray-800/60 transition-all group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+        >
+          <span className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-red-600 text-white shadow-md group-hover:scale-110 transition-transform">
+            <svg className="w-4 h-4 ml-0.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </span>
+          <span className="min-w-0 text-left">
+            <span className="block text-sm font-medium text-white">
+              ▶ Play video in app
+            </span>
+            <span className="block text-xs text-gray-400 truncate">{url}</span>
+          </span>
+        </button>
+      )}
+    </div>
+  );
+};
+
 const ChatMessage = ({
   message,
   handleSuggestionClick,
@@ -54,6 +120,7 @@ const ChatMessage = ({
         .replace(/🏃‍♂️\s*(.*?)(?=\n|$)/g, '<div class="bg-blue-50 border-l-4 border-blue-400 p-3 my-3 rounded-r-lg"><div class="flex items-center"><span class="text-blue-600 mr-2">🏃‍♂️</span><span class="font-medium text-blue-800">Cardio:</span></div><p class="text-blue-700 mt-1">$1</p></div>')
         .replace(/^>\s+(.*)$/gm, '<blockquote class="border-l-4 border-blue-500 pl-4 py-2 my-3 bg-gray-700/50 italic text-gray-300 rounded-r-lg">$1</blockquote>')
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 hover:text-blue-800 underline font-medium transition-colors duration-200 break-all" target="_blank" rel="noopener noreferrer">$1</a>')
+        .replace(/(?<!href=")(https?:\/\/[^\s<]+)/g, '<a href="$1" class="text-blue-600 hover:text-blue-800 underline font-medium transition-colors duration-200 break-all" target="_blank" rel="noopener noreferrer">$1</a>')
         .replace(/==(.*?)==/g, '<mark class="bg-yellow-200 text-yellow-900 px-1 rounded">$1</mark>')
         .replace(/\n/g, "<br>");
 
@@ -76,6 +143,28 @@ const ChatMessage = ({
     () => formatMessageContent(message.thoughtContent || ""),
     [message.thoughtContent, formatMessageContent]
   );
+
+  // Collect distinct YouTube URLs from the raw assistant content so we can
+  // render an inline player for each, in addition to (not instead of) the
+  // clickable link already produced by formatMessageContent.
+  const youtubeUrls = useMemo(() => {
+    if (message.role !== "ai") return [];
+    const found = [];
+    const seen = new Set();
+    const text = message.content || "";
+    let m;
+    const re = new RegExp(YOUTUBE_URL_RE.source, "gi");
+    while ((m = re.exec(text)) !== null) {
+      const url = m[1];
+      if (!seen.has(url)) {
+        seen.add(url);
+        found.push(url);
+      }
+      // Avoid zero-length infinite loops.
+      if (m.index === re.lastIndex) re.lastIndex++;
+    }
+    return found;
+  }, [message.content, message.role]);
 
   const formatTime = useCallback((date) => {
     if (!date) return "";
@@ -134,7 +223,7 @@ const ChatMessage = ({
               </details>
             )}
 
-            <div
+<div
               className="text-[16px] leading-[1.7] font-normal tracking-wide text-white break-words"
               style={{
                 fontFamily:
@@ -143,6 +232,12 @@ const ChatMessage = ({
               }}
               dangerouslySetInnerHTML={{ __html: formattedContent }}
             />
+
+            {/* Inline YouTube players for any video links the coach shared */}
+            {!isStreaming &&
+              youtubeUrls.map((url, idx) => (
+                <YouTubeEmbed key={`yt-${idx}`} url={url} />
+              ))}
 
             {isStreaming && !message.content && (
               <span className="inline-flex items-center ml-1 space-x-1">
