@@ -136,9 +136,6 @@ export default function DietPlanCard({ plan, onDelete, onClone, onEdit, onToggle
       return;
     }
 
-    if (!confirm('Are you sure you want to delete this diet plan? This action cannot be undone.')) {
-      return;
-    }
 
     setLoading(true);
     try {
