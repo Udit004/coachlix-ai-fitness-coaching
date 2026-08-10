@@ -76,10 +76,10 @@ const AIStatusBanner = ({ status }) => {
       style={{ opacity: 1, transform: "none" }}
     >
       <div
-        className={`w-fit max-w-lg flex items-center gap-3 px-4 py-2.5 rounded-2xl border bg-gradient-to-r ${colorByType} backdrop-blur-md shadow-lg transition-all duration-300 relative overflow-hidden`}
+        className={`w-fit max-w-[90%] sm:max-w-lg flex items-center gap-3 px-4 py-2.5 rounded-2xl border bg-gradient-to-r ${colorByType} backdrop-blur-md shadow-lg transition-all duration-300 relative overflow-hidden`}
       >
         <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/5 to-transparent animate-[shimmer_2s_infinite]" />
-        
+
         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-900 border border-gray-700/80 flex items-center justify-center shadow-inner relative z-10">
           <Icon className={`w-4 h-4 ${iconAnimation}`} />
         </div>
@@ -173,7 +173,7 @@ const ChatContainer = ({
             {/* Menu Button - Visible on all screens */}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0 cursor-pointer"
+              className="min-w-[40px] min-h-[40px] flex items-center justify-center p-2 text-gray-400 hover:text-white hover:bg-gray-700 active:bg-gray-600 rounded-lg transition-colors flex-shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               title="Toggle sidebar"
             >
               <Menu className="w-5 h-5" />
@@ -181,56 +181,56 @@ const ChatContainer = ({
 
             {/* Plan Selector */}
             <div className="relative flex-shrink-0">
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center space-x-2 px-2.5 sm:px-3 py-1.5 sm:py-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg border border-gray-600 transition-all duration-200"
-            >
-              {IconComponent && (
-                <div
-                  className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-gradient-to-r ${currentPlan.color} flex items-center justify-center`}
-                >
-                  <IconComponent className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center space-x-2 min-h-[40px] px-2.5 sm:px-3 py-1.5 sm:py-2 bg-gray-700/50 hover:bg-gray-700 active:bg-gray-600 rounded-lg border border-gray-600 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                {IconComponent && (
+                  <div
+                    className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-gradient-to-r ${currentPlan.color} flex items-center justify-center`}
+                  >
+                    <IconComponent className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
+                  </div>
+                )}
+                <span className="font-medium text-white text-xs sm:text-sm truncate max-w-[120px] sm:max-w-[180px]">
+                  {currentPlan?.name || "Select Plan"}
+                </span>
+                <ChevronDown
+                  className={`w-3 h-3 sm:w-4 sm:h-4 text-gray-400 transition-transform duration-200 ${
+                    isDropdownOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+
+              {/* Dropdown menu — z-50 so it always sits above the backdrop (z-30) */}
+              {isDropdownOpen && (
+                <div className="absolute top-full left-0 mt-1 w-48 sm:w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+                  <div className="p-1.5">
+                    {plans.map((plan) => {
+                      const PlanIcon = plan.icon;
+                      return (
+                        <button
+                          key={plan.id}
+                          onClick={() => handlePlanSelect(plan.id)}
+                          className={`w-full flex items-center space-x-2.5 min-h-[40px] px-2.5 py-2.5 rounded-md transition-colors text-xs sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                            selectedPlan === plan.id
+                              ? "bg-blue-900/50 text-blue-400 border border-blue-700"
+                              : "bg-gray-800 text-gray-300 hover:bg-gray-700 active:bg-gray-600"
+                          }`}
+                        >
+                          <div
+                            className={`w-5 h-5 rounded-full bg-gradient-to-r ${plan.color} flex items-center justify-center flex-shrink-0`}
+                          >
+                            <PlanIcon className="w-2.5 h-2.5 text-white" />
+                          </div>
+                          <span className="font-medium truncate">{plan.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
-              <span className="font-medium text-white text-xs sm:text-sm truncate max-w-[120px] sm:max-w-[180px]">
-                {currentPlan?.name || "Select Plan"}
-              </span>
-              <ChevronDown
-                className={`w-3 h-3 sm:w-4 sm:h-4 text-gray-400 transition-transform duration-200 ${
-                  isDropdownOpen ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-
-            {/* Dropdown menu */}
-            {isDropdownOpen && (
-              <div className="absolute top-full left-0 mt-1 w-48 sm:w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-40 max-h-64 overflow-y-auto">
-                <div className="p-1.5">
-                  {plans.map((plan) => {
-                    const PlanIcon = plan.icon;
-                    return (
-                      <button
-                        key={plan.id}
-                        onClick={() => handlePlanSelect(plan.id)}
-                        className={`w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-md transition-colors text-xs sm:text-sm ${
-                          selectedPlan === plan.id
-                            ? "bg-blue-900/50 text-blue-400 border border-blue-700"
-                            : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                        }`}
-                      >
-                        <div
-                          className={`w-5 h-5 rounded-full bg-gradient-to-r ${plan.color} flex items-center justify-center flex-shrink-0`}
-                        >
-                          <PlanIcon className="w-2.5 h-2.5 text-white" />
-                        </div>
-                        <span className="font-medium truncate">{plan.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
           </div>
 
           {/* New Chat Button & Chat Status */}
@@ -238,14 +238,14 @@ const ChatContainer = ({
             {/* New Chat Button */}
             <button
               onClick={onNewChat}
-              className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md group cursor-pointer"
+              className="flex items-center space-x-1.5 min-h-[40px] px-2.5 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 active:from-purple-800 active:to-blue-800 active:scale-95 text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
               title="Start new chat"
             >
               <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:rotate-90 transition-transform duration-200" />
               <span className="text-xs sm:text-sm font-medium hidden sm:inline">New</span>
             </button>
 
-{/* Chat Status - shows live AI lifecycle status if available */}
+            {/* Chat Status - shows live AI lifecycle status if available */}
             <div className="flex items-center space-x-1.5">
               {aiStatus ? (
                 <div className="flex items-center space-x-1.5 min-w-0">
@@ -291,9 +291,11 @@ const ChatContainer = ({
         </div>
       ) : (
         <>
-          {/* Chat Messages - Scrollable Area */}
-          <div className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4">
-{messages.map((message, index) => {
+          {/* Chat Messages - Scrollable Area. overscroll-contain stops scroll
+              from "leaking" into the page behind it once you hit the top/bottom
+              on mobile (a common source of accidental page-scroll bugs). */}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 sm:p-4 space-y-3 sm:space-y-4">
+            {messages.map((message, index) => {
               // Check if this message is currently streaming
               const isStreaming = message.id === streamingMessageId && message.role === "ai";
 
@@ -311,7 +313,7 @@ const ChatContainer = ({
               );
             })}
 
-{/* AI status banner - shows live lifecycle events (thinking,
+            {/* AI status banner - shows live lifecycle events (thinking,
                 tool calling, intent, streaming) driven by backend SSE */}
             {aiStatus && <AIStatusBanner status={aiStatus} />}
 
@@ -321,8 +323,12 @@ const ChatContainer = ({
             <div ref={actualMessagesEndRef} />
           </div>
 
-          {/* Chat Input - Fixed at Bottom */}
-          <div className="flex-shrink-0 p-2 rounded-b-lg sm:rounded-b-xl">
+          {/* Chat Input - Fixed at Bottom. The extra bottom padding respects
+              the iOS home-indicator / notch safe area when this is used inside
+              a PWA or mobile webview — falls back to 0.5rem on browsers that
+              don't support env(). Requires `viewport-fit=cover` in your
+              viewport meta tag for env(safe-area-inset-bottom) to be non-zero. */}
+          <div className="flex-shrink-0 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] rounded-b-lg sm:rounded-b-xl">
             <ChatInput
               inputValue={inputValue}
               setInputValue={setInputValue}
@@ -341,10 +347,10 @@ const ChatContainer = ({
         </>
       )}
 
-      {/* Backdrop for dropdown */}
+      {/* Backdrop for dropdown — z-30, strictly below the dropdown's z-50 */}
       {isDropdownOpen && (
         <div
-          className="fixed inset-0 z-40"
+          className="fixed inset-0 z-30"
           onClick={() => setIsDropdownOpen(false)}
         />
       )}
