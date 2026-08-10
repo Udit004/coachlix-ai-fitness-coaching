@@ -29,6 +29,7 @@ const QuickActions = lazy(() => import(/* webpackChunkName: "sidebar-actions" */
 const ProgressStats = lazy(() => import(/* webpackChunkName: "sidebar-stats" */ "./ProgressStats"));
 const GoalProgress = lazy(() => import(/* webpackChunkName: "sidebar-goals" */ "./GoalProgress"));
 const ChatHistory = lazy(() => import(/* webpackChunkName: "chat-history" */ "./ChatHistory"));
+const GoogleCalendarConnect = lazy(() => import(/* webpackChunkName: "calendar-connect" */ "./GoogleCalendarConnect"));
 
 // Minimal loading skeleton for sidebar components
 const ComponentSkeleton = ({ height = "h-24" }) => (
@@ -237,6 +238,11 @@ const ChatSidebar = ({
             onViewAll={handleViewAllChats}
             onSelectChat={handleSelectChat}
           />
+
+          {/* Google Calendar Connect */}
+          <Suspense fallback={<ComponentSkeleton height="h-24" />}>
+            <GoogleCalendarConnect />
+          </Suspense>
 
           {/* Personalized Quick Actions */}
           <Suspense fallback={<ComponentSkeleton height="h-32" />}>
