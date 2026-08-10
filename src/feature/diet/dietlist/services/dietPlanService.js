@@ -4,15 +4,25 @@ import { API_BASE_URL } from "@/service/apiBase";
 
 const BASE_URL = `${API_BASE_URL}/diet-plans`;
 
-// Get authorization header with Firebase token
+// Get authorization header with Firebase token + Content-Type (for POST/PUT with a body)
 const getAuthHeaders = async () => {
   const user = auth.currentUser;
   if (!user) throw new Error("User not authenticated");
 
   const token = await user.getIdToken();
-  console.log("Token:", token); // Log the token for debugging
   return {
     "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+};
+
+// Get authorization header WITHOUT Content-Type (for DELETE/GET — no request body)
+const getAuthOnlyHeaders = async () => {
+  const user = auth.currentUser;
+  if (!user) throw new Error("User not authenticated");
+
+  const token = await user.getIdToken();
+  return {
     Authorization: `Bearer ${token}`,
   };
 };
@@ -38,7 +48,7 @@ const handleResponse = async (response) => {
 // Get all diet plans for current user
 export const getDietPlans = async (options = {}) => {
   try {
-    const headers = await getAuthHeaders();
+    const headers = await getAuthOnlyHeaders();
     const params = new URLSearchParams();
 
     if (options.activeOnly) params.append("active", "true");
@@ -72,7 +82,7 @@ export const getDietPlans = async (options = {}) => {
 // Get single diet plan by ID
 export const getDietPlan = async (planId) => {
   try {
-    const headers = await getAuthHeaders();
+    const headers = await getAuthOnlyHeaders();
     const response = await fetch(`${BASE_URL}/${planId}`, { headers });
 
     return handleResponse(response);
@@ -122,7 +132,7 @@ export const updateDietPlan = async (planId, updateData) => {
 // Delete diet plan
 export const deleteDietPlan = async (planId) => {
   try {
-    const headers = await getAuthHeaders();
+    const headers = await getAuthOnlyHeaders(); // DELETE has no body — omit Content-Type
     const response = await fetch(`${BASE_URL}/${planId}`, {
       method: "DELETE",
       headers,
@@ -243,7 +253,7 @@ export const deleteFoodItem = async (
   itemIndex
 ) => {
   try {
-    const headers = await getAuthHeaders();
+    const headers = await getAuthOnlyHeaders(); // DELETE has no body — omit Content-Type
     const response = await fetch(
       `${BASE_URL}/${planId}/days/${dayNumber}/meals/${mealType}/items/${itemIndex}`,
       {
@@ -375,8 +385,9 @@ export const getFoodDetailsWithAI = async (foodName) => {
 // Toggle diet plan active status
 export const togglePlanActive = async (planId, isActive) => {
   try {
-    const headers = await getAuthHeaders();
     const method = isActive ? 'POST' : 'DELETE';
+    // DELETE has no body — use auth-only headers; POST uses full JSON headers
+    const headers = method === 'DELETE' ? await getAuthOnlyHeaders() : await getAuthHeaders();
     const response = await fetch(`${BASE_URL}/${planId}/activate`, {
       method,
       headers,
