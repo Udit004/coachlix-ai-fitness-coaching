@@ -3,7 +3,6 @@
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
-import { Inter } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import ConditionalFooter from "@/components/ConditionalFooter";
 import AuthGuard from "@/components/AuthGuard";
@@ -12,8 +11,6 @@ import { AuthProvider } from "@/auth/AuthContext";
 import { CustomThemeProvider } from "@/context/CustomThemeProvider";
 import QueryProvider from "@/providers/QueryProvider";
 import ToastProvider from "@/providers/ToastProvider";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const viewport = {
   themeColor: "black",
@@ -70,7 +67,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} antialiased`}>
+      <body className="antialiased">
         <CustomThemeProvider>
           <AuthProvider>
             <PushTokenRegistrar />

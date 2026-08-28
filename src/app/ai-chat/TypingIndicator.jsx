@@ -1,5 +1,6 @@
 import React from 'react';
 import { Bot, Sparkles } from './icons';
+import { GenerationIndicator } from './AIStatusBanner';
 
 const TypingIndicator = ({ userProfile }) => {
   const getTypingMessage = () => {
@@ -29,17 +30,13 @@ const TypingIndicator = ({ userProfile }) => {
           <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
         </div>
         <div className="bg-gray-800/80 rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-gray-700 shadow-sm max-w-xs sm:max-w-sm">
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            <div className="flex space-x-1 sm:space-x-2">
-              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full animate-bounce"></div>
-              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full animate-bounce delay-75"></div>
-              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full animate-bounce delay-150"></div>
-            </div>
-            <div className="flex items-center space-x-1 text-xs sm:text-sm text-gray-400">
-              <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="text-xs sm:text-sm">{getTypingMessage()}</span>
-            </div>
-          </div>
+      <div className="flex items-center space-x-2 sm:space-x-3">
+        <GenerationIndicator />
+        <div className="flex items-center space-x-1 text-xs sm:text-sm text-gray-400">
+          <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
+          <span className="text-xs sm:text-sm">{getTypingMessage()}</span>
+        </div>
+      </div>
         </div>
       </div>
     </div>
