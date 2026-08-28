@@ -358,12 +358,12 @@ const ChatInput = ({
         {/* Main input container - Minimal height like ChatGPT */}
         <div className="max-w-3xl mx-auto">
           <div 
-            className={`relative flex items-center gap-2 bg-gray-800 rounded-[26px]  transition-all duration-200 ${
+            className={`relative flex items-center gap-2 bg-gray-800 rounded-[26px] border transition-all duration-300 ${
               isDragging
-                ? 'border-blue-500 ring-1 ring-blue-400/50 bg-blue-900/10'
+                ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-900/20'
                 : isListening 
-                  ? 'border-red-500 ring-1 ring-red-400/50 bg-red-900/10' 
-                  : 'border-gray-700 hover:border-gray-600 focus-within:border-gray-600'
+                  ? 'border-red-500 ring-2 ring-red-500/20 bg-red-900/20' 
+                  : 'border-gray-700 hover:border-gray-600 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:shadow-[0_0_15px_rgba(59,130,246,0.15)]'
             }`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}

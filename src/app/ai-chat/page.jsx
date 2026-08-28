@@ -5,7 +5,7 @@
 
 export { metadata };  
 
-import AIChatClient from "./AIChatClient";
+import AIChatClient from "./AIChatClientNoSSR";
 
 export default function AIChatPage() {
   return <AIChatClient />;

@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useState } from "react";
 import ChatMessage from "./ChatMessage";
 import TypingIndicator from "./TypingIndicator";
 import ChatInput from "./ChatInput";
-import { ChevronDown, Menu, Plus, Sparkles, Brain, Loader2 } from "./icons";
+import { ChevronDown, Menu, Plus, Sparkles, Brain, Loader2, Dumbbell, Apple, Calendar, Target, MessageCircle, User } from "./icons";
 import {
   useMessageEnterAnimation,
   useStatusBannerAnimation,
@@ -20,6 +20,7 @@ const AnimatedMessage = React.memo(function AnimatedMessage({
   userProfile,
   formatTime,
   copyToClipboard,
+  aiStatus,
 }) {
   const ref = useRef(null);
   useMessageEnterAnimation(ref, {
@@ -36,6 +37,7 @@ const AnimatedMessage = React.memo(function AnimatedMessage({
         formatTime={formatTime}
         copyToClipboard={copyToClipboard}
         isStreaming={isStreaming}
+        aiStatus={aiStatus}
       />
     </div>
   );
@@ -145,6 +147,7 @@ const ChatContainer = ({
   const messagesEndRefInternal = useRef(null);
   const actualMessagesEndRef = messagesEndRef || messagesEndRefInternal;
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
   useEffect(() => {
     scrollToBottom();
@@ -152,6 +155,16 @@ const ChatContainer = ({
 
   const scrollToBottom = () => {
     actualMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    // Show button if we are scrolled up by more than 100px from the bottom
+    if (scrollHeight - scrollTop - clientHeight > 100) {
+      setShowScrollButton(true);
+    } else {
+      setShowScrollButton(false);
+    }
   };
 
   const currentPlan = plans.find((plan) => plan.id === selectedPlan);
@@ -246,7 +259,7 @@ const ChatContainer = ({
             </button>
 
             {/* Chat Status - shows live AI lifecycle status if available */}
-            <div className="flex items-center space-x-1.5">
+            {/* <div className="flex items-center space-x-1.5">
               {aiStatus ? (
                 <div className="flex items-center space-x-1.5 min-w-0">
                   <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
@@ -265,28 +278,66 @@ const ChatContainer = ({
                   <span className="text-xs text-blue-400 font-medium hidden lg:inline">Active</span>
                 </div>
               )}
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
 
       {isEmptyChat ? (
-        <div className="flex-1 min-h-0 flex items-center justify-center px-3 sm:px-6">
-          <div className="w-full max-w-3xl">
-            <ChatInput
-              inputValue={inputValue}
-              setInputValue={setInputValue}
-              handleSendMessage={handleSendMessage}
-              handleKeyPress={handleKeyPress}
-              isTyping={isTyping}
-              isRecording={isRecording}
-              toggleRecording={toggleRecording}
-              isLiveAudioActive={isLiveAudioActive}
-              isLiveAudioConnecting={isLiveAudioConnecting}
-              onToggleLiveAudio={onToggleLiveAudio}
-              liveAudioError={liveAudioError}
-              textareaRef={textareaRef}
-            />
+        <div className="flex-1 min-h-0 flex flex-col px-3 sm:px-6 overflow-y-auto">
+          <div className="flex-1 flex flex-col items-center justify-center max-w-3xl mx-auto w-full pt-10 pb-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 mb-6 transform hover:scale-105 transition-transform">
+              <Sparkles className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 text-center">
+              Welcome back{userProfile?.name ? `, ${userProfile.name.split(' ')[0]}` : ''}!
+            </h2>
+            <p className="text-gray-400 text-center mb-8 max-w-md">
+              I'm your personal AI fitness coach. How can I help you reach your goals today?
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mb-8">
+              {[
+                { icon: Dumbbell, text: "Create a workout plan for me", color: "from-blue-500/20 to-blue-600/20 text-blue-400 border-blue-500/30" },
+                { icon: Apple, text: "Design a nutrition plan", color: "from-green-500/20 to-green-600/20 text-green-400 border-green-500/30" },
+                { icon: Calendar, text: "Help me create a weekly schedule", color: "from-orange-500/20 to-orange-600/20 text-orange-400 border-orange-500/30" },
+                { icon: Target, text: "Set fitness goals with me", color: "from-purple-500/20 to-purple-600/20 text-purple-400 border-purple-500/30" },
+              ].map((action, idx) => {
+                const ActionIcon = action.icon;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setInputValue(action.text);
+                      handleSendMessage(action.text);
+                    }}
+                    className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border bg-gradient-to-br ${action.color} hover:brightness-110 active:scale-[0.98] transition-all text-left group`}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-gray-900/50 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                      <ActionIcon className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm font-medium leading-tight">{action.text}</span>
+                  </button>
+                );
+              })}
+            </div>
+            
+            <div className="w-full mt-auto">
+              <ChatInput
+                inputValue={inputValue}
+                setInputValue={setInputValue}
+                handleSendMessage={handleSendMessage}
+                handleKeyPress={handleKeyPress}
+                isTyping={isTyping}
+                isRecording={isRecording}
+                toggleRecording={toggleRecording}
+                isLiveAudioActive={isLiveAudioActive}
+                isLiveAudioConnecting={isLiveAudioConnecting}
+                onToggleLiveAudio={onToggleLiveAudio}
+                liveAudioError={liveAudioError}
+                textareaRef={textareaRef}
+              />
+            </div>
           </div>
         </div>
       ) : (
@@ -294,7 +345,10 @@ const ChatContainer = ({
           {/* Chat Messages - Scrollable Area. overscroll-contain stops scroll
               from "leaking" into the page behind it once you hit the top/bottom
               on mobile (a common source of accidental page-scroll bugs). */}
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 sm:p-4 space-y-3 sm:space-y-4">
+          <div 
+            className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 sm:p-4 space-y-3 sm:space-y-4 relative"
+            onScroll={handleScroll}
+          >
             {messages.map((message, index) => {
               // Check if this message is currently streaming
               const isStreaming = message.id === streamingMessageId && message.role === "ai";
@@ -309,26 +363,39 @@ const ChatContainer = ({
                   formatTime={formatTime}
                   copyToClipboard={copyToClipboard}
                   isStreaming={isStreaming}
+                  aiStatus={isStreaming ? aiStatus : null}
                 />
               );
             })}
 
             {/* AI status banner - shows live lifecycle events (thinking,
                 tool calling, intent, streaming) driven by backend SSE */}
-            {aiStatus && <AIStatusBanner status={aiStatus} />}
+            {/* {aiStatus && <AIStatusBanner status={aiStatus} />} */}
 
             {/* Typing Indicator - Only show if no streaming message */}
-            {isTyping && !streamingMessageId && <TypingIndicator userProfile={userProfile} />}
+            {/* {isTyping && !streamingMessageId && <TypingIndicator userProfile={userProfile} />} */}
 
-            <div ref={actualMessagesEndRef} />
+            <div ref={actualMessagesEndRef} className="h-4" />
           </div>
+
+          {showScrollButton && (
+            <div className="absolute bottom-24 right-6 z-40">
+              <button
+                onClick={scrollToBottom}
+                className="w-10 h-10 bg-gray-700/80 hover:bg-gray-600 text-white rounded-full flex items-center justify-center shadow-lg border border-gray-600 backdrop-blur-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                title="Scroll to bottom"
+              >
+                <ChevronDown className="w-5 h-5" />
+              </button>
+            </div>
+          )}
 
           {/* Chat Input - Fixed at Bottom. The extra bottom padding respects
               the iOS home-indicator / notch safe area when this is used inside
               a PWA or mobile webview — falls back to 0.5rem on browsers that
               don't support env(). Requires `viewport-fit=cover` in your
               viewport meta tag for env(safe-area-inset-bottom) to be non-zero. */}
-          <div className="flex-shrink-0 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] rounded-b-lg sm:rounded-b-xl">
+          <div className="flex-shrink-0 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] rounded-b-lg sm:rounded-b-xl relative z-20">
             <ChatInput
               inputValue={inputValue}
               setInputValue={setInputValue}
